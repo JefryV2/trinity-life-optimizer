@@ -107,6 +107,9 @@ export default function Health() {
   const fetchTodaysData = async () => {
     const today = new Date().toISOString().split('T')[0];
     
+    // Initialize nutrition with default values
+    let nutrition = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    
     try {
       // Fetch today's nutrition
       const { data: foodData } = await supabase
@@ -117,15 +120,15 @@ export default function Health() {
         .lte('consumed_at', `${today}T23:59:59`);
 
       if (foodData) {
-        const nutrition = foodData.reduce((acc, entry) => ({
+        nutrition = foodData.reduce((acc, entry) => ({
           calories: acc.calories + (entry.total_calories || 0),
           protein: acc.protein + (entry.protein_g || 0),
           carbs: acc.carbs + (entry.carbs_g || 0),
           fat: acc.fat + (entry.fat_g || 0)
         }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
-        
-        setTodaysNutrition(nutrition);
       }
+      
+      setTodaysNutrition(nutrition);
 
       // Fetch today's steps
       const { data: stepData } = await supabase
