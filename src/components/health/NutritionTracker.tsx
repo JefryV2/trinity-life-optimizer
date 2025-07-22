@@ -337,7 +337,7 @@ export function NutritionTracker() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
-            {vitamins.map((vitamin) => {
+            {vitaminsAndMinerals.map((vitamin) => {
               const progress = vitamin.current > 0 ? (vitamin.current / vitamin.target) * 100 : 0;
               return (
                 <div key={vitamin.name} className="p-3 rounded-xl bg-muted/30">
@@ -360,7 +360,7 @@ export function NutritionTracker() {
           </div>
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Note:</strong> Vitamin and mineral tracking requires detailed food database integration. 
+              <strong>Note:</strong> Vitamin and mineral data is automatically calculated when you log foods from the database search. 
               Use the "Search\" feature to log foods with complete nutritional data, or \"Quick Log\" for manual entry.
             </p>
           </div>
