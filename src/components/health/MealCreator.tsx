@@ -129,6 +129,28 @@ export function MealCreator({ onMealSaved }: MealCreatorProps) {
         fiber_g: Math.round((ingredient.food.nutrients.fiber || 0) * ingredient.amount * 10) / 10,
         sugar_g: Math.round((ingredient.food.nutrients.sugar || 0) * ingredient.amount * 10) / 10,
         sodium_mg: Math.round((ingredient.food.nutrients.sodium || 0) * ingredient.amount),
+        notes: JSON.stringify({
+          vitamins_minerals: {
+            vitaminA: Math.round((ingredient.food.nutrients.vitaminA || 0) * ingredient.amount * 10) / 10,
+            vitaminC: Math.round((ingredient.food.nutrients.vitaminC || 0) * ingredient.amount * 10) / 10,
+            vitaminD: Math.round((ingredient.food.nutrients.vitaminD || 0) * ingredient.amount * 10) / 10,
+            vitaminE: Math.round((ingredient.food.nutrients.vitaminE || 0) * ingredient.amount * 10) / 10,
+            vitaminK: Math.round((ingredient.food.nutrients.vitaminK || 0) * ingredient.amount * 10) / 10,
+            thiamin: Math.round((ingredient.food.nutrients.thiamin || 0) * ingredient.amount * 10) / 10,
+            riboflavin: Math.round((ingredient.food.nutrients.riboflavin || 0) * ingredient.amount * 10) / 10,
+            niacin: Math.round((ingredient.food.nutrients.niacin || 0) * ingredient.amount * 10) / 10,
+            vitaminB6: Math.round((ingredient.food.nutrients.vitaminB6 || 0) * ingredient.amount * 10) / 10,
+            folate: Math.round((ingredient.food.nutrients.folate || 0) * ingredient.amount * 10) / 10,
+            vitaminB12: Math.round((ingredient.food.nutrients.vitaminB12 || 0) * ingredient.amount * 10) / 10,
+            calcium: Math.round((ingredient.food.nutrients.calcium || 0) * ingredient.amount),
+            iron: Math.round((ingredient.food.nutrients.iron || 0) * ingredient.amount * 10) / 10,
+            magnesium: Math.round((ingredient.food.nutrients.magnesium || 0) * ingredient.amount),
+            phosphorus: Math.round((ingredient.food.nutrients.phosphorus || 0) * ingredient.amount),
+            potassium: Math.round((ingredient.food.nutrients.potassium || 0) * ingredient.amount),
+            zinc: Math.round((ingredient.food.nutrients.zinc || 0) * ingredient.amount * 10) / 10,
+            selenium: Math.round((ingredient.food.nutrients.selenium || 0) * ingredient.amount * 10) / 10
+          }
+        }),
         meal_type: mealType,
         servings: ingredient.amount,
         consumed_at: new Date().toISOString()
