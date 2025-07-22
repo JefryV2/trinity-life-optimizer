@@ -361,7 +361,7 @@ export function NutritionTracker() {
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
               <strong>Note:</strong> Vitamin and mineral tracking requires detailed food database integration. 
-              Use the "Search\" feature to log foods with complete nutritional data, or "Quick Log\" for manual entry.
+              Use the "Search\" feature to log foods with complete nutritional data, or \"Quick Log\" for manual entry.
             </p>
           </div>
         </CardContent>
