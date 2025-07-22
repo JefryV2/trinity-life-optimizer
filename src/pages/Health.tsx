@@ -244,7 +244,10 @@ export default function Health() {
     }
   }, [activeTab, user]);
 
-  const renderOverview = () => (
+  const renderOverview = () => {
+    const overallScore = 0;
+    
+    return (
     <div className="space-y-6">
       {/* Daily Score */}
       <Card className="health-gradient text-white overflow-hidden">
@@ -264,9 +267,8 @@ export default function Health() {
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-white/80">
-                <span>{overallScore}%</span>
               <span>0%</span>
-              <Progress value={overallScore} className="h-2 bg-white/20" />
+            </div>
             <Progress value={0} className="h-2 bg-white/20" />
           </div>
         </CardContent>
@@ -297,6 +299,7 @@ export default function Health() {
 
       {/* Today's Goals */}
       <Card className="ios-card">
+        <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold">Today's Goals</h3>
           <Target className="h-4 w-4 text-muted-foreground" />
@@ -315,10 +318,12 @@ export default function Health() {
             );
           })}
         </div>
+        </CardContent>
       </Card>
 
       {/* Quick Actions */}
       <Card className="ios-card">
+        <CardContent className="p-6">
         <h3 className="font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action, index) => {
@@ -336,11 +341,13 @@ export default function Health() {
             );
           })}
         </div>
+        </CardContent>
       </Card>
 
       {/* Recent Activity */}
       {recentActivity.length > 0 && (
         <Card className="ios-card">
+          <CardContent className="p-6">
           <h3 className="font-semibold mb-4">Recent Activity</h3>
           <div className="space-y-3">
             {recentActivity.map((activity, index) => {
@@ -359,10 +366,12 @@ export default function Health() {
               );
             })}
           </div>
+          </CardContent>
         </Card>
       )}
     </div>
-  );
+    );
+  };
 
   const isWoman = userGender === 'female';
   const tabsCount = isWoman ? 6 : 5;
