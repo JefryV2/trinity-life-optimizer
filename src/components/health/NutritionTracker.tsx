@@ -1,13 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Search, Target, TrendingUp, Apple, Droplets } from "lucide-react";
+import { Plus, Search, Target, TrendingUp, Apple, Droplets, Utensils } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { FoodSearch } from "./FoodSearch";
 import { MealCreator } from "./MealCreator";
+import { DietTracker } from "./DietTracker";
 
 interface NutritionData {
   calories: number;
@@ -33,10 +33,22 @@ interface FoodEntry {
   consumed_at: string;
 }
 
+interface HealthProfile {
+  daily_caloric_target: number;
+  height_cm: number;
+  weight_kg: number;
+  target_weight_kg: number;
+  goal_type: string;
+  activity_level: string;
+  gender: string;
+}
+
 export function NutritionTracker() {
   const { user } = useAuth();
   const [showFoodSearch, setShowFoodSearch] = useState(false);
   const [showMealCreator, setShowMealCreator] = useState(false);
+  const [showDietTracker, setShowDietTracker] = useState(false);
+  const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
   const [todaysNutrition, setTodaysNutrition] = useState<NutritionData>({
     calories: 0,
     protein: 0,
@@ -48,14 +60,18 @@ export function NutritionTracker() {
   });
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
 
-  const targets = {
-    calories: 2000,
-    protein: 150,
-    carbs: 250,
-    fat: 67,
-    fiber: 25,
-    sodium: 2300,
-    sugar: 50
+  // Dynamic targets based on user profile
+  const getTargets = () => {
+    const caloricTarget = healthProfile?.daily_caloric_target || 2000;
+    return {
+      calories: caloricTarget,
+      protein: Math.round(caloricTarget * 0.3 / 4), // 30% of calories from protein (4 cal/g)
+      carbs: Math.round(caloricTarget * 0.4 / 4), // 40% of calories from carbs (4 cal/g)
+      fat: Math.round(caloricTarget * 0.3 / 9), // 30% of calories from fat (9 cal/g)
+      fiber: 25, // Standard recommendation
+      sodium: 2300, // Standard recommendation
+      sugar: Math.round(caloricTarget * 0.1 / 4) // Max 10% of calories from sugar
+    };
   };
 
   const vitamins = [
@@ -70,8 +86,30 @@ export function NutritionTracker() {
   useEffect(() => {
     if (user) {
       fetchTodaysEntries();
+      fetchHealthProfile();
     }
   }, [user]);
+
+  const fetchHealthProfile = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles_health')
+        .select('daily_caloric_target, height_cm, weight_kg, target_weight_kg, goal_type, activity_level, gender')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching health profile:', error);
+        return;
+      }
+
+      setHealthProfile(data);
+    } catch (error) {
+      console.error('Error fetching health profile:', error);
+    }
+  };
 
   const fetchTodaysEntries = async () => {
     if (!user) return;
@@ -123,6 +161,8 @@ export function NutritionTracker() {
     return Math.min((current / target) * 100, 100);
   };
 
+  const targets = getTargets();
+
   const groupedEntries = foodEntries.reduce((acc, entry) => {
     const mealType = entry.meal_type || 'other';
     if (!acc[mealType]) {
@@ -131,6 +171,55 @@ export function NutritionTracker() {
     acc[mealType].push(entry);
     return acc;
   }, {} as Record<string, FoodEntry[]>);
+
+  // Show different views based on state
+  if (showFoodSearch) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Search Food Database</h2>
+          <Button variant="outline" onClick={() => setShowFoodSearch(false)}>
+            Back to Nutrition
+          </Button>
+        </div>
+        <FoodSearch onFoodSelect={() => {
+          setShowFoodSearch(false);
+          fetchTodaysEntries();
+        }} />
+      </div>
+    );
+  }
+
+  if (showMealCreator) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Create Meal</h2>
+          <Button variant="outline" onClick={() => setShowMealCreator(false)}>
+            Back to Nutrition
+          </Button>
+        </div>
+        <MealCreator onMealSaved={() => {
+          setShowMealCreator(false);
+          fetchTodaysEntries();
+        }} />
+      </div>
+    );
+  }
+
+  if (showDietTracker) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Quick Food Entry</h2>
+          <Button variant="outline" onClick={() => setShowDietTracker(false)}>
+            Back to Nutrition
+          </Button>
+        </div>
+        <DietTracker />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -146,10 +235,12 @@ export function NutritionTracker() {
             <div className="text-right">
               <div className="flex items-center gap-1 text-white/90">
                 <TrendingUp className="h-4 w-4" />
-                <span className="text-sm">On track</span>
+                <span className="text-sm">
+                  {todaysNutrition.calories > 0 ? 'Tracking' : 'Start logging'}
+                </span>
               </div>
               <p className="text-xs text-white/70 mt-1">
-                {targets.calories - todaysNutrition.calories} remaining
+                {Math.max(0, targets.calories - todaysNutrition.calories)} remaining
               </p>
             </div>
           </div>
@@ -157,21 +248,29 @@ export function NutritionTracker() {
       </Card>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Button
           onClick={() => setShowFoodSearch(true)}
-          className="ios-button-primary h-16 flex-col gap-2"
+          className="ios-button-primary h-14 flex-col gap-1"
         >
-          <Search className="h-5 w-5" />
-          <span className="text-xs">Search Food</span>
+          <Search className="h-4 w-4" />
+          <span className="text-xs">Search</span>
         </Button>
         <Button
           onClick={() => setShowMealCreator(true)}
           variant="outline"
-          className="ios-button-secondary h-16 flex-col gap-2"
+          className="ios-button-secondary h-14 flex-col gap-1"
         >
-          <Plus className="h-5 w-5" />
-          <span className="text-xs">Create Meal</span>
+          <Plus className="h-4 w-4" />
+          <span className="text-xs">Meal</span>
+        </Button>
+        <Button
+          onClick={() => setShowDietTracker(true)}
+          variant="outline"
+          className="ios-button-secondary h-14 flex-col gap-1"
+        >
+          <Utensils className="h-4 w-4" />
+          <span className="text-xs">Quick Log</span>
         </Button>
       </div>
 
@@ -239,7 +338,7 @@ export function NutritionTracker() {
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             {vitamins.map((vitamin) => {
-              const progress = (vitamin.current / vitamin.target) * 100;
+              const progress = vitamin.current > 0 ? (vitamin.current / vitamin.target) * 100 : 0;
               return (
                 <div key={vitamin.name} className="p-3 rounded-xl bg-muted/30">
                   <div className="flex items-center justify-between mb-2">
@@ -252,7 +351,7 @@ export function NutritionTracker() {
                   </div>
                   <h4 className="font-medium text-sm mb-1">{vitamin.name}</h4>
                   <p className="text-xs text-muted-foreground mb-2">
-                    {vitamin.current}/{vitamin.target} {vitamin.unit}
+                    {Math.round(vitamin.current * 10) / 10}/{vitamin.target} {vitamin.unit}
                   </p>
                   <Progress value={Math.min(progress, 100)} className="h-1.5" />
                 </div>
@@ -261,8 +360,8 @@ export function NutritionTracker() {
           </div>
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Note:</strong> Vitamin and mineral tracking will be available when detailed nutritional data is integrated. 
-              For now, focus on logging your meals to track calories and macronutrients.
+              <strong>Note:</strong> Vitamin and mineral tracking requires detailed food database integration. 
+              Use the "Search" feature to log foods with complete nutritional data, or "Quick Log" for manual entry.
             </p>
           </div>
         </CardContent>
@@ -304,27 +403,6 @@ export function NutritionTracker() {
         </CardContent>
       </Card>
 
-      {/* Food Search Modal */}
-      {showFoodSearch && (
-        <FoodSearch
-          onClose={() => setShowFoodSearch(false)}
-          onFoodLogged={() => {
-            setShowFoodSearch(false);
-            fetchTodaysEntries();
-          }}
-        />
-      )}
-
-      {/* Meal Creator Modal */}
-      {showMealCreator && (
-        <MealCreator
-          onClose={() => setShowMealCreator(false)}
-          onMealCreated={() => {
-            setShowMealCreator(false);
-            fetchTodaysEntries();
-          }}
-        />
-      )}
     </div>
   );
 }

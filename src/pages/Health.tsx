@@ -41,9 +41,9 @@ export default function Health() {
   const [todaysExercise, setTodaysExercise] = useState(0);
 
   const [healthMetrics, setHealthMetrics] = useState([
-    { label: 'Sleep Score', value: 0, unit: '/100', icon: Moon, color: 'bg-blue-500', trend: '0%' },
+    { label: 'Sleep Score', value: 0, unit: '/100', icon: Moon, color: 'bg-blue-500', trend: 'No data' },
     { label: 'Energy Level', value: 0, unit: '%', icon: Zap, color: 'bg-yellow-500', trend: '0%' },
-    { label: 'Steps Today', value: 0, unit: '', icon: Activity, color: 'bg-green-500', trend: '0' }
+    { label: 'Steps Today', value: 0, unit: '', icon: Activity, color: 'bg-green-500', trend: 'No data' }
   ]);
 
   const quickActions = [
@@ -64,6 +64,17 @@ export default function Health() {
   useEffect(() => {
     if (user) {
       fetchUserGender();
+      
+      // Listen for health profile updates
+      const handleProfileUpdate = () => {
+        fetchUserGender();
+      };
+      
+      window.addEventListener('healthProfileUpdated', handleProfileUpdate);
+      
+      return () => {
+        window.removeEventListener('healthProfileUpdated', handleProfileUpdate);
+      };
     }
   }, [user]);
 
@@ -173,15 +184,15 @@ export default function Health() {
 
       // Update health metrics with real data
       setHealthMetrics([
-        { label: 'Sleep Score', value: sleepScore, unit: '/100', icon: Moon, color: 'bg-blue-500', trend: sleepScore > 0 ? 'Good' : '0%' },
-        { label: 'Energy Level', value: energyLevel, unit: '%', icon: Zap, color: 'bg-yellow-500', trend: energyLevel > 0 ? 'Stable' : '0%' },
-        { label: 'Steps Today', value: todaysSteps, unit: '', icon: Activity, color: 'bg-green-500', trend: todaysSteps > 0 ? 'Active' : '0' }
+        { label: 'Sleep Score', value: sleepScore, unit: '/100', icon: Moon, color: 'bg-blue-500', trend: sleepScore > 0 ? 'Good' : 'No data' },
+        { label: 'Energy Level', value: energyLevel, unit: '%', icon: Zap, color: 'bg-yellow-500', trend: energyLevel > 0 ? 'Stable' : 'No data' },
+        { label: 'Steps Today', value: todaysSteps, unit: '', icon: Activity, color: 'bg-green-500', trend: todaysSteps > 0 ? 'Active' : 'No data' }
       ]);
 
       // Update today's goals with real data
       setTodaysGoals([
         { label: 'Steps', current: todaysSteps, target: 10000, unit: '' },
-        { label: 'Calories', current: Math.round(nutrition.calories), target: dailyCaloricTarget, unit: ' cal' },
+        { label: 'Calories', current: Math.round(todaysNutrition.calories), target: dailyCaloricTarget, unit: ' cal' },
         { label: 'Exercise', current: totalExercise, target: 30, unit: ' min' }
       ]);
 
@@ -253,9 +264,9 @@ export default function Health() {
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-white/80">
-              <span>Overall wellness</span>
+                <span>{overallScore}%</span>
               <span>0%</span>
-            </div>
+              <Progress value={overallScore} className="h-2 bg-white/20" />
             <Progress value={0} className="h-2 bg-white/20" />
           </div>
         </CardContent>

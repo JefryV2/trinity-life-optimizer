@@ -161,6 +161,42 @@ export function ProfileEditor() {
 
     setIsLoading(true);
     try {
+      // Calculate BMR and adjust for goals
+      const calculateBMR = () => {
+        if (!healthProfile.height_cm || !healthProfile.weight_kg || !healthProfile.birth_date || !healthProfile.gender) return 2000;
+        
+        const age = new Date().getFullYear() - new Date(healthProfile.birth_date).getFullYear();
+        
+        // Harris-Benedict Equation
+        let bmr;
+        if (healthProfile.gender === 'male') {
+          bmr = 88.362 + (13.397 * healthProfile.weight_kg) + (4.799 * healthProfile.height_cm) - (5.677 * age);
+        } else {
+          bmr = 447.593 + (9.247 * healthProfile.weight_kg) + (3.098 * healthProfile.height_cm) - (4.330 * age);
+        }
+        
+        // Activity level multiplier
+        const multipliers = {
+          sedentary: 1.2,
+          light: 1.375,
+          moderate: 1.55,
+          active: 1.725,
+          very_active: 1.9
+        };
+        
+        const tdee = bmr * multipliers[healthProfile.activity_level as keyof typeof multipliers];
+        
+        // Adjust for goal
+        if (healthProfile.goal_type === 'lose') {
+          return Math.round(tdee - 500); // 500 calorie deficit
+        } else if (healthProfile.goal_type === 'gain') {
+          return Math.round(tdee + 500); // 500 calorie surplus
+        }
+        return Math.round(tdee);
+      };
+
+      const calculatedCalories = calculateBMR();
+
       const { error } = await supabase
         .from('user_profiles_health')
         .upsert({
@@ -170,17 +206,21 @@ export function ProfileEditor() {
           gender: healthProfile.gender,
           birth_date: healthProfile.birth_date,
           activity_level: healthProfile.activity_level,
-          goal_type: healthProfile.goal_type
+          goal_type: healthProfile.goal_type,
+          daily_caloric_target: calculatedCalories
         });
 
       if (error) throw error;
 
       toast({
         title: "Health profile updated",
-        description: "Your health information has been saved successfully"
+        description: `Health profile updated. Daily caloric target: ${calculatedCalories} calories`
       });
 
       setHasHealthChanges(false);
+      
+      // Trigger a refresh of health data in other components
+      window.dispatchEvent(new CustomEvent('healthProfileUpdated'));
     } catch (error) {
       console.error('Error saving health profile:', error);
       toast({

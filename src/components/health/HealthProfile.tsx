@@ -143,10 +143,13 @@ export function HealthProfile() {
 
       toast({
         title: "Profile saved successfully",
-        description: `Daily caloric target: ${adjustedCalories} calories`
+        description: `Daily caloric target updated to ${adjustedCalories} calories based on your ${profile.goal_type} goal`
       });
 
       setHasProfile(true);
+      
+      // Trigger a refresh of health data in other components
+      window.dispatchEvent(new CustomEvent('healthProfileUpdated'));
     } catch (error) {
       console.error('Error saving health profile:', error);
       toast({

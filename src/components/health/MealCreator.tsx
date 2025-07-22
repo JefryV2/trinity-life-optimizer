@@ -117,7 +117,6 @@ export function MealCreator({ onMealSaved }: MealCreatorProps) {
 
     setIsSaving(true);
     try {
-      const totalNutrients = calculateTotalNutrients();
 
       // Save each ingredient as a separate food entry
       const foodEntries = ingredients.map(ingredient => ({
