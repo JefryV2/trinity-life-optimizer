@@ -1,3 +1,6 @@
+// @ts-nocheck
+// This file runs in the Supabase Edge Runtime (Deno), not in the Vite/Node toolchain.
+// We disable TypeScript checking here so local editors don't complain about Deno types.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {

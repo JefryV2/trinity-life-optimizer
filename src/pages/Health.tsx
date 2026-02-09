@@ -19,7 +19,9 @@ import {
   BarChart3,
   Settings,
   ArrowLeft,
-  User
+  User,
+  Calculator,
+  HeartPulse
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NutritionTracker } from "@/components/health/NutritionTracker";
@@ -27,8 +29,10 @@ import { ExerciseTracker } from "@/components/health/ExerciseTracker";
 import { SleepTracker } from "@/components/health/SleepTracker";
 import { WomensHealth } from "@/components/health/WomensHealth";
 import { MentalHealth } from "@/components/health/MentalHealth";
+import { HeartTracker } from "@/components/health/HeartTracker";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateCalorieGoal, calculatePersonalizedGoals, getHeartRateStats } from "@/lib/health-utils";
 
 export default function Health() {
   const navigate = useNavigate();
@@ -50,7 +54,8 @@ export default function Health() {
     { label: 'Log Sleep', icon: Moon, action: () => setActiveTab('sleep') },
     { label: 'Track Meal', icon: Utensils, action: () => setActiveTab('nutrition') },
     { label: 'Record Workout', icon: Dumbbell, action: () => setActiveTab('fitness') },
-    { label: 'Mood Check', icon: Brain, action: () => setActiveTab('mental-health') }
+    { label: 'Mood Check', icon: Brain, action: () => setActiveTab('mental-health') },
+    { label: 'Heart Rate', icon: HeartPulse, action: () => setActiveTab('heart') }
   ];
 
   const [todaysGoals, setTodaysGoals] = useState([
@@ -60,6 +65,8 @@ export default function Health() {
   ]);
 
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+
+
 
   useEffect(() => {
     if (user) {
@@ -83,7 +90,7 @@ export default function Health() {
       // Fetch user gender and health profile data
       const { data, error } = await supabase
         .from('user_profiles_health')
-        .select('gender, daily_caloric_target')
+        .select('gender, daily_caloric_target, height_cm, weight_kg, birth_date, activity_level, goal_type')
         .eq('user_id', user?.id)
         .maybeSingle();
 
@@ -95,6 +102,29 @@ export default function Health() {
       if (data) {
         setUserGender(data.gender);
         setDailyCaloricTarget(data.daily_caloric_target || 2000);
+        
+        // Calculate personalized goals based on user measurements
+        const goals = calculateCalorieGoal({
+          height_cm: data.height_cm,
+          weight_kg: data.weight_kg,
+          gender: data.gender,
+          birth_date: data.birth_date,
+          activity_level: data.activity_level,
+          goal_type: data.goal_type
+        });
+        
+        // Update the daily caloric target with the calculated value
+        setDailyCaloricTarget(goals.calorieGoal);
+        
+        // Also update in the database
+        try {
+          await supabase
+            .from('user_profiles_health')
+            .update({ daily_caloric_target: goals.calorieGoal })
+            .eq('user_id', user?.id);
+        } catch (updateError) {
+          console.error('Error updating caloric target:', updateError);
+        }
       }
       
       // Fetch today's data
@@ -150,8 +180,9 @@ export default function Health() {
         .gte('completed_at', `${today}T00:00:00`)
         .lte('completed_at', `${today}T23:59:59`);
 
+      let totalExercise = 0; // Initialize totalExercise to be used in later calculations
       if (exerciseData) {
-        const totalExercise = exerciseData.reduce((sum, record) => sum + (record.duration_minutes || 0), 0);
+        totalExercise = exerciseData.reduce((sum, record) => sum + (record.duration_minutes || 0), 0);
         setTodaysExercise(totalExercise);
       }
 
@@ -248,54 +279,70 @@ export default function Health() {
   }, [activeTab, user]);
 
   const renderOverview = () => {
-    const overallScore = 0;
+    const overallScore = Math.round(
+      (todaysGoals[0].current / todaysGoals[0].target * 33) +
+      (todaysGoals[1].current / todaysGoals[1].target * 33) +
+      (todaysGoals[2].current / todaysGoals[2].target * 34)
+    );
     
     return (
-    <div className="space-y-6">
-      {/* Daily Score */}
-      <Card className="health-gradient text-white overflow-hidden">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Daily Score - hero style like home */}
+      <Card className="glass-panel health-gradient text-white overflow-hidden">
         <CardContent className="p-6 relative">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-white/80 text-sm">Today's Health Score</p>
-              <h2 className="text-4xl font-bold">0</h2>
+              <p className="text-white/80 text-sm">Today's health score</p>
+              <h2 className="text-4xl font-bold tracking-tight">{overallScore}</h2>
+              <p className="text-xs text-white/70 mt-1">
+                {Math.round(todaysGoals[1].current)}/{dailyCaloricTarget} cal •{" "}
+                {todaysGoals[0].current.toLocaleString()} steps
+              </p>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-1 text-white/90">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm">Start tracking</span>
+            <div className="text-right space-y-1">
+              <div className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur-md">
+                <TrendingUp className="h-3 w-3" />
+                <span>
+                  {overallScore > 50 ? "Great job!" : overallScore > 25 ? "Keep going!" : "Just getting started"}
+                </span>
               </div>
-              <p className="text-xs text-white/70 mt-1">Begin your journey</p>
             </div>
           </div>
           <div className="space-y-2">
-            <div className="flex justify-between text-sm text-white/80">
+            <div className="flex justify-between text-[11px] text-white/80">
               <span>0%</span>
+              <span>{overallScore}%</span>
             </div>
-            <Progress value={0} className="h-2 bg-white/20" />
+            <Progress value={overallScore} className="h-2 bg-white/20" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Health Metrics Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Mini widgets row similar to home page */}
+      <div className="grid grid-cols-3 gap-3">
         {healthMetrics.map((metric, index) => {
           const Icon = metric.icon;
           return (
-            <Card key={index} className="metric-card haptic-light">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`w-10 h-10 rounded-xl ${metric.color} flex items-center justify-center`}>
-                    <Icon className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="text-xs text-green-600 font-medium">{metric.trend}</span>
+            <div
+              key={index}
+              className="glass-panel rounded-3xl p-3 space-y-1.5 haptic-light"
+            >
+              <div className="flex items-center justify-between">
+                <div className={`w-8 h-8 rounded-2xl ${metric.color} flex items-center justify-center shadow-sm`}>
+                  <Icon className="h-4 w-4 text-white" />
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">{metric.label}</p>
-                <p className="text-lg font-bold">
-                  {metric.value.toLocaleString()}<span className="text-sm font-normal text-muted-foreground">{metric.unit}</span>
-                </p>
-              </CardContent>
-            </Card>
+                <span className="text-[10px] text-emerald-600 font-medium">
+                  {metric.trend}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">{metric.label}</p>
+              <p className="text-sm font-semibold">
+                {metric.value.toLocaleString()}
+                <span className="text-[11px] font-normal text-muted-foreground ml-0.5">
+                  {metric.unit}
+                </span>
+              </p>
+            </div>
           );
         })}
       </div>
@@ -323,6 +370,7 @@ export default function Health() {
         </div>
         </CardContent>
       </Card>
+
 
       {/* Quick Actions */}
       <Card className="ios-card">
@@ -377,10 +425,10 @@ export default function Health() {
   };
 
   const isWoman = userGender === 'female';
-  const tabsCount = isWoman ? 6 : 5;
+  const tabsCount = isWoman ? 7 : 6;
 
   return (
-    <div className="min-h-screen bg-background safe-area-top safe-area-bottom ios-scroll">
+    <div className="min-h-screen bg-[var(--gradient-bg)] safe-area-top safe-area-bottom ios-scroll">
       {/* iOS-style Header */}
       <div className="ios-header safe-area-left safe-area-right">
         <div className="flex items-center justify-between w-full px-4">
@@ -399,7 +447,7 @@ export default function Health() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="ghost" className="h-10 w-10 p-0 haptic-light">
+            <Button size="sm" variant="ghost" className="h-10 w-10 p-0 haptic-light" onClick={() => navigate('/calendar')}>
               <Calendar className="h-4 w-4" />
             </Button>
             <Button size="sm" variant="ghost" className="h-10 w-10 p-0 haptic-light">
@@ -409,7 +457,7 @@ export default function Health() {
         </div>
       </div>
 
-      <div className="px-4 safe-area-left safe-area-right pb-32">
+      <div className="px-4 safe-area-left safe-area-right" style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsContent value="overview" className="mt-0">
             {renderOverview()}
@@ -429,6 +477,10 @@ export default function Health() {
 
           <TabsContent value="mental-health" className="mt-0">
             <MentalHealth />
+          </TabsContent>
+
+          <TabsContent value="heart" className="mt-0">
+            <HeartTracker />
           </TabsContent>
 
           {isWoman && (
@@ -473,6 +525,12 @@ export default function Health() {
                 className="flex-1 min-w-0 py-2 px-2 text-xs font-medium transition-all duration-200 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm whitespace-nowrap"
               >
                 Mental
+              </TabsTrigger>
+              <TabsTrigger 
+                value="heart" 
+                className="flex-1 min-w-0 py-2 px-2 text-xs font-medium transition-all duration-200 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm whitespace-nowrap"
+              >
+                Heart
               </TabsTrigger>
               {isWoman && (
                 <TabsTrigger 

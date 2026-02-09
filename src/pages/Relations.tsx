@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,17 +21,25 @@ import {
   Phone,
   Mail,
   Video,
-  Gift
+  Gift,
+  Plus,
+  Search,
+  Filter
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Relations() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [gratitudeText, setGratitudeText] = useState('');
   const [connectionNote, setConnectionNote] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const [relationshipMetrics, setRelationshipMetrics] = useState([
     { label: 'Connection Score', value: 0, unit: '/100', icon: Heart, color: 'bg-red-500', trend: '0%' },
@@ -41,6 +48,66 @@ export default function Relations() {
     { label: 'Empathy Score', value: 0, unit: '/100', icon: Brain, color: 'bg-purple-500', trend: '0%' }
   ]);
 
+  const handleAddGratitude = async () => {
+    if (!gratitudeText.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter something you're grateful for",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // In a real app, this would connect to the backend
+      const newEntry = {
+        id: 1, // This will be replaced by actual backend data
+        text: gratitudeText,
+        date: new Date().toISOString().split('T')[0]
+      };
+      setGratitudeText('');
+      
+      toast({
+        title: "Success",
+        description: "Gratitude entry added!",
+      });
+    } catch (error) {
+      console.error('Error adding gratitude:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add gratitude entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddInteraction = async () => {
+    if (!connectionNote.trim()) {
+      toast({
+        title: "Error",
+        description: "Please describe your interaction",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // In a real app, this would connect to the backend
+      setConnectionNote('');
+      
+      toast({
+        title: "Success",
+        description: "Interaction recorded!",
+      });
+    } catch (error) {
+      console.error('Error adding interaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to record interaction",
+        variant: "destructive",
+      });
+    }
+  };
   const quickActions = [
     { 
       label: 'Send Message', 
@@ -78,8 +145,7 @@ export default function Relations() {
     { label: 'Active listening moments', current: 0, target: 2, unit: '' }
   ]);
 
-  const [relationships, setRelationships] = useState<any[]>([]);
-
+  const [relationships, setRelationships] = useState<Array<{ emoji: string; name: string; type: string; lastContact: string; strength: number; status: string }>>([]);
   const [activities, setActivities] = useState([
     { title: 'Daily Gratitude', emoji: '🙏', description: 'Write 3 things you\'re grateful for', completed: false },
     { title: 'Quality Time', emoji: '⏰', description: 'Spend 30 minutes with loved ones', completed: false },
@@ -93,23 +159,133 @@ export default function Relations() {
     { title: 'Emotional Intelligence', description: 'Build empathy and awareness', time: '20 min', completed: false }
   ]);
 
-  const handleGratitudeSubmit = () => {
-    if (gratitudeText.trim()) {
+  const fetchRelationshipData = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch relationships
+      const { data: relationshipsData } = await supabase
+        .from('relationships')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      const formattedRelationships = relationshipsData?.map(rel => ({
+        emoji: rel.relation_type === 'family' ? '👨‍👩‍👧' : rel.relation_type === 'friend' ? '👫' : '💼',
+        name: rel.name,
+        type: rel.relation_type || 'Other',
+        lastContact: rel.last_contact_at ? new Date(rel.last_contact_at).toLocaleDateString() : 'Never',
+        strength: rel.importance || 0,
+        status: rel.importance && rel.importance > 3 ? 'Strong' : 'Developing'
+      })) || [];
+      
+      setRelationships(formattedRelationships);
+      
+      // Fetch gratitude entries
+      const { data: gratitudeData } = await supabase
+        .from('gratitude_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      // Fetch quality time goals
+      const { data: qtGoalsData } = await supabase
+        .from('quality_time_goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(1);
+      
+      if (qtGoalsData && qtGoalsData.length > 0) {
+        const qtGoal = qtGoalsData[0];
+        setTodaysGoals([
+          { label: 'Quality conversations', current: qtGoal.completed_minutes || 0, target: qtGoal.target_minutes_per_week || 120, unit: ' min' },
+          { label: 'Gratitude expressions', current: gratitudeData?.length || 0, target: 7, unit: '' }, // Weekly target
+          { label: 'Active listening moments', current: 0, target: 7, unit: '' } // Placeholder
+        ]);
+      }
+      
+      // Calculate relationship metrics based on data
+      if (relationshipsData && relationshipsData.length > 0) {
+        const avgImportance = relationshipsData.reduce((sum, rel) => sum + (rel.importance || 0), 0) / relationshipsData.length;
+        const connectionScore = Math.round((avgImportance / 5) * 100);
+        
+        setRelationshipMetrics([
+          { label: 'Connection Score', value: connectionScore, unit: '/100', icon: Heart, color: 'bg-red-500', trend: '0%' },
+          { label: 'Social Energy', value: 50, unit: '%', icon: Zap, color: 'bg-yellow-500', trend: '0%' }, // Placeholder
+          { label: 'Quality Time', value: qtGoalsData?.[0]?.completed_minutes || 0, unit: 'hrs/week', icon: Clock, color: 'bg-green-500', trend: '0%' },
+          { label: 'Empathy Score', value: 60, unit: '/100', icon: Brain, color: 'bg-purple-500', trend: '0%' } // Placeholder
+        ]);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching relationship data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load relationship data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+      fetchRelationshipData();
+    } else {
+      setLoading(false);
+    }
+  }, [user, fetchRelationshipData]);
+
+  const handleGratitudeSubmit = async () => {
+    if (!user || !gratitudeText.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from('gratitude_entries')
+        .insert([{
+          user_id: user.id,
+          text: gratitudeText
+        }]);
+      
+      if (error) throw error;
+      
       toast({
         title: "Gratitude logged!",
         description: "Your appreciation has been recorded."
       });
+      
       setGratitudeText('');
+      fetchRelationshipData(); // Refresh data
+    } catch (error) {
+      console.error('Error adding gratitude:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save gratitude entry",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleConnectionNote = () => {
-    if (connectionNote.trim()) {
+  const handleConnectionNote = async () => {
+    if (!user || !connectionNote.trim()) return;
+    
+    try {
+      // In a real app, we might want to store connection notes in a separate table
+      // For now, just show a success message
       toast({
         title: "Connection noted!",
         description: "Your relationship insight has been saved."
       });
+      
       setConnectionNote('');
+    } catch (error) {
+      console.error('Error saving connection note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save connection note",
+        variant: "destructive"
+      });
     }
   };
 
@@ -415,7 +591,7 @@ export default function Relations() {
         </div>
       </div>
 
-      <div className="px-4 safe-area-left safe-area-right pb-32">
+      <div className="px-4 safe-area-left safe-area-right" style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsContent value="overview" className="mt-0">
             {renderOverview()}

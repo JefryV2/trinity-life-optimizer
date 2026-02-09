@@ -44,6 +44,8 @@ interface HealthProfile {
 }
 
 export function NutritionTracker() {
+  console.log("NutritionTracker component rendering");
+  
   const { user } = useAuth();
   const [showFoodSearch, setShowFoodSearch] = useState(false);
   const [showMealCreator, setShowMealCreator] = useState(false);

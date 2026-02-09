@@ -85,6 +85,8 @@ export function ProfileEditor() {
     }
   };
 
+
+
   const fetchHealthProfile = async () => {
     try {
       const { data, error } = await supabase
@@ -122,6 +124,8 @@ export function ProfileEditor() {
     setHealthProfile(prev => ({ ...prev, [field]: value }));
     setHasHealthChanges(true);
   };
+
+
 
   const saveProfile = async () => {
     if (!user) return;
@@ -161,60 +165,67 @@ export function ProfileEditor() {
 
     setIsLoading(true);
     try {
-      // Calculate BMR and adjust for goals
+      // Calculate BMR and adjust for goals (only if we have required data)
       const calculateBMR = () => {
-        if (!healthProfile.height_cm || !healthProfile.weight_kg || !healthProfile.birth_date || !healthProfile.gender) return 2000;
-        
-        const age = new Date().getFullYear() - new Date(healthProfile.birth_date).getFullYear();
-        
-        // Harris-Benedict Equation
-        let bmr;
-        if (healthProfile.gender === 'male') {
-          bmr = 88.362 + (13.397 * healthProfile.weight_kg) + (4.799 * healthProfile.height_cm) - (5.677 * age);
+        // Only calculate if we have all required data
+        if (healthProfile.height_cm && healthProfile.weight_kg && healthProfile.birth_date && healthProfile.gender) {
+          const age = new Date().getFullYear() - new Date(healthProfile.birth_date).getFullYear();
+          
+          // Harris-Benedict Equation
+          let bmr;
+          if (healthProfile.gender === 'male') {
+            bmr = 88.362 + (13.397 * healthProfile.weight_kg) + (4.799 * healthProfile.height_cm) - (5.677 * age);
+          } else {
+            bmr = 447.593 + (9.247 * healthProfile.weight_kg) + (3.098 * healthProfile.height_cm) - (4.330 * age);
+          }
+          
+          // Activity level multiplier
+          const multipliers = {
+            sedentary: 1.2,
+            light: 1.375,
+            moderate: 1.55,
+            active: 1.725,
+            very_active: 1.9
+          };
+          
+          const tdee = bmr * multipliers[healthProfile.activity_level as keyof typeof multipliers];
+          
+          // Adjust for goal
+          if (healthProfile.goal_type === 'lose') {
+            return Math.round(tdee - 500); // 500 calorie deficit
+          } else if (healthProfile.goal_type === 'gain') {
+            return Math.round(tdee + 500); // 500 calorie surplus
+          }
+          return Math.round(tdee);
         } else {
-          bmr = 447.593 + (9.247 * healthProfile.weight_kg) + (3.098 * healthProfile.height_cm) - (4.330 * age);
+          // If we don't have all required data, return a default value
+          return 2000;
         }
-        
-        // Activity level multiplier
-        const multipliers = {
-          sedentary: 1.2,
-          light: 1.375,
-          moderate: 1.55,
-          active: 1.725,
-          very_active: 1.9
-        };
-        
-        const tdee = bmr * multipliers[healthProfile.activity_level as keyof typeof multipliers];
-        
-        // Adjust for goal
-        if (healthProfile.goal_type === 'lose') {
-          return Math.round(tdee - 500); // 500 calorie deficit
-        } else if (healthProfile.goal_type === 'gain') {
-          return Math.round(tdee + 500); // 500 calorie surplus
-        }
-        return Math.round(tdee);
       };
 
+      // Calculate calories based on available data
       const calculatedCalories = calculateBMR();
 
       const { error } = await supabase
         .from('user_profiles_health')
         .upsert({
           user_id: user.id,
-          height_cm: healthProfile.height_cm,
-          weight_kg: healthProfile.weight_kg,
+          height_cm: healthProfile.height_cm || null,
+          weight_kg: healthProfile.weight_kg || null,
           gender: healthProfile.gender,
-          birth_date: healthProfile.birth_date,
+          birth_date: healthProfile.birth_date || null,
           activity_level: healthProfile.activity_level,
           goal_type: healthProfile.goal_type,
           daily_caloric_target: calculatedCalories
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) throw error;
 
       toast({
         title: "Health profile updated",
-        description: `Health profile updated. Daily caloric target: ${calculatedCalories} calories`
+        description: `Health profile updated successfully.`
       });
 
       setHasHealthChanges(false);
@@ -325,7 +336,10 @@ export function ProfileEditor() {
               <Input
                 id="first-name"
                 value={profile.first_name}
-                onChange={(e) => updateProfile('first_name', e.target.value)}
+                onChange={(e) => {
+                  updateProfile('first_name', e.target.value);
+                  setHasChanges(true);
+                }}
                 placeholder=""
               />
             </div>
@@ -334,7 +348,10 @@ export function ProfileEditor() {
               <Input
                 id="last-name"
                 value={profile.last_name}
-                onChange={(e) => updateProfile('last_name', e.target.value)}
+                onChange={(e) => {
+                  updateProfile('last_name', e.target.value);
+                  setHasChanges(true);
+                }}
                 placeholder=""
               />
             </div>
@@ -362,10 +379,45 @@ export function ProfileEditor() {
             <Textarea
               id="bio"
               value={profile.bio}
-              onChange={(e) => updateProfile('bio', e.target.value)}
+              onChange={(e) => {
+                updateProfile('bio', e.target.value);
+                setHasChanges(true);
+              }}
               placeholder=""
               className="min-h-[80px] resize-none"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gender Identity */}
+      <Card className="ios-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Gender Identity
+          </CardTitle>
+          <CardDescription>
+            This helps personalize your health recommendations and calculations
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="gender">Gender Identity</Label>
+            <Select value={healthProfile.gender} onValueChange={(value) => {
+              updateHealthProfile('gender', value);
+              setHasHealthChanges(true);
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select your gender identity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">👨 Male</SelectItem>
+                <SelectItem value="female">👩 Female</SelectItem>
+                <SelectItem value="other">🏳️‍🌈 Non-binary/Other</SelectItem>
+                <SelectItem value="prefer-not-to-say">🤫 Prefer not to say</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -382,29 +434,17 @@ export function ProfileEditor() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
-              <Select value={healthProfile.gender} onValueChange={(value) => updateHealthProfile('gender', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">👨 Male</SelectItem>
-                  <SelectItem value="female">👩 Female</SelectItem>
-                  <SelectItem value="other">🧑 Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="health-birth-date">Birth Date</Label>
-              <Input
-                id="health-birth-date"
-                type="date"
-                value={healthProfile.birth_date}
-                onChange={(e) => updateHealthProfile('birth_date', e.target.value)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="health-birth-date">Birth Date</Label>
+            <Input
+              id="health-birth-date"
+              type="date"
+              value={healthProfile.birth_date}
+              onChange={(e) => {
+                updateHealthProfile('birth_date', e.target.value);
+                setHasHealthChanges(true);
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -415,7 +455,10 @@ export function ProfileEditor() {
                 type="number"
                 placeholder=""
                 value={healthProfile.height_cm || ''}
-                onChange={(e) => updateHealthProfile('height_cm', Number(e.target.value))}
+                onChange={(e) => {
+                  updateHealthProfile('height_cm', Number(e.target.value));
+                  setHasHealthChanges(true);
+                }}
                 className="text-center"
               />
             </div>
@@ -427,7 +470,10 @@ export function ProfileEditor() {
                 step="0.1"
                 placeholder=""
                 value={healthProfile.weight_kg || ''}
-                onChange={(e) => updateHealthProfile('weight_kg', Number(e.target.value))}
+                onChange={(e) => {
+                  updateHealthProfile('weight_kg', Number(e.target.value));
+                  setHasHealthChanges(true);
+                }}
                 className="text-center"
               />
             </div>
@@ -436,7 +482,10 @@ export function ProfileEditor() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="activity-level">Activity Level</Label>
-              <Select value={healthProfile.activity_level} onValueChange={(value) => updateHealthProfile('activity_level', value)}>
+              <Select value={healthProfile.activity_level} onValueChange={(value) => {
+                updateHealthProfile('activity_level', value);
+                setHasHealthChanges(true);
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -451,7 +500,10 @@ export function ProfileEditor() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="goal-type">Health Goal</Label>
-              <Select value={healthProfile.goal_type} onValueChange={(value) => updateHealthProfile('goal_type', value)}>
+              <Select value={healthProfile.goal_type} onValueChange={(value) => {
+                updateHealthProfile('goal_type', value);
+                setHasHealthChanges(true);
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -481,8 +533,15 @@ export function ProfileEditor() {
                   <div className="text-xs text-muted-foreground mt-1">Years Old</div>
                 </div>
                 <div className="text-center p-3 bg-card rounded-lg">
-                  <div className="text-lg font-bold text-primary">{healthProfile.gender === 'female' ? '♀️' : healthProfile.gender === 'male' ? '♂️' : '⚧️'}</div>
-                  <div className="text-xs text-muted-foreground mt-1 capitalize">{healthProfile.gender}</div>
+                  <div className="text-lg font-bold text-primary">
+                    {healthProfile.gender === 'female' ? '♀️' : 
+                     healthProfile.gender === 'male' ? '♂️' : 
+                     healthProfile.gender === 'other' ? '🏳️‍🌈' : 
+                     healthProfile.gender === 'prefer-not-to-say' ? '🤫' : '👤'}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 capitalize">
+                    {healthProfile.gender === 'prefer-not-to-say' ? 'Not specified' : healthProfile.gender}
+                  </div>
                 </div>
               </div>
             </div>
@@ -517,7 +576,10 @@ export function ProfileEditor() {
             <Input
               id="location"
               value={profile.location}
-              onChange={(e) => updateProfile('location', e.target.value)}
+              onChange={(e) => {
+                updateProfile('location', e.target.value);
+                setHasChanges(true);
+              }}
               placeholder=""
             />
           </div>
@@ -531,13 +593,19 @@ export function ProfileEditor() {
               id="birth-date"
               type="date"
               value={profile.birth_date}
-              onChange={(e) => updateProfile('birth_date', e.target.value)}
+              onChange={(e) => {
+                updateProfile('birth_date', e.target.value);
+                setHasChanges(true);
+              }}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="timezone">Timezone</Label>
-            <Select value={profile.timezone} onValueChange={(value) => updateProfile('timezone', value)}>
+            <Select value={profile.timezone} onValueChange={(value) => {
+              updateProfile('timezone', value);
+              setHasChanges(true);
+            }}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

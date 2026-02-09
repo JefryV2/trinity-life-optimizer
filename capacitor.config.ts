@@ -13,6 +13,10 @@ const config: CapacitorConfig = {
       launchShowDuration: 2000,
       backgroundColor: '#ffffff',
       showSpinner: false
+    },
+    Health: {
+      read: ['heartRate', 'steps', 'activeEnergyBurned', 'basalEnergyBurned'],
+      write: []
     }
   }
 };

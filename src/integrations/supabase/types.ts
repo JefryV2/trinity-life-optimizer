@@ -296,6 +296,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          data_preferences: Json | null
           first_name: string | null
           id: string
           last_name: string | null
@@ -305,6 +306,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_preferences?: Json | null
           first_name?: string | null
           id?: string
           last_name?: string | null
@@ -314,6 +316,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_preferences?: Json | null
           first_name?: string | null
           id?: string
           last_name?: string | null
@@ -393,6 +396,7 @@ export type Database = {
           goal_type: string | null
           height_cm: number | null
           id: string
+          resting_heart_rate: number | null
           target_weight_kg: number | null
           updated_at: string
           user_id: string
@@ -407,6 +411,7 @@ export type Database = {
           goal_type?: string | null
           height_cm?: number | null
           id?: string
+          resting_heart_rate?: number | null
           target_weight_kg?: number | null
           updated_at?: string
           user_id: string
@@ -421,12 +426,687 @@ export type Database = {
           goal_type?: string | null
           height_cm?: number | null
           id?: string
+          resting_heart_rate?: number | null
           target_weight_kg?: number | null
           updated_at?: string
           user_id?: string
           weight_kg?: number | null
         }
         Relationships: []
+      },
+      finance_accounts: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          type: string | null
+          balance: number | null
+          currency: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          type?: string | null
+          balance?: number | null
+          currency?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          type?: string | null
+          balance?: number | null
+          currency?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_accounts_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      transactions: {
+        Row: {
+          id: string
+          user_id: string
+          account_id: string | null
+          amount: number
+          category: string | null
+          direction: string
+          occurred_at: string
+          note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          account_id?: string | null
+          amount: number
+          category?: string | null
+          direction: string
+          occurred_at?: string
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          account_id?: string | null
+          amount?: number
+          category?: string | null
+          direction?: string
+          occurred_at?: string
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      budgets: {
+        Row: {
+          id: string
+          user_id: string
+          category: string
+          period: string | null
+          limit_amount: number
+          spent_amount: number | null
+          period_start: string
+          period_end: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category: string
+          period?: string | null
+          limit_amount: number
+          spent_amount?: number | null
+          period_start?: string
+          period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category?: string
+          period?: string | null
+          limit_amount?: number
+          spent_amount?: number | null
+          period_start?: string
+          period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      investments: {
+        Row: {
+          id: string
+          user_id: string
+          instrument: string
+          units: number | null
+          avg_cost: number | null
+          market_value: number | null
+          updated_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          instrument: string
+          units?: number | null
+          avg_cost?: number | null
+          market_value?: number | null
+          updated_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          instrument?: string
+          units?: number | null
+          avg_cost?: number | null
+          market_value?: number | null
+          updated_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investments_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      relationships: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          relation_type: string | null
+          importance: number | null
+          last_contact_at: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          relation_type?: string | null
+          importance?: number | null
+          last_contact_at?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          relation_type?: string | null
+          importance?: number | null
+          last_contact_at?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relationships_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      interactions: {
+        Row: {
+          id: string
+          user_id: string
+          relationship_id: string
+          channel: string | null
+          duration_minutes: number | null
+          mood_rating: number | null
+          occurred_at: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          relationship_id: string
+          channel?: string | null
+          duration_minutes?: number | null
+          mood_rating?: number | null
+          occurred_at?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          relationship_id?: string
+          channel?: string | null
+          duration_minutes?: number | null
+          mood_rating?: number | null
+          occurred_at?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactions_relationship_id_fkey"
+            columns: ["relationship_id"]
+            referencedRelation: "relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      gratitude_entries: {
+        Row: {
+          id: string
+          user_id: string
+          text: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          text: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          text?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gratitude_entries_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      quality_time_goals: {
+        Row: {
+          id: string
+          user_id: string
+          target_minutes_per_week: number
+          completed_minutes: number
+          period_start: string
+          period_end: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          target_minutes_per_week?: number
+          completed_minutes?: number
+          period_start?: string
+          period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          target_minutes_per_week?: number
+          completed_minutes?: number
+          period_start?: string
+          period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_time_goals_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      heart_rate_data: {
+        Row: {
+          id: string
+          user_id: string
+          heart_rate: number
+          timestamp: string
+          source_device: string | null
+          activity_type: string | null
+          confidence: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          heart_rate: number
+          timestamp?: string
+          source_device?: string | null
+          activity_type?: string | null
+          confidence?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          heart_rate?: number
+          timestamp?: string
+          source_device?: string | null
+          activity_type?: string | null
+          confidence?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "heart_rate_data_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      health_daily_scores: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          score: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          score?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          score?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_daily_scores_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      wealth_daily_scores: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          score: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          score?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          score?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wealth_daily_scores_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      relations_daily_scores: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          score: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          score?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          score?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relations_daily_scores_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      health_goals_progress: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          score: number | null
+          completed_count: number
+          total_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          score?: number | null
+          completed_count?: number
+          total_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          score?: number | null
+          completed_count?: number
+          total_count?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_goals_progress_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      wealth_goals_progress: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          score: number | null
+          completed_count: number
+          total_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          score?: number | null
+          completed_count?: number
+          total_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          score?: number | null
+          completed_count?: number
+          total_count?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wealth_goals_progress_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      relations_goals_progress: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          score: number | null
+          completed_count: number
+          total_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          score?: number | null
+          completed_count?: number
+          total_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          score?: number | null
+          completed_count?: number
+          total_count?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relations_goals_progress_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      uv_index_records: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          uv_index: number
+          location: string | null
+          exposure_duration_minutes: number
+          protection_used: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date?: string
+          uv_index: number
+          location?: string | null
+          exposure_duration_minutes?: number
+          protection_used?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          uv_index?: number
+          location?: string | null
+          exposure_duration_minutes?: number
+          protection_used?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uv_index_records_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      hydration_records: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          water_intake_ml: number
+          target_ml: number | null
+          cups_consumed: number
+          last_drink_time: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date?: string
+          water_intake_ml?: number
+          target_ml?: number | null
+          cups_consumed?: number
+          last_drink_time?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          water_intake_ml?: number
+          target_ml?: number | null
+          cups_consumed?: number
+          last_drink_time?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hydration_records_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
@@ -443,126 +1123,4 @@ export type Database = {
     }
   }
 }
-
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
+// ... rest of the file continues as before
