@@ -8,6 +8,11 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ArrowLeft } from '
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 
+/** PostgREST: table not in schema cache (migration not applied on project). */
+function isMissingRelationError(err: { code?: string } | null | undefined) {
+  return err?.code === 'PGRST205';
+}
+
 interface CalendarDay {
   date: Date;
   healthScore?: number;
@@ -72,19 +77,25 @@ const ProgressCalendar = () => {
         const wealthMap = new Map();
         const relationsMap = new Map();
 
-        if (healthData) {
+        if (healthError && isMissingRelationError(healthError)) {
+          console.warn('health_daily_scores missing — run Supabase migrations (calendar tables).');
+        } else if (healthData) {
           healthData.forEach(item => {
             healthMap.set(item.date, item.score);
           });
         }
 
-        if (wealthData) {
+        if (wealthError && isMissingRelationError(wealthError)) {
+          console.warn('wealth_daily_scores missing — run Supabase migrations.');
+        } else if (wealthData) {
           wealthData.forEach(item => {
             wealthMap.set(item.date, item.score);
           });
         }
 
-        if (relationsData) {
+        if (relationsError && isMissingRelationError(relationsError)) {
+          console.warn('relations_daily_scores missing — run Supabase migrations.');
+        } else if (relationsData) {
           relationsData.forEach(item => {
             relationsMap.set(item.date, item.score);
           });
@@ -131,6 +142,10 @@ const ProgressCalendar = () => {
         .eq('user_id', user.id)
         .eq('date', dateStr);
 
+      if (healthError && isMissingRelationError(healthError)) {
+        console.warn('health_goals_progress missing — not the same as health_goals. Apply migration 20260406120000.');
+      }
+
       // Fetch wealth progress
       const { data: wealthData, error: wealthError } = await supabase
         .from('wealth_goals_progress')
@@ -145,21 +160,28 @@ const ProgressCalendar = () => {
         .eq('user_id', user.id)
         .eq('date', dateStr);
 
+      const healthRow =
+        healthError && isMissingRelationError(healthError) ? null : healthData?.[0];
+      const wealthRow =
+        wealthError && isMissingRelationError(wealthError) ? null : wealthData?.[0];
+      const relationsRow =
+        relationsError && isMissingRelationError(relationsError) ? null : relationsData?.[0];
+
       setDayProgress({
         health: {
-          score: healthData && healthData[0] ? healthData[0].score || 0 : 0,
-          completed: healthData && healthData[0] ? healthData[0].completed_count || 0 : 0,
-          total: healthData && healthData[0] ? healthData[0].total_count || 1 : 1
+          score: healthRow ? healthRow.score || 0 : 0,
+          completed: healthRow ? healthRow.completed_count || 0 : 0,
+          total: healthRow ? healthRow.total_count || 1 : 1
         },
         wealth: {
-          score: wealthData && wealthData[0] ? wealthData[0].score || 0 : 0,
-          completed: wealthData && wealthData[0] ? wealthData[0].completed_count || 0 : 0,
-          total: wealthData && wealthData[0] ? wealthData[0].total_count || 1 : 1
+          score: wealthRow ? wealthRow.score || 0 : 0,
+          completed: wealthRow ? wealthRow.completed_count || 0 : 0,
+          total: wealthRow ? wealthRow.total_count || 1 : 1
         },
         relations: {
-          score: relationsData && relationsData[0] ? relationsData[0].score || 0 : 0,
-          completed: relationsData && relationsData[0] ? relationsData[0].completed_count || 0 : 0,
-          total: relationsData && relationsData[0] ? relationsData[0].total_count || 1 : 1
+          score: relationsRow ? relationsRow.score || 0 : 0,
+          completed: relationsRow ? relationsRow.completed_count || 0 : 0,
+          total: relationsRow ? relationsRow.total_count || 1 : 1
         }
       });
     };

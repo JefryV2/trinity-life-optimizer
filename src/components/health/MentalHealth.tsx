@@ -78,6 +78,7 @@ export function MentalHealth() {
   useEffect(() => {
     if (user) {
       fetchLogs();
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
     }
   }, [user]);
 

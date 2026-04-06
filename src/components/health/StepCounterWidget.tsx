@@ -19,12 +19,20 @@ export const StepCounterWidget = () => {
   const [tempGoal, setTempGoal] = useState('10000');
 
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+
+    // If the step service is already running, trust its in-memory state first
+    if (stepCounterService.isActive()) {
+      setSteps(stepCounterService.getCurrentSteps());
+      setDistance(stepCounterService.getCurrentDistance());
+    } else {
+      // Fallback to last persisted value in the database
       loadTodaySteps();
-      loadDailyGoal();
-      // Auto-start tracking (will reuse existing if already running)
-      startAutoTracking();
     }
+
+    loadDailyGoal();
+    // Auto-start tracking (will reuse existing if already running)
+    startAutoTracking();
   }, [user]);
 
   // Auto-start tracking when app loads (even before user is authenticated)
@@ -162,7 +170,8 @@ export const StepCounterWidget = () => {
   }, []);
 
   const progress = Math.min((steps / dailyGoal) * 100, 100);
-  const distanceKm = (distance / 1000).toFixed(2);
+  // Keep distance/calories aligned with Overview and other step displays.
+  const distanceKm = ((steps / 1000) * 0.8).toFixed(2);
   const caloriesBurned = Math.round(steps * 0.04);
   const stepsRemaining = Math.max(0, dailyGoal - steps);
 

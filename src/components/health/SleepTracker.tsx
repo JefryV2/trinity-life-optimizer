@@ -6,10 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Moon, Clock, Plus, Bell, Lightbulb, Thermometer, Volume2, Brain, Calendar, Flame, Check, Edit, Sun, ArrowRight, Wind, Activity } from 'lucide-react';
+import { Moon, Clock, Plus, Bell, Lightbulb, Thermometer, Volume2, Brain, Calendar, Flame, Check, Edit, Sun, ArrowRight, Wind, Activity, ArrowLeft, Heart } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from 'date-fns';
+import { getHeartRateStats } from "@/lib/health-utils";
 
 interface SleepRecord {
   id: string;
@@ -33,13 +36,26 @@ export function SleepTracker() {
   const [isLoading, setIsLoading] = useState(false);
   const [sleepStreak, setSleepStreak] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [timeView, setTimeView] = useState<'day' | 'week' | 'month' | 'year'>('day');
+  const [restingHeartRate, setRestingHeartRate] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
       fetchSleepRecords();
       calculateSleepStreak();
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
+      fetchRestingHeartRate();
     }
   }, [user]);
+  
+  const fetchRestingHeartRate = async () => {
+    try {
+      const stats = await getHeartRateStats();
+      setRestingHeartRate(stats.restingHeartRate);
+    } catch (error) {
+      console.error('Error fetching resting heart rate:', error);
+    }
+  };
 
   const fetchSleepRecords = async () => {
     try {
@@ -299,6 +315,112 @@ export function SleepTracker() {
   };
 
   const sleepGraphData = generateSleepGraph();
+  
+  // Generate sleep stages for bar chart (matching inspiration)
+  const generateSleepStages = () => {
+    if (!lastNightSleep || !lastNightSleep.bedtime || !lastNightSleep.wakeTime) {
+      // Return mock data if no sleep data
+      return [
+        { time: '10:00pm', stage: 'awake', duration: 30 },
+        { time: '10:30pm', stage: 'light', duration: 120 },
+        { time: '12:30am', stage: 'deep', duration: 90 },
+        { time: '2:00am', stage: 'rem', duration: 60 },
+        { time: '3:00am', stage: 'light', duration: 90 },
+        { time: '4:30am', stage: 'deep', duration: 60 },
+        { time: '5:30am', stage: 'rem', duration: 45 },
+        { time: '6:15am', stage: 'light', duration: 15 },
+        { time: '6:30am', stage: 'awake', duration: 0 }
+      ];
+    }
+    
+    const bedTime = new Date(lastNightSleep.bedtime);
+    const wakeTime = new Date(lastNightSleep.wakeTime);
+    const totalMinutes = Math.round((wakeTime.getTime() - bedTime.getTime()) / (1000 * 60));
+    
+    // Generate stages (simplified - in real app would use actual sleep stage data)
+    const stages = [];
+    let currentTime = bedTime;
+    const stageTypes = ['awake', 'light', 'deep', 'rem', 'light', 'deep', 'rem', 'light', 'awake'];
+    const stageDurations = [30, 120, 90, 60, 90, 60, 45, 15, 0]; // minutes
+    
+    stageTypes.forEach((stage, i) => {
+      if (i < stageTypes.length - 1) {
+        stages.push({
+          time: format(currentTime, 'h:mma').toLowerCase(),
+          stage,
+          duration: stageDurations[i] || 60
+        });
+        currentTime = new Date(currentTime.getTime() + (stageDurations[i] || 60) * 60 * 1000);
+      }
+    });
+    
+    return stages;
+  };
+  
+  const sleepStages = generateSleepStages();
+  
+  // Get today's sleep metrics
+  const getTodaySleepMetrics = () => {
+    if (!lastNightSleep) {
+      return {
+        totalHours: 0,
+        timeInBed: 0,
+        restfulness: 0,
+        restingHeartRate: restingHeartRate
+      };
+    }
+    
+    const bedTime = lastNightSleep.bedtime ? new Date(lastNightSleep.bedtime) : null;
+    const wakeTime = lastNightSleep.wakeTime ? new Date(lastNightSleep.wakeTime) : null;
+    
+    let timeInBed = 0;
+    if (bedTime && wakeTime) {
+      const diffMs = wakeTime.getTime() - bedTime.getTime();
+      timeInBed = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10;
+    }
+    
+    return {
+      totalHours: lastNightSleep.duration || 0,
+      timeInBed: timeInBed || lastNightSleep.duration || 0,
+      restfulness: (lastNightSleep.quality || 0) * 10,
+      restingHeartRate: restingHeartRate
+    };
+  };
+  
+  const todayMetrics = getTodaySleepMetrics();
+  
+  // Get daily sleep indicators for the week
+  const getWeeklySleepIndicators = () => {
+    const indicators = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = format(date, 'EEE').charAt(0); // S, M, T, W, T, F, S
+      
+      // Find sleep record for this date
+      const record = sleepRecords.find(r => {
+        const recordDate = new Date(r.created_at);
+        return format(recordDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+      });
+      
+      // Determine color based on sleep quality
+      let color = 'bg-gray-200';
+      if (record) {
+        if (record.sleep_quality >= 8) color = 'bg-green-400';
+        else if (record.sleep_quality >= 6) color = 'bg-yellow-400';
+        else if (record.sleep_quality >= 4) color = 'bg-orange-400';
+        else color = 'bg-red-400';
+      }
+      
+      indicators.push({ day: dateStr, color, hasData: !!record });
+    }
+    
+    return indicators;
+  };
+  
+  const weeklyIndicators = getWeeklySleepIndicators();
 
   // Get routine times (from last record or defaults)
   const routineBedtime = lastNightSleep 
@@ -315,9 +437,170 @@ export function SleepTracker() {
     { icon: Activity, label: 'Yoga', color: 'bg-orange-500' }
   ];
 
+  // Stage colors
+  const getStageColor = (stage: string) => {
+    switch (stage) {
+      case 'awake': return 'bg-gray-300';
+      case 'light': return 'bg-blue-400';
+      case 'rem': return 'bg-purple-400';
+      case 'deep': return 'bg-indigo-600';
+      default: return 'bg-gray-300';
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Hero Sleep Summary Card */}
+    <div className="space-y-4 animate-in fade-in duration-500 pb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Sleep Quality</h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowLogForm(!showLogForm)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Log Sleep
+        </Button>
+      </div>
+
+      {/* Tabs for Day/Week/Month/Year */}
+      <Tabs value={timeView} onValueChange={(v) => setTimeView(v as typeof timeView)}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="day">Day</TabsTrigger>
+          <TabsTrigger value="week">Week</TabsTrigger>
+          <TabsTrigger value="month">Month</TabsTrigger>
+          <TabsTrigger value="year">Year</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Sleep Stages Bar Chart */}
+      <Card className="ios-card">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {/* Time labels */}
+            <div className="flex justify-between text-xs text-muted-foreground mb-2">
+              <span>10:00pm</span>
+              <span>6:30am</span>
+            </div>
+            
+            {/* Sleep stages bar */}
+            <div className="flex items-center gap-0.5 h-12 rounded-lg overflow-hidden">
+              {sleepStages.map((stage, index) => (
+                <div
+                  key={index}
+                  className={`${getStageColor(stage.stage)} flex-1 h-full transition-all`}
+                  style={{ 
+                    minWidth: `${(stage.duration / 510) * 100}%` // 510 = total minutes from 10pm to 6:30am
+                  }}
+                  title={`${stage.time} - ${stage.stage}`}
+                />
+              ))}
+            </div>
+            
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-4 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-gray-300" />
+                <span>Awake</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-blue-400" />
+                <span>Light</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-purple-400" />
+                <span>REM</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-indigo-600" />
+                <span>Deep</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Four Metric Cards */}
+      <div className="grid grid-cols-4 gap-3">
+        {/* Total Hours */}
+        <Card className="ios-card p-4">
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Total Hours</span>
+              <span className="text-lg">🌙</span>
+            </div>
+            <p className="text-lg font-semibold">
+              {todayMetrics.totalHours > 0 ? todayMetrics.totalHours.toFixed(1) : '0'} hours
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Time in Bed */}
+        <Card className="ios-card p-4">
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Time in Bed</span>
+              <span className="text-lg">🛏️</span>
+            </div>
+            <p className="text-lg font-semibold">
+              {todayMetrics.timeInBed > 0 ? todayMetrics.timeInBed.toFixed(1) : '0'} hours
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Restfulness */}
+        <Card className="ios-card p-4">
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Restfulness</span>
+              <span className="text-lg">🌙</span>
+            </div>
+            <p className="text-lg font-semibold">{todayMetrics.restfulness}%</p>
+          </CardContent>
+        </Card>
+
+        {/* Resting Heart Rate */}
+        <Card className="ios-card p-4">
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Resting Heart Rate</span>
+              <span className="text-lg">❤️</span>
+            </div>
+            <p className="text-lg font-semibold">
+              {todayMetrics.restingHeartRate ? `${todayMetrics.restingHeartRate} BPM` : '--'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sleep Overview */}
+      <Card className="ios-card">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold mb-1">Sleep Overview</h3>
+              <p className="text-xs text-muted-foreground">
+                Today, {format(new Date(), 'EEEE d MMM yyyy')}
+              </p>
+            </div>
+            
+            {/* Weekly indicators */}
+            <div className="flex items-center justify-between">
+              {weeklyIndicators.map((indicator, index) => (
+                <div key={index} className="flex flex-col items-center gap-1">
+                  <div
+                    className={`w-10 h-10 rounded-full ${indicator.color} flex items-center justify-center text-xs font-medium`}
+                  >
+                    {indicator.day}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Original content - keeping the log form and other features */}
       {lastNightSleep ? (
         <Card className="ios-card overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800">
           <CardContent className="p-6">

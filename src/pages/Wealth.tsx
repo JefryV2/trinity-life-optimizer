@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,26 @@ import {
   TrendingDown,
   Calculator,
   Receipt,
-  Banknote
+  Banknote,
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { Label } from "@/components/ui/label";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { buildSmartSpendingGroups } from "@/lib/spendingSmartGroups";
+
+/** Match budget rows to transaction categories (case-insensitive, trimmed). */
+function normalizeBudgetCategory(s: string) {
+  return (s || "").trim().toLowerCase();
+}
 
 export default function Wealth() {
   const navigate = useNavigate();
@@ -35,6 +49,9 @@ export default function Wealth() {
   const [activeTab, setActiveTab] = useState('overview');
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDesc, setTransactionDesc] = useState('');
+  /** When logging an expense: which budget row applies, custom category, or unset. */
+  const [expenseBudgetId, setExpenseBudgetId] = useState<string>('');
+  const [transactionNote, setTransactionNote] = useState('');
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -99,6 +116,30 @@ export default function Wealth() {
   const [investments, setInvestments] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
+  const [budgetsSummary, setBudgetsSummary] = useState<
+    { id: string; category: string; limit: number; spent: number; progress: number }[]
+  >([]);
+
+  const expenseBudgetPreview = useMemo(() => {
+    if (transactionType !== 'expense') return null;
+    const amt = parseFloat(transactionAmount);
+    if (!transactionAmount || Number.isNaN(amt) || amt <= 0) return null;
+    if (expenseBudgetId === '__custom__') return null;
+    const bid = expenseBudgetId || budgetsSummary[0]?.id;
+    if (!bid) return null;
+    const b = budgetsSummary.find((x) => x.id === bid);
+    if (!b) return null;
+    const newSpent = b.spent + amt;
+    const remaining = b.limit - newSpent;
+    return {
+      category: b.category,
+      newSpent,
+      limit: b.limit,
+      remaining,
+      over: remaining < 0,
+      overBy: remaining < 0 ? -remaining : 0,
+    };
+  }, [transactionType, transactionAmount, expenseBudgetId, budgetsSummary]);
 
   const fetchWealthData = useCallback(async () => {
     if (!user) return;
@@ -114,23 +155,22 @@ export default function Wealth() {
       
       const netWorth = accountsData?.reduce((sum, account) => sum + parseFloat(String(account.balance || '0')), 0) || 0;
       
-      // Fetch recent transactions
-      const { data: transactionsData } = await supabase
+      const today = new Date();
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+      const monthStartIso = monthStart.toISOString();
+      const monthEndIso = monthEnd.toISOString();
+
+      // All transactions this month (no row limit — required for accurate budgets & summaries)
+      const { data: monthlyTransactionsRaw } = await supabase
         .from('transactions')
         .select('*')
         .eq('user_id', user.id)
-        .order('occurred_at', { ascending: false })
-        .limit(10);
-      
-      // Calculate monthly income and expenses
-      const today = new Date();
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      
-      const monthlyTransactions = transactionsData?.filter(t => {
-        const transDate = new Date(t.occurred_at);
-        return transDate >= monthStart && transDate <= monthEnd;
-      }) || [];
+        .gte('occurred_at', monthStartIso)
+        .lte('occurred_at', monthEndIso)
+        .order('occurred_at', { ascending: false });
+
+      const monthlyTransactions = monthlyTransactionsRaw || [];
       
       const monthlyIncome = monthlyTransactions
         .filter(t => t.direction === 'in')
@@ -164,6 +204,7 @@ export default function Wealth() {
         .eq('user_id', user.id);
       
       setInvestments(investmentsData?.map(inv => ({
+        id: inv.id,
         emoji: '📈',
         name: inv.instrument,
         value: parseFloat(String(inv.market_value || '0')),
@@ -172,16 +213,15 @@ export default function Wealth() {
         change: '+0%'
       })) || []);
       
-      // Fetch expenses for budget tracking
-      const expenseCategories: any = {};
-      transactionsData?.forEach(trans => {
+      // Spending by category (this month, expenses only)
+      const expenseCategories: Record<string, { amount: number; percentage: number }> = {};
+      monthlyTransactions.forEach(trans => {
+        if (trans.direction !== 'out') return;
         const category = trans.category || 'Uncategorized';
         if (!expenseCategories[category]) {
           expenseCategories[category] = { amount: 0, percentage: 0 };
         }
-        if (trans.direction === 'out') {
-          expenseCategories[category].amount += parseFloat(String(trans.amount || '0'));
-        }
+        expenseCategories[category].amount += parseFloat(String(trans.amount || '0'));
       });
       
       // Calculate percentages
@@ -194,20 +234,67 @@ export default function Wealth() {
       }));
       
       setExpenses(expenseArray);
+
+      const spentByNormalized: Record<string, number> = {};
+      monthlyTransactions.forEach(trans => {
+        if (trans.direction !== 'out') return;
+        const key = normalizeBudgetCategory(trans.category || 'Uncategorized');
+        spentByNormalized[key] =
+          (spentByNormalized[key] || 0) + parseFloat(String(trans.amount || '0'));
+      });
       
-      // Fetch financial goals
+      // Fetch budgets / goals
       const { data: goalsData } = await supabase
         .from('budgets')
         .select('*')
         .eq('user_id', user.id);
-      
-      setGoals(goalsData?.map(goal => ({
-        emoji: '🎯',
-        name: goal.category,
-        current: goal.spent_amount,
-        target: goal.limit_amount,
-        progress: Math.round((parseFloat(String(goal.spent_amount || '0')) / parseFloat(String(goal.limit_amount || '1'))) * 100)
-      })) || []);
+
+      const summary =
+        goalsData?.map((b) => {
+          const limit = parseFloat(String(b.limit_amount || '0'));
+          const spent = spentByNormalized[normalizeBudgetCategory(b.category)] || 0;
+          const progress = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+          return {
+            id: b.id,
+            category: b.category,
+            limit,
+            spent,
+            progress,
+          };
+        }) || [];
+      setBudgetsSummary(summary);
+
+      setGoals(
+        goalsData?.map((goal) => {
+          const limit = parseFloat(String(goal.limit_amount || '0'));
+          const spent = spentByNormalized[normalizeBudgetCategory(goal.category)] || 0;
+          const progress = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+          return {
+            id: goal.id,
+            emoji: '🎯',
+            name: goal.category,
+            current: spent,
+            target: limit,
+            progress,
+          };
+        }) || []
+      );
+
+      // Keep stored spent_amount in sync with computed totals (fixes stale DB and other UIs)
+      if (goalsData?.length) {
+        await Promise.all(
+          goalsData.map((b) => {
+            const computed = spentByNormalized[normalizeBudgetCategory(b.category)] || 0;
+            const stored = parseFloat(String(b.spent_amount ?? 0));
+            if (Math.abs(computed - stored) < 0.01) return Promise.resolve(null);
+            return supabase
+              .from('budgets')
+              .update({ spent_amount: computed, updated_at: new Date().toISOString() })
+              .eq('id', b.id)
+              .eq('user_id', user.id);
+          })
+        );
+      }
 
     } catch (error) {
       console.error('Error fetching wealth data:', error);
@@ -226,12 +313,32 @@ export default function Wealth() {
       fetchWealthData();
     } else {
       setLoading(false);
+      setBudgetsSummary([]);
+      setGoals([]);
     }
   }, [user, fetchWealthData]);
 
-  const addTransaction = async (amount: number, description: string, direction: 'in' | 'out') => {
+  /** Default expense form to the first budget when data loads (still allow Other / custom). */
+  useEffect(() => {
+    if (transactionType !== 'expense' || budgetsSummary.length === 0) return;
+    setExpenseBudgetId((prev) => {
+      if (prev === '__custom__') return prev;
+      if (prev && budgetsSummary.some((b) => b.id === prev)) return prev;
+      return budgetsSummary[0].id;
+    });
+  }, [budgetsSummary, transactionType]);
+
+  const addTransaction = async (
+    amount: number,
+    category: string,
+    direction: 'in' | 'out',
+    note?: string
+  ) => {
     if (!user) return;
-    
+    const categoryTrim = category.trim();
+    const noteTrim = note?.trim();
+    const noteStored = noteTrim || categoryTrim;
+
     try {
       // Create transaction
       const { data: transaction } = await supabase
@@ -239,9 +346,9 @@ export default function Wealth() {
         .insert([{
           user_id: user.id,
           amount,
-          category: description,
+          category: categoryTrim,
           direction,
-          note: description,
+          note: noteStored,
           occurred_at: new Date().toISOString(),
           account_id: selectedAccountId || null
         }])
@@ -267,50 +374,42 @@ export default function Wealth() {
         }
       }
       
-      // Update budget if this is an expense
+      let overspendMessage: string | null = null;
+
+      // Update budget spent_amount if this is an expense (category must match budget name)
       if (direction === 'out') {
-        const { data: budgets } = await supabase
+        const { data: userBudgets } = await supabase
           .from('budgets')
           .select('*')
-          .eq('user_id', user.id)
-          .ilike('category', `%${description}%`);
-          
-        if (budgets && budgets.length > 0) {
-          // Update the first matching budget
-          const budget = budgets[0];
-          const newSpentAmount = parseFloat(String(budget.spent_amount || 0)) + amount;
-          
+          .eq('user_id', user.id);
+
+        const descKey = normalizeBudgetCategory(categoryTrim);
+        const exact = userBudgets?.find((b) => normalizeBudgetCategory(b.category) === descKey);
+        const general = userBudgets?.find((b) => normalizeBudgetCategory(b.category) === 'general');
+        const budgetToUpdate = exact ?? (!exact && general ? general : undefined);
+
+        if (budgetToUpdate) {
+          const newSpentAmount = parseFloat(String(budgetToUpdate.spent_amount || 0)) + amount;
+          const limitAmt = parseFloat(String(budgetToUpdate.limit_amount || 0));
           const { error: budgetError } = await supabase
             .from('budgets')
-            .update({ spent_amount: newSpentAmount })
-            .eq('id', budget.id);
-          
+            .update({ spent_amount: newSpentAmount, updated_at: new Date().toISOString() })
+            .eq('id', budgetToUpdate.id);
+
           if (budgetError) throw budgetError;
-        } else {
-          // Check for general expense budget
-          const { data: generalBudgets } = await supabase
-            .from('budgets')
-            .select('*')
-            .eq('user_id', user.id)
-            .ilike('category', '%General%');
-            
-          if (generalBudgets && generalBudgets.length > 0) {
-            const budget = generalBudgets[0];
-            const newSpentAmount = parseFloat(String(budget.spent_amount || 0)) + amount;
-            
-            const { error: budgetError } = await supabase
-              .from('budgets')
-              .update({ spent_amount: newSpentAmount })
-              .eq('id', budget.id);
-            
-            if (budgetError) throw budgetError;
+
+          if (newSpentAmount > limitAmt && limitAmt > 0) {
+            overspendMessage = `${budgetToUpdate.category} is $${(newSpentAmount - limitAmt).toFixed(2)} over the $${limitAmt.toFixed(2)} limit`;
           }
         }
       }
-      
+
       toast({
-        title: "Transaction added!",
-        description: `${direction === 'in' ? 'Income' : 'Expense'} of $${amount} recorded`
+        title: overspendMessage ? "Expense saved — over budget" : "Transaction added!",
+        description: overspendMessage
+          ? `${direction === 'out' ? 'Expense' : 'Income'} of $${amount.toFixed(2)} · ${overspendMessage}`
+          : `${direction === 'in' ? 'Income' : 'Expense'} of $${amount.toFixed(2)} recorded${categoryTrim ? ` · ${categoryTrim}` : ''}`,
+        variant: overspendMessage ? "destructive" : "default",
       });
       
       // Refresh data
@@ -490,7 +589,9 @@ export default function Wealth() {
             <Button
               variant={transactionType === 'expense' ? 'default' : 'outline'}
               className="flex-1 h-10"
-              onClick={() => setTransactionType('expense')}
+              onClick={() => {
+                setTransactionType('expense');
+              }}
             >
               <CreditCard className="h-4 w-4 mr-2" />
               Expense
@@ -498,33 +599,170 @@ export default function Wealth() {
             <Button
               variant={transactionType === 'income' ? 'default' : 'outline'}
               className="flex-1 h-10"
-              onClick={() => setTransactionType('income')}
+              onClick={() => {
+                setTransactionType('income');
+                setExpenseBudgetId('');
+                setTransactionNote('');
+              }}
             >
               <ArrowUpRight className="h-4 w-4 mr-2" />
               Income
             </Button>
           </div>
-          <Input
-            placeholder="Amount ($100.00)"
-            value={transactionAmount}
-            onChange={(e) => setTransactionAmount(e.target.value)}
-            type="number"
-          />
-          <Input
-            placeholder="What was this for?"
-            value={transactionDesc}
-            onChange={(e) => setTransactionDesc(e.target.value)}
-          />
-          <Button 
+          <div>
+            <Label htmlFor="tx-amount" className="text-xs text-muted-foreground">
+              Amount
+            </Label>
+            <Input
+              id="tx-amount"
+              placeholder="0.00"
+              value={transactionAmount}
+              onChange={(e) => setTransactionAmount(e.target.value)}
+              type="number"
+              className="mt-1"
+            />
+          </div>
+
+          {transactionType === 'income' ? (
+            <div>
+              <Label htmlFor="tx-income-src" className="text-xs text-muted-foreground">
+                Source / description
+              </Label>
+              <Input
+                id="tx-income-src"
+                placeholder="e.g. Paycheck, freelance"
+                value={transactionDesc}
+                onChange={(e) => setTransactionDesc(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          ) : (
+            <>
+              {budgetsSummary.length > 0 ? (
+                <div>
+                  <Label htmlFor="tx-budget" className="text-xs text-muted-foreground">
+                    Apply to budget
+                  </Label>
+                  <select
+                    id="tx-budget"
+                    className="mt-1 w-full p-2 border rounded-lg bg-background text-sm"
+                    value={expenseBudgetId || budgetsSummary[0]?.id}
+                    onChange={(e) => setExpenseBudgetId(e.target.value)}
+                  >
+                    {budgetsSummary.map((b) => {
+                      const left = b.limit - b.spent;
+                      return (
+                        <option key={b.id} value={b.id}>
+                          {b.category} — ${b.spent.toFixed(0)} / ${b.limit.toFixed(0)}
+                          {left >= 0 ? ` ($${left.toFixed(0)} left)` : ` (over by $${(-left).toFixed(0)})`}
+                        </option>
+                      );
+                    })}
+                    <option value="__custom__">Other — type a category below</option>
+                  </select>
+                </div>
+              ) : null}
+
+              {(budgetsSummary.length === 0 || expenseBudgetId === '__custom__') && (
+                <div>
+                  <Label htmlFor="tx-category" className="text-xs text-muted-foreground">
+                    Category {budgetsSummary.length > 0 ? '(custom)' : ''}
+                  </Label>
+                  <Input
+                    id="tx-category"
+                    placeholder="e.g. Groceries, Rent"
+                    value={transactionDesc}
+                    onChange={(e) => setTransactionDesc(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              )}
+
+              {budgetsSummary.length > 0 && expenseBudgetId !== '__custom__' && (
+                  <div>
+                    <Label htmlFor="tx-note" className="text-xs text-muted-foreground">
+                      Note (optional)
+                    </Label>
+                    <Input
+                      id="tx-note"
+                      placeholder="e.g. Whole Foods, gas station…"
+                      value={transactionNote}
+                      onChange={(e) => setTransactionNote(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+
+              {expenseBudgetPreview?.over && (
+                <div className="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>
+                    This puts <strong>{expenseBudgetPreview.category}</strong> over budget by $
+                    {expenseBudgetPreview.overBy.toFixed(2)} (limit ${expenseBudgetPreview.limit.toFixed(2)}).
+                  </span>
+                </div>
+              )}
+
+              {expenseBudgetPreview && !expenseBudgetPreview.over && (
+                <p className="text-xs text-muted-foreground">
+                  After this expense:{' '}
+                  <strong>${expenseBudgetPreview.remaining.toFixed(2)}</strong> left in{' '}
+                  {expenseBudgetPreview.category} this month.
+                </p>
+              )}
+            </>
+          )}
+
+          <Button
             onClick={() => {
-              if (transactionAmount && transactionDesc) {
-                addTransaction(parseFloat(transactionAmount), transactionDesc, transactionType === 'income' ? 'in' : 'out');
+              const amt = parseFloat(transactionAmount);
+              if (!transactionAmount || Number.isNaN(amt) || amt <= 0) return;
+
+              if (transactionType === 'income') {
+                const src = transactionDesc.trim();
+                if (!src) return;
+                addTransaction(amt, src, 'in', src);
                 setTransactionAmount('');
                 setTransactionDesc('');
+                return;
+              }
+
+              let category = '';
+              let note: string | undefined;
+
+              if (budgetsSummary.length === 0) {
+                category = transactionDesc.trim();
+                if (!category) return;
+                note = category;
+              } else if (expenseBudgetId === '__custom__') {
+                category = transactionDesc.trim();
+                if (!category) return;
+                note = transactionNote.trim() || category;
+              } else {
+                const bid = expenseBudgetId || budgetsSummary[0]?.id;
+                const b = bid ? budgetsSummary.find((x) => x.id === bid) : undefined;
+                if (!b) return;
+                category = b.category;
+                note = transactionNote.trim() || category;
+              }
+
+              addTransaction(amt, category, 'out', note);
+              setTransactionAmount('');
+              setTransactionDesc('');
+              setTransactionNote('');
+              if (budgetsSummary.length > 0) {
+                setExpenseBudgetId(budgetsSummary[0].id);
               }
             }}
             className="ios-button-primary w-full"
-            disabled={!transactionAmount || !transactionDesc}
+            disabled={(() => {
+              const amt = parseFloat(transactionAmount);
+              if (!transactionAmount || Number.isNaN(amt) || amt <= 0) return true;
+              if (transactionType === 'income') return !transactionDesc.trim();
+              if (budgetsSummary.length === 0) return !transactionDesc.trim();
+              if (expenseBudgetId === '__custom__') return !transactionDesc.trim();
+              return false;
+            })()}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add {transactionType === 'income' ? 'Income' : 'Expense'}
@@ -796,6 +1034,32 @@ export default function Wealth() {
 
   const renderExpenses = () => (
     <div className="space-y-4">
+      {budgetsSummary.length > 0 && (
+        <Card className="ios-card">
+          <h3 className="font-semibold mb-4">Budgets this month</h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Spending is counted from expenses whose category matches the budget name (same wording, any
+            capitalization).
+          </p>
+          <div className="space-y-4">
+            {budgetsSummary.map((b) => (
+              <div key={b.id}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-medium">{b.category}</span>
+                  <span>
+                    ${b.spent.toFixed(2)} / ${b.limit.toFixed(2)}
+                  </span>
+                </div>
+                <Progress
+                  value={Math.min(100, b.progress)}
+                  className={`h-2 ${b.progress >= 100 ? '[&>div]:bg-red-500' : ''}`}
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card className="ios-card">
         <h3 className="font-semibold mb-4">Spending Categories</h3>
         {expenses.length > 0 ? (
@@ -831,7 +1095,14 @@ export default function Wealth() {
         <div className="grid grid-cols-1 gap-3">
           <Button 
             onClick={() => {
-              if (!user) return;
+              if (!user) {
+                toast({
+                  title: "Sign in required",
+                  description: "Sign in to create and save budgets.",
+                  variant: "destructive",
+                });
+                return;
+              }
               setShowBudgetModal(true);
             }}
             variant="outline"
@@ -874,7 +1145,7 @@ export default function Wealth() {
         {goals.length > 0 ? (
           <div className="space-y-4">
             {goals.map((goal, index) => (
-              <div key={index} className="p-4 border rounded-xl">
+              <div key={goal.id || index} className="p-4 border rounded-xl">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{goal.emoji}</span>
@@ -1041,9 +1312,17 @@ export default function Wealth() {
   // State for spending review modal
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [spendingAnalysis, setSpendingAnalysis] = useState<any>(null);
+  const [spendingBreakdownMode, setSpendingBreakdownMode] = useState<'smart' | 'raw'>('smart');
   
   const createCustomBudget = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Sign in to create budgets.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const limitAmount = parseFloat(budgetLimit);
     if (isNaN(limitAmount) || limitAmount <= 0) {
@@ -1083,7 +1362,14 @@ export default function Wealth() {
   };
   
   const analyzeSpending = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Sign in to review spending.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       // Analyze spending patterns by fetching transactions
@@ -1126,25 +1412,47 @@ export default function Wealth() {
           .eq('user_id', user.id);
         
         const budgetUtilization = budgetsData?.map(budget => {
-          const categoryExpenses = expenseCategories[budget.category] || 0;
-          const utilization = budget.limit_amount > 0 ? Math.round((categoryExpenses / budget.limit_amount) * 100) : 0;
+          const categoryExpenses = Object.entries(expenseCategories)
+            .filter(
+              ([cat]) =>
+                normalizeBudgetCategory(cat) === normalizeBudgetCategory(budget.category)
+            )
+            .reduce((sum, [, amt]) => sum + amt, 0);
+          const limit = parseFloat(String(budget.limit_amount || 0));
+          const utilization = limit > 0 ? Math.round((categoryExpenses / limit) * 100) : 0;
           return {
             category: budget.category,
             spent: categoryExpenses,
-            limit: budget.limit_amount,
+            limit,
             utilization
           };
         }) || [];
+
+        const expenseRows = transactionsData
+          .filter((t) => t.direction === 'out')
+          .map((t) => ({
+            category: t.category,
+            note: t.note,
+            amount: parseFloat(String(t.amount || '0')),
+          }));
+        const smartExpenseGroups = buildSmartSpendingGroups(expenseRows);
+        const topSmartGroup =
+          smartExpenseGroups.length > 0
+            ? ([smartExpenseGroups[0].label, smartExpenseGroups[0].total] as [string, number])
+            : null;
         
         const analysis = {
           monthlyExpenses,
           monthlyIncome,
           savingsRate,
           topCategory,
+          topSmartGroup,
+          smartExpenseGroups,
           expenseCategories,
           budgetUtilization
         };
         
+        setSpendingBreakdownMode('smart');
         setSpendingAnalysis(analysis);
         setShowSpendingModal(true);
       } else {
@@ -1232,7 +1540,7 @@ export default function Wealth() {
               <Button 
                 className="flex-1"
                 onClick={createCustomBudget}
-                disabled={!budgetCategory || !budgetLimit}
+                disabled={!budgetLimit}
               >
                 Create
               </Button>
@@ -1264,15 +1572,34 @@ export default function Wealth() {
                 </div>
               </div>
               
-              {spendingAnalysis.topCategory && (
+              {spendingAnalysis.topSmartGroup && (
                 <div className="p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">Top Expense Category</h4>
+                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                    Top spending area (smart groups)
+                  </h4>
                   <div className="flex justify-between">
-                    <span>{spendingAnalysis.topCategory[0]}</span>
-                    <span className="font-medium">${spendingAnalysis.topCategory[1].toFixed(2)}</span>
+                    <span>{spendingAnalysis.topSmartGroup[0]}</span>
+                    <span className="font-medium">${spendingAnalysis.topSmartGroup[1].toFixed(2)}</span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Similar merchants and wording are rolled together (food, rides, subscriptions, etc.).
+                  </p>
                 </div>
               )}
+              
+              {spendingAnalysis.topCategory &&
+                (!spendingAnalysis.topSmartGroup ||
+                  spendingAnalysis.topCategory[0] !== spendingAnalysis.topSmartGroup[0]) && (
+                  <div className="p-4 bg-violet-50/80 dark:bg-violet-950/15 rounded-lg border border-violet-200/50 dark:border-violet-800/40">
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                      Largest label (as entered)
+                    </h4>
+                    <div className="flex justify-between text-sm">
+                      <span className="truncate max-w-[55%]">{spendingAnalysis.topCategory[0]}</span>
+                      <span className="font-medium">${spendingAnalysis.topCategory[1].toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
               
               <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
                 <h4 className="text-sm font-medium mb-2 text-muted-foreground">Budget Utilization</h4>
@@ -1298,10 +1625,81 @@ export default function Wealth() {
                 )}
               </div>
               
-              <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
-                <h4 className="text-sm font-medium mb-2 text-muted-foreground">Expense Breakdown</h4>
-                {Object.entries(spendingAnalysis.expenseCategories).length > 0 ? (
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <h4 className="text-sm font-medium text-muted-foreground">Expense breakdown</h4>
+                  <div className="flex rounded-lg border border-border/60 bg-background/80 p-0.5 shrink-0">
+                    <Button
+                      type="button"
+                      variant={spendingBreakdownMode === 'smart' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-8 px-3 text-xs rounded-md"
+                      onClick={() => setSpendingBreakdownMode('smart')}
+                    >
+                      Smart groups
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={spendingBreakdownMode === 'raw' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-8 px-3 text-xs rounded-md"
+                      onClick={() => setSpendingBreakdownMode('raw')}
+                    >
+                      As entered
+                    </Button>
+                  </div>
+                </div>
+
+                {spendingBreakdownMode === 'smart' &&
+                  spendingAnalysis.smartExpenseGroups?.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Tap a group to see each expense line. Ungrouped items stay under your category name.
+                    </p>
+                  )}
+
+                {spendingBreakdownMode === 'smart' &&
+                spendingAnalysis.smartExpenseGroups?.length > 0 ? (
+                  <div className="space-y-2 max-h-56 overflow-y-auto">
+                    {spendingAnalysis.smartExpenseGroups.map((g: any) => {
+                      const pct =
+                        spendingAnalysis.monthlyExpenses > 0
+                          ? Math.round((g.total / spendingAnalysis.monthlyExpenses) * 100)
+                          : 0;
+                      return (
+                        <Collapsible key={g.groupKey} className="rounded-lg border border-border/50 bg-background/60">
+                          <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/40 rounded-lg [&[data-state=open]>svg]:rotate-180">
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className="text-base shrink-0">{g.emoji}</span>
+                              <span className="truncate font-medium">{g.label}</span>
+                              {!g.autoGrouped && (
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+                                  your label
+                                </span>
+                              )}
+                            </span>
+                            <span className="flex shrink-0 items-center gap-2 font-medium">
+                              <span className="text-muted-foreground text-xs">{pct}%</span>
+                              ${g.total.toFixed(2)}
+                              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200" />
+                            </span>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <ul className="space-y-1 border-t border-border/40 px-3 py-2 text-xs">
+                              {g.items.map((line: any, idx: number) => (
+                                <li key={idx} className="flex justify-between gap-2 text-muted-foreground">
+                                  <span className="truncate">{line.detail}</span>
+                                  <span className="shrink-0 tabular-nums">${line.amount.toFixed(2)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
+                  </div>
+                ) : spendingBreakdownMode === 'raw' &&
+                  Object.entries(spendingAnalysis.expenseCategories).length > 0 ? (
+                  <div className="space-y-2 max-h-56 overflow-y-auto">
                     {Object.entries(spendingAnalysis.expenseCategories)
                       .sort((a: any, b: any) => b[1] - a[1])
                       .map(([category, amount]: [any, any], index: number) => (
@@ -1327,6 +1725,12 @@ export default function Wealth() {
       )}
 
       <div className="px-4 safe-area-left safe-area-right" style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}>
+        {!user && (
+          <div className="mb-4 mt-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-900 dark:text-amber-100">
+            Sign in to sync wealth data, budgets, and transactions with your account. Browse the UI,
+            but saving requires an authenticated session.
+          </div>
+        )}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsContent value="overview" className="mt-0">
             {renderOverview()}

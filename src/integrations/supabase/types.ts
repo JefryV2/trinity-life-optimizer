@@ -62,8 +62,10 @@ export type Database = {
           fat_g: number | null
           fiber_g: number | null
           food_name: string
+          fdc_id: number | null
           id: string
           meal_type: string | null
+          notes: string | null
           protein_g: number | null
           servings: number | null
           sodium_mg: number | null
@@ -79,8 +81,10 @@ export type Database = {
           fat_g?: number | null
           fiber_g?: number | null
           food_name: string
+          fdc_id?: number | null
           id?: string
           meal_type?: string | null
+          notes?: string | null
           protein_g?: number | null
           servings?: number | null
           sodium_mg?: number | null
@@ -96,8 +100,10 @@ export type Database = {
           fat_g?: number | null
           fiber_g?: number | null
           food_name?: string
+          fdc_id?: number | null
           id?: string
           meal_type?: string | null
+          notes?: string | null
           protein_g?: number | null
           servings?: number | null
           sodium_mg?: number | null

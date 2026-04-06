@@ -124,8 +124,9 @@ export const StepCounter = () => {
   };
 
   const progress = Math.min((steps / dailyGoal) * 100, 100);
-  const distanceKm = (distance / 1000).toFixed(2);
-  const caloriesBurned = Math.round(steps * 0.04); // Approximate: 0.04 calories per step
+  // Keep distance/calories aligned across all pages showing step metrics.
+  const distanceKm = ((steps / 1000) * 0.8).toFixed(2);
+  const caloriesBurned = Math.round(steps * 0.04);
 
   return (
     <div className="space-y-6">

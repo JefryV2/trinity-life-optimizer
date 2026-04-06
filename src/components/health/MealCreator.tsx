@@ -130,6 +130,7 @@ export function MealCreator({ onMealSaved }: MealCreatorProps) {
         sugar_g: Math.round((ingredient.food.nutrients.sugar || 0) * ingredient.amount * 10) / 10,
         sodium_mg: Math.round((ingredient.food.nutrients.sodium || 0) * ingredient.amount),
         notes: JSON.stringify({
+          fdc_id: ingredient.food.fdcId,
           vitamins_minerals: {
             vitaminA: Math.round((ingredient.food.nutrients.vitaminA || 0) * ingredient.amount * 10) / 10,
             vitaminC: Math.round((ingredient.food.nutrients.vitaminC || 0) * ingredient.amount * 10) / 10,
@@ -161,6 +162,9 @@ export function MealCreator({ onMealSaved }: MealCreatorProps) {
         .insert(foodEntries);
 
       if (error) throw error;
+
+      window.dispatchEvent(new CustomEvent('foodEntriesUpdated'));
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
 
       toast({
         title: "Meal saved successfully",

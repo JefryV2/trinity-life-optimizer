@@ -225,6 +225,7 @@ export function WomensHealth() {
       });
 
       await fetchDailyLogs();
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
     } catch (error) {
       console.error('Error saving daily log:', error);
       toast({
@@ -272,6 +273,7 @@ export function WomensHealth() {
       setIsLoggingPeriod(false);
       
       await fetchCycles();
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
     } catch (error) {
       console.error('Error logging cycle:', error);
       toast({

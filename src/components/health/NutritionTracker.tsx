@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Search, Target, TrendingUp, Apple, Droplets, Utensils } from "lucide-react";
+import { Search, Utensils, ArrowLeft, Camera } from "lucide-react";
+import { format } from 'date-fns';
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { FoodSearch } from "./FoodSearch";
+import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FoodSearch, type USDAFood } from "./FoodSearch";
 import { MealCreator } from "./MealCreator";
 import { DietTracker } from "./DietTracker";
 
@@ -44,10 +47,12 @@ interface HealthProfile {
 }
 
 export function NutritionTracker() {
-  console.log("NutritionTracker component rendering");
-  
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showFoodSearch, setShowFoodSearch] = useState(false);
+  const [searchMealType, setSearchMealType] = useState<
+    'breakfast' | 'lunch' | 'dinner' | 'snack'
+  >('lunch');
   const [showMealCreator, setShowMealCreator] = useState(false);
   const [showDietTracker, setShowDietTracker] = useState(false);
   const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
@@ -165,6 +170,58 @@ export function NutritionTracker() {
 
   const targets = getTargets();
 
+  const logSearchedFood = async (food: USDAFood) => {
+    if (!user) {
+      toast({
+        title: 'Sign in to log food',
+        description: 'Create an account or sign in so meals save to your diary.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const n = food.nutrients;
+    try {
+      const { error } = await supabase.from('food_entries').insert({
+        user_id: user.id,
+        food_name: food.description,
+        total_calories: Math.round(n.calories ?? 0),
+        protein_g: n.protein ?? 0,
+        carbs_g: n.carbs ?? 0,
+        fat_g: n.fat ?? 0,
+        fiber_g: n.fiber ?? 0,
+        sugar_g: n.sugar ?? 0,
+        sodium_mg: n.sodium ?? 0,
+        meal_type: searchMealType,
+        servings: 1,
+        notes: JSON.stringify({
+          source: 'usda_search',
+          dataType: food.dataType,
+          fdc_id: food.fdcId,
+        }),
+        consumed_at: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Food logged',
+        description: `${food.description.slice(0, 60)}${food.description.length > 60 ? '…' : ''} · ${searchMealType}`,
+      });
+      setShowFoodSearch(false);
+      fetchTodaysEntries();
+      window.dispatchEvent(new CustomEvent('foodEntriesUpdated'));
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: 'Could not save food',
+        description: e instanceof Error ? e.message : 'Try again or use Quick Food Entry.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const groupedEntries = foodEntries.reduce((acc, entry) => {
     const mealType = entry.meal_type || 'other';
     if (!acc[mealType]) {
@@ -178,16 +235,32 @@ export function NutritionTracker() {
   if (showFoodSearch) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold">Search Food Database</h2>
           <Button variant="outline" onClick={() => setShowFoodSearch(false)}>
             Back to Nutrition
           </Button>
         </div>
-        <FoodSearch onFoodSelect={() => {
-          setShowFoodSearch(false);
-          fetchTodaysEntries();
-        }} />
+        <div className="flex flex-col gap-2 max-w-xs">
+          <span className="text-sm text-muted-foreground">Log selected foods as</span>
+          <Select
+            value={searchMealType}
+            onValueChange={(v) =>
+              setSearchMealType(v as 'breakfast' | 'lunch' | 'dinner' | 'snack')
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="breakfast">Breakfast</SelectItem>
+              <SelectItem value="lunch">Lunch</SelectItem>
+              <SelectItem value="dinner">Dinner</SelectItem>
+              <SelectItem value="snack">Snack</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <FoodSearch onFoodSelect={logSearchedFood} />
       </div>
     );
   }
@@ -214,7 +287,13 @@ export function NutritionTracker() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Quick Food Entry</h2>
-          <Button variant="outline" onClick={() => setShowDietTracker(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowDietTracker(false);
+              fetchTodaysEntries();
+            }}
+          >
             Back to Nutrition
           </Button>
         </div>
@@ -223,187 +302,180 @@ export function NutritionTracker() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Daily Overview */}
-      <Card className="health-gradient text-white overflow-hidden">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-white/80 text-sm">Daily Nutrition</p>
-              <h2 className="text-3xl font-bold">{Math.round(todaysNutrition.calories)}</h2>
-              <p className="text-white/70 text-sm">of {targets.calories} calories</p>
-            </div>
-            <div className="text-right">
-              <div className="flex items-center gap-1 text-white/90">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm">
-                  {todaysNutrition.calories > 0 ? 'Tracking' : 'Start logging'}
-                </span>
-              </div>
-              <p className="text-xs text-white/70 mt-1">
-                {Math.max(0, targets.calories - todaysNutrition.calories)} remaining
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+  // Calculate macronutrient percentages
+  const getMacroPercentage = (current: number, totalCalories: number, caloriesPerGram: number) => {
+    if (totalCalories === 0) return 0;
+    const macroCalories = current * caloriesPerGram;
+    return Math.round((macroCalories / totalCalories) * 100 * 100) / 100;
+  };
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-3">
-        <Button
-          onClick={() => setShowFoodSearch(true)}
-          className="ios-button-primary h-14 flex-col gap-1"
-        >
+  const carbsPercent = getMacroPercentage(todaysNutrition.carbs, todaysNutrition.calories || 1, 4);
+  const proteinPercent = getMacroPercentage(todaysNutrition.protein, todaysNutrition.calories || 1, 4);
+  const fatPercent = getMacroPercentage(todaysNutrition.fat, todaysNutrition.calories || 1, 9);
+  const fiberPercent = getMacroPercentage(todaysNutrition.fiber, targets.fiber || 1, 0); // Fiber doesn't contribute calories
+
+  // Circular progress component
+  const CircularMacro = ({ 
+    label, 
+    percentage, 
+    color 
+  }: { 
+    label: string; 
+    percentage: number; 
+    color: string;
+  }) => {
+    const circumference = 2 * Math.PI * 30;
+    const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
+    
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div className="relative w-16 h-16">
+          <svg className="transform -rotate-90 w-16 h-16">
+            <circle
+              cx="32"
+              cy="32"
+              r="30"
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="none"
+              className="text-gray-200"
+            />
+            <circle
+              cx="32"
+              cy="32"
+              r="30"
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              className={`${color} transition-all duration-500`}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xs font-semibold">{Math.round(percentage)}%</span>
+          </div>
+        </div>
+        <span className="text-[10px] text-muted-foreground text-center">{label}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4 animate-in fade-in duration-500 pb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold">Calories Intake</h2>
+            <p className="text-xs text-muted-foreground">
+              {format(new Date(), 'EEE, d MMM yyyy')}
+            </p>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
           <Search className="h-4 w-4" />
-          <span className="text-xs">Search</span>
-        </Button>
-        <Button
-          onClick={() => setShowMealCreator(true)}
-          variant="outline"
-          className="ios-button-secondary h-14 flex-col gap-1"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="text-xs">Meal</span>
-        </Button>
-        <Button
-          onClick={() => setShowDietTracker(true)}
-          variant="outline"
-          className="ios-button-secondary h-14 flex-col gap-1"
-        >
-          <Utensils className="h-4 w-4" />
-          <span className="text-xs">Quick Log</span>
         </Button>
       </div>
 
-      {/* Macronutrients */}
+      {/* Total Calories */}
       <Card className="ios-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Macronutrients
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { name: 'Protein', current: todaysNutrition.protein, target: targets.protein, unit: 'g', color: 'bg-red-500' },
-            { name: 'Carbs', current: todaysNutrition.carbs, target: targets.carbs, unit: 'g', color: 'bg-yellow-500' },
-            { name: 'Fat', current: todaysNutrition.fat, target: targets.fat, unit: 'g', color: 'bg-blue-500' }
-          ].map((macro) => (
-            <div key={macro.name}>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="font-medium">{macro.name}</span>
-                <span>{Math.round(macro.current)}/{macro.target}{macro.unit}</span>
-              </div>
-              <Progress value={getNutrientProgress(macro.current, macro.target)} className="h-2" />
-            </div>
-          ))}
+        <CardContent className="p-6 text-center">
+          <p className="text-4xl font-bold">{Math.round(todaysNutrition.calories)}kcal</p>
         </CardContent>
       </Card>
 
-      {/* Fiber & Sodium - Same style as macros */}
+      {/* Macronutrient Circular Indicators */}
       <Card className="ios-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Apple className="h-5 w-5" />
-            Key Nutrients
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { name: 'Fiber', current: todaysNutrition.fiber, target: targets.fiber, unit: 'g', color: 'bg-green-500' },
-            { name: 'Sodium', current: todaysNutrition.sodium, target: targets.sodium, unit: 'mg', color: 'bg-purple-500' },
-            { name: 'Sugar', current: todaysNutrition.sugar, target: targets.sugar, unit: 'g', color: 'bg-orange-500' }
-          ].map((nutrient) => (
-            <div key={nutrient.name}>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="font-medium">{nutrient.name}</span>
-                <span>{Math.round(nutrient.current)}/{nutrient.target}{nutrient.unit}</span>
-              </div>
-              <Progress value={getNutrientProgress(nutrient.current, nutrient.target)} className="h-2" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Vitamins & Minerals - Improved UI */}
-      <Card className="ios-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Droplets className="h-5 w-5" />
-            Vitamins & Minerals
-          </CardTitle>
-          <CardDescription className="text-sm text-muted-foreground">
-            Vitamin and mineral tracking requires detailed food database integration. Currently showing baseline values.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            {vitamins.map((vitamin) => {
-              const progress = vitamin.current > 0 ? (vitamin.current / vitamin.target) * 100 : 0;
-              return (
-                <div key={vitamin.name} className="p-3 rounded-xl bg-muted/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={`w-8 h-8 rounded-lg ${vitamin.color} flex items-center justify-center`}>
-                      <Droplets className="h-4 w-4 text-white" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {Math.round(progress)}%
-                    </span>
-                  </div>
-                  <h4 className="font-medium text-sm mb-1">{vitamin.name}</h4>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {Math.round(vitamin.current * 10) / 10}/{vitamin.target} {vitamin.unit}
-                  </p>
-                  <Progress value={Math.min(progress, 100)} className="h-1.5" />
-                </div>
-              );
-            })}
+        <CardContent className="p-4">
+          <div className="flex items-center justify-around">
+            <CircularMacro 
+              label="Carbs" 
+              percentage={carbsPercent} 
+              color="text-yellow-500" 
+            />
+            <CircularMacro 
+              label="Protein" 
+              percentage={proteinPercent} 
+              color="text-red-500" 
+            />
+            <CircularMacro 
+              label="Fat" 
+              percentage={fatPercent} 
+              color="text-blue-500" 
+            />
+            <CircularMacro 
+              label="Fiber" 
+              percentage={Math.min((todaysNutrition.fiber / targets.fiber) * 100, 100)} 
+              color="text-green-500" 
+            />
           </div>
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Note:</strong> Vitamin and mineral tracking requires detailed food database integration. 
-              Use the "Search\" feature to log foods with complete nutritional data, or \"Quick Log\" for manual entry.
+        </CardContent>
+      </Card>
+
+      {/* Meal list — stored in Supabase table food_entries */}
+      <Card className="ios-card">
+        <CardContent className="p-4">
+          <div className="mb-3">
+            <p className="text-sm font-semibold">Today&apos;s meals</p>
+            <p className="text-xs text-muted-foreground">
+              Everything here is saved to your account (database: food_entries). Sign in to sync.
             </p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Today's Meals */}
-      <Card className="ios-card">
-        <CardHeader>
-          <CardTitle>Today's Meals</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {Object.keys(groupedEntries).length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No meals logged today</p>
+          {foodEntries.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8 text-sm">No meals logged today</p>
           ) : (
-            <div className="space-y-4">
-              {Object.entries(groupedEntries).map(([mealType, entries]) => (
-                <div key={mealType} className="space-y-2">
-                  <h4 className="font-medium capitalize">{mealType}</h4>
-                  {entries.map((entry) => (
-                    <div key={entry.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <div>
-                        <p className="font-medium text-sm">{entry.food_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {Math.round(entry.total_calories || 0)} cal • {Math.round(entry.protein_g || 0)}g protein
-                        </p>
-                      </div>
-                      <div className="text-right text-xs text-muted-foreground">
-                        {new Date(entry.consumed_at).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </div>
+            <div className="space-y-3">
+              {foodEntries.map((entry) => {
+                const consumedTime = new Date(entry.consumed_at);
+                const timeStr = format(consumedTime, 'hh.mm a').toLowerCase();
+                return (
+                  <div key={entry.id} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        {timeStr} {entry.food_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ({Math.round(entry.total_calories || 0)}kcal)
+                      </p>
                     </div>
-                  ))}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Ways to log meals — all write to food_entries */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Button
+          onClick={() => setShowMealCreator(true)}
+          className="h-14 flex items-center justify-center gap-2"
+        >
+          <Camera className="h-5 w-5 shrink-0" />
+          <span className="text-sm font-medium">Build a meal</span>
+        </Button>
+        <Button
+          onClick={() => setShowFoodSearch(true)}
+          variant="outline"
+          className="h-14 flex items-center justify-center gap-2"
+        >
+          <Search className="h-5 w-5 shrink-0" />
+          <span className="text-sm font-medium">Search foods</span>
+        </Button>
+        <Button
+          onClick={() => setShowDietTracker(true)}
+          variant="outline"
+          className="h-14 flex items-center justify-center gap-2"
+        >
+          <Utensils className="h-5 w-5 shrink-0" />
+          <span className="text-sm font-medium">Quick add</span>
+        </Button>
+      </div>
 
     </div>
   );

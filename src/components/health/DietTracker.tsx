@@ -104,6 +104,9 @@ export function DietTracker() {
 
       if (error) throw error;
 
+      window.dispatchEvent(new CustomEvent('foodEntriesUpdated'));
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
+
       toast({
         title: "Food logged successfully",
         description: `${foodName} added to ${mealType}`

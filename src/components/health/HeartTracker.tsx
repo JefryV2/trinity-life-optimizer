@@ -86,6 +86,7 @@ const HeartTracker = () => {
             setHeartRate(reading.bpm);
             await sendHeartRateData([reading]);
             await fetchHeartRateData();
+            window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
           });
           setMonitoringActive(true);
           
@@ -205,6 +206,7 @@ const HeartTracker = () => {
       
       await sendHeartRateData(heartRateData);
       await fetchHeartRateData(); // Refresh the data
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
     } catch (error) {
       console.error('Error recording heart rate from device:', error);
     }
@@ -234,6 +236,7 @@ const HeartTracker = () => {
       
       // Refresh our data after sync
       await fetchHeartRateData();
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
       
     } catch (error) {
       console.error('Error syncing historical data:', error);
@@ -257,6 +260,7 @@ const HeartTracker = () => {
       
       await sendHeartRateData(heartRateData);
       await fetchHeartRateData(); // Refresh the data
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
       
       // Simulate a new reading after recording
       setHeartRate(Math.floor(Math.random() * 20) + 65); // New random reading between 65-85

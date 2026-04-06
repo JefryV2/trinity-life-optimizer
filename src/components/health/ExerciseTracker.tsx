@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dumbbell, Plus, Activity, Timer, Target } from 'lucide-react';
+import { Dumbbell, Plus, Activity, Timer, Target, Play } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,7 @@ export function ExerciseTracker() {
   useEffect(() => {
     if (user) {
       fetchWeeklyExerciseRecords();
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
       fetchTodaySteps();
     }
   }, [user]);
@@ -160,6 +161,7 @@ export function ExerciseTracker() {
 
       setSteps('');
       fetchTodaySteps();
+      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
     } catch (error) {
       console.error('Error updating steps:', error);
       toast({
@@ -191,8 +193,95 @@ export function ExerciseTracker() {
     return Math.min((todaySteps.steps / dailyStepGoal) * 100, 100);
   };
 
+  // Popular exercises data
+  const popularExercises = [
+    {
+      id: 1,
+      title: "Run Fast, Feel Free",
+      exerciseCount: 18,
+      image: "🏃",
+      gradient: "from-orange-400 to-red-500"
+    },
+    {
+      id: 2,
+      title: "Breathe Deep, Flow Freely",
+      exerciseCount: 16,
+      image: "🧘",
+      gradient: "from-blue-400 to-purple-500"
+    },
+    {
+      id: 3,
+      title: "Push Hard, Burn Fast",
+      exerciseCount: 12,
+      image: "💪",
+      gradient: "from-green-400 to-teal-500"
+    }
+  ];
+
+  // Coach recommendations (mock data)
+  const coaches = [
+    { id: 1, name: "Joshua", avatar: "👨" },
+    { id: 2, name: "Sarah", avatar: "👩" },
+    { id: 3, name: "Mike", avatar: "👨‍🦱" },
+    { id: 4, name: "Emma", avatar: "👩‍🦰" },
+    { id: 5, name: "Alex", avatar: "🧑" }
+  ];
+
   return (
-    <div className="space-y-6 px-4 pb-6">
+    <div className="space-y-6 px-4 pb-6 animate-in fade-in duration-500">
+      {/* Popular Exercise Section */}
+      <div className="space-y-3">
+        <h2 className="text-xl font-bold">Popular Exercise</h2>
+        <div className="space-y-3">
+          {popularExercises.map((exercise) => (
+            <Card key={exercise.id} className="ios-card overflow-hidden">
+              <CardContent className="p-0">
+                <div className={`bg-gradient-to-r ${exercise.gradient} p-6 text-white relative`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold mb-1">{exercise.title}</h3>
+                      <p className="text-sm text-white/80">{exercise.exerciseCount} Exercise</p>
+                    </div>
+                    <div className="text-6xl opacity-20">{exercise.image}</div>
+                  </div>
+                  <Button
+                    className="mt-4 bg-white text-gray-900 hover:bg-white/90"
+                    onClick={() => {
+                      // Navigate to exercise or start workout
+                      toast({
+                        title: "Starting workout",
+                        description: `${exercise.title} - ${exercise.exerciseCount} exercises`
+                      });
+                    }}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Start Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Coach Recommendation Section */}
+      <div className="space-y-3">
+        <h2 className="text-xl font-bold">Coach Recommendation</h2>
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          {coaches.map((coach) => (
+            <div
+              key={coach.id}
+              className="flex flex-col items-center gap-2 flex-shrink-0"
+            >
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-3xl shadow-lg">
+                {coach.avatar}
+              </div>
+              <span className="text-xs font-medium">{coach.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Log Exercise Card */}
       <Card className="shadow-sm">
         <CardHeader className="pb-4">

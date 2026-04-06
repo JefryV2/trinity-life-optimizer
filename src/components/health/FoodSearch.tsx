@@ -5,12 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Loader2 } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface USDAFood {
+/** Must match the Edge Function name on your Supabase project (USDA food search handler). */
+const FOOD_SEARCH_FUNCTION = 'smooth-responder';
+
+export interface USDAFood {
   fdcId: number;
   description: string;
   dataType: string;
@@ -37,6 +37,7 @@ interface FoodSearchProps {
 }
 
 export function FoodSearch({ onFoodSelect }: FoodSearchProps) {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<USDAFood[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -46,18 +47,45 @@ export function FoodSearch({ onFoodSelect }: FoodSearchProps) {
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
+    setHasSearched(true);
     try {
-      const { data, error } = await supabase.functions.invoke('search-food', {
-        body: { query: searchQuery, pageSize: 20 }
+      const { data, error } = await supabase.functions.invoke(FOOD_SEARCH_FUNCTION, {
+        body: { query: searchQuery.trim(), pageSize: 20 }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`${FOOD_SEARCH_FUNCTION} invoke error:`, error);
+        setSearchResults([]);
+        toast({
+          title: 'Search unavailable',
+          description:
+            error.message ||
+            `Check that ${FOOD_SEARCH_FUNCTION} is deployed, has USDA_API_KEY, and JWT verify is off if needed.`,
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      setSearchResults(data.foods || []);
-      setHasSearched(true);
-    } catch (error) {
+      if (data && typeof data === 'object' && 'error' in data && data.error) {
+        setSearchResults([]);
+        toast({
+          title: 'Food search failed',
+          description: String(data.error),
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const foods = Array.isArray(data?.foods) ? data.foods : [];
+      setSearchResults(foods);
+    } catch (error: unknown) {
       console.error('Error searching foods:', error);
       setSearchResults([]);
+      toast({
+        title: 'Search failed',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      });
     } finally {
       setIsSearching(false);
     }
