@@ -67,3 +67,17 @@ npx tsc --noEmit
 npx expo export --platform android
 npx expo-doctor
 ```
+
+## Build an APK locally
+
+```bash
+npx expo prebuild --platform android --clean
+cd android
+./gradlew assembleRelease
+```
+
+The APK lands at `android/app/build/outputs/apk/release/app-release.apk`.
+Release builds use the generated debug keystore, which is fine for sideloading
+but not for Play Store submission — configure a release keystore for that.
+Add `-PreactNativeArchitectures=arm64-v8a` to build only for modern phones
+(smaller and faster), or omit it for a universal APK.

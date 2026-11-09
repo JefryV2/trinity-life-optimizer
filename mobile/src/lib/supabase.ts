@@ -13,9 +13,14 @@ if (!url || !anonKey) {
   );
 }
 
+// Expo Router evaluates the root layout in Node when it builds its server
+// manifest. AsyncStorage's web build touches window.localStorage, so fall
+// back to Supabase's in-memory storage when there is no browser/native runtime.
+const hasRuntimeWindow = typeof window !== 'undefined';
+
 export const supabase = createClient<Database>(url, anonKey, {
   auth: {
-    storage: AsyncStorage,
+    storage: hasRuntimeWindow ? AsyncStorage : undefined,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
@@ -25,10 +30,12 @@ export const supabase = createClient<Database>(url, anonKey, {
 // Supabase's refresh timer only runs while the JS runtime is alive. Mobile
 // apps are suspended constantly, so refresh when the app returns to the
 // foreground instead of trusting a timer that may have slept through expiry.
-AppState.addEventListener('change', (state) => {
-  if (state === 'active') {
-    void supabase.auth.startAutoRefresh();
-  } else {
-    void supabase.auth.stopAutoRefresh();
-  }
-});
+if (hasRuntimeWindow) {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      void supabase.auth.startAutoRefresh();
+    } else {
+      void supabase.auth.stopAutoRefresh();
+    }
+  });
+}
