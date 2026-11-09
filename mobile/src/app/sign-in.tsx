@@ -12,7 +12,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { radius, space, useTheme } from '@/theme';
 
 export default function SignInScreen() {
-  const { signIn } = useAuth();
+  const { signIn, enterDemo } = useAuth();
   const router = useRouter();
   const { colors } = useTheme();
 
@@ -20,6 +20,19 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const startDemo = async () => {
+    setDemoLoading(true);
+    setError(null);
+    try {
+      await enterDemo();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not start the demo.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   const submit = async () => {
     if (!email.trim() || !password) {
@@ -114,6 +127,33 @@ export default function SignInScreen() {
               </AppText>
             </AppText>
           </Pressable>
+
+          <View style={{ gap: space.sm }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+                paddingHorizontal: space.sm,
+              }}
+            >
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
+              <AppText variant="caption" tone="tertiary">
+                or
+              </AppText>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
+            </View>
+            <Button
+              label="Explore the offline demo"
+              variant="secondary"
+              onPress={startDemo}
+              loading={demoLoading}
+              disabled={demoLoading}
+            />
+            <AppText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
+              No account or connection needed · sample data stays on this device
+            </AppText>
+          </View>
 
           <View
             style={{

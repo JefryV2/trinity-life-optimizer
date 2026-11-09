@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 
+import { isDemoMode } from '@/lib/demo/demo-mode';
+
 interface EnvironmentData {
   uv: number | null;
   aqi: number | null;
@@ -21,6 +23,7 @@ export const useEnvironment = () =>
     staleTime: 30 * 60_000,
     retry: 1,
     queryFn: async (): Promise<EnvironmentData> => {
+      if (isDemoMode()) return { uv: 4.2, aqi: 2, pm25: 8.4, label: 'Fair' };
       if (!key) return { uv: null, aqi: null, pm25: null, label: 'OpenWeather key missing' };
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) return { uv: null, aqi: null, pm25: null, label: 'Location denied' };

@@ -60,6 +60,19 @@ npx expo run:android
 npx expo run:ios
 ```
 
+## Offline demo mode
+
+The sign-in screen has an **Explore the offline demo** button. It opens a local
+session and seeds about 60 days of sample records into AsyncStorage, so every
+screen works with no network and no Supabase project. Nothing is uploaded.
+
+- Demo data lives only on the device (storage key `trinity.demo.db.v1`).
+- Reset it from **More → Demo mode → Reset demo data**.
+- **Leave demo** returns to the normal sign-in flow.
+- Implementation lives in `src/lib/demo/` (mode flag, seed, and a small
+  in-memory subset of the PostgREST query builder); `src/lib/supabase.ts`
+  proxies every call to it while the flag is on.
+
 ## Verification
 
 ```bash

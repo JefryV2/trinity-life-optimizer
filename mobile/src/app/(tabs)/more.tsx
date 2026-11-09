@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Alert, View } from 'react-native';
 
@@ -13,19 +14,42 @@ import { useAuth } from '@/providers/auth-provider';
 import { space } from '@/theme';
 
 export default function MoreScreen() {
-  const { signOut } = useAuth();
+  const { signOut, demo, resetDemo } = useAuth();
   const { data } = useProfile();
+  const queryClient = useQueryClient();
   const profile = data?.profile;
   const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Trinity member';
 
   const confirmSignOut = () => {
-    Alert.alert('Sign out?', 'You can sign back in with the same account.', [
+    Alert.alert(
+      demo ? 'Leave the demo?' : 'Sign out?',
+      demo
+        ? 'You will return to the sign-in screen. Demo data stays on this device.'
+        : 'You can sign back in with the same account.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: demo ? 'Leave demo' : 'Sign out',
+          style: 'destructive',
+          onPress: () => {
+            void signOut();
+          },
+        },
+      ],
+    );
+  };
+
+  const confirmReset = () => {
+    Alert.alert('Reset demo data?', 'Every sample record returns to its original state.', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign out',
+        text: 'Reset',
         style: 'destructive',
         onPress: () => {
-          void signOut();
+          void (async () => {
+            await resetDemo();
+            await queryClient.invalidateQueries();
+          })();
         },
       },
     ]);
@@ -38,7 +62,9 @@ export default function MoreScreen() {
         <View style={{ flex: 1, gap: 2 }}>
           <AppText variant="headline">{name}</AppText>
           <AppText variant="footnote" tone="secondary">
-            {initials(profile?.first_name, profile?.last_name)} · {profile?.tier ?? 'personal'} plan
+            {demo
+              ? 'Demo mode · offline sample data'
+              : `${initials(profile?.first_name, profile?.last_name)} · ${profile?.tier ?? 'personal'} plan`}
           </AppText>
         </View>
       </Card>
@@ -55,8 +81,23 @@ export default function MoreScreen() {
         <ListRow icon="user" title="Profile" subtitle="Name, body metrics, calorie target" onPress={() => router.push('/profile')} />
         <ListRow icon="settings" title="Feature preferences" subtitle="Choose what to track" onPress={() => router.push('/profile/preferences')} />
         <ListRow icon="trophy" title="Achievements" subtitle="Milestones from your records" onPress={() => router.push('/profile/achievements')} />
-        <ListRow icon="logout" title="Sign out" destructive onPress={confirmSignOut} last />
+        <ListRow icon="logout" title={demo ? 'Leave demo' : 'Sign out'} destructive onPress={confirmSignOut} last />
       </Card>
+
+      {demo ? (
+        <>
+          <SectionHeader title="Demo mode" caption="Nothing leaves this device" />
+          <Card padded={false} style={{ paddingHorizontal: space.lg }}>
+            <ListRow
+              icon="sparkles"
+              title="Reset demo data"
+              subtitle="Restore the original sample records"
+              onPress={confirmReset}
+              last
+            />
+          </Card>
+        </>
+      ) : null}
     </Screen>
   );
 }
