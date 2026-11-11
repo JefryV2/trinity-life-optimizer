@@ -1,10 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { RefreshControl, View } from 'react-native';
+import { RefreshControl } from 'react-native';
 
-import { AppText } from '@/components/ui/app-text';
+import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
 import { ScrollTabs } from '@/components/ui/scroll-tabs';
+import { SwipeSteps } from '@/components/ui/swipe';
 import { FitnessSegment } from '@/features/health/components/segments/fitness';
 import { HeartSegment } from '@/features/health/components/segments/heart';
 import { MentalSegment } from '@/features/health/components/segments/mental';
@@ -14,6 +15,7 @@ import { SleepSegment } from '@/features/health/components/segments/sleep';
 import { WomenSegment } from '@/features/health/components/segments/women';
 import { useHealth } from '@/features/health/use-health';
 import { useProfile } from '@/features/profile/use-profile';
+import { formatStamp } from '@/lib/format';
 import type { HealthTab } from '@/lib/navigation';
 import { useTheme } from '@/theme';
 
@@ -59,22 +61,23 @@ export default function HealthHub() {
         />
       }
     >
-      <View style={{ gap: 2 }}>
-        <AppText variant="title">Health</AppText>
-        <AppText variant="footnote" tone="secondary">
-          Body and mind, one pillar.
-        </AppText>
-      </View>
+      <PageHeader title="Health" date={formatStamp()} subtitle="Body and mind." />
 
       <ScrollTabs options={options} value={active} onChange={setTab} />
 
-      {active === 'overview' ? <OverviewSegment /> : null}
-      {active === 'nutrition' ? <NutritionSegment /> : null}
-      {active === 'fitness' ? <FitnessSegment /> : null}
-      {active === 'sleep' ? <SleepSegment /> : null}
-      {active === 'mental' ? <MentalSegment /> : null}
-      {active === 'heart' ? <HeartSegment /> : null}
-      {active === 'women' ? <WomenSegment /> : null}
+      <SwipeSteps
+        index={Math.max(0, options.findIndex((option) => option.value === active))}
+        count={options.length}
+        onChange={(next) => setTab(options[next].value)}
+      >
+        {active === 'overview' ? <OverviewSegment /> : null}
+        {active === 'nutrition' ? <NutritionSegment /> : null}
+        {active === 'fitness' ? <FitnessSegment /> : null}
+        {active === 'sleep' ? <SleepSegment /> : null}
+        {active === 'mental' ? <MentalSegment /> : null}
+        {active === 'heart' ? <HeartSegment /> : null}
+        {active === 'women' ? <WomenSegment /> : null}
+      </SwipeSteps>
     </Screen>
   );
 }

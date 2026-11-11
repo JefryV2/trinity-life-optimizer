@@ -1,23 +1,26 @@
-import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, View } from 'react-native';
+import { Pressable, RefreshControl, useWindowDimensions, View } from 'react-native';
 
-import { BarChart } from '@/components/charts/bar-chart';
+import { Donut } from '@/components/charts/donut';
+import { RingMeter } from '@/components/charts/ring-meter';
+import { LineChart } from '@/components/charts/line-chart';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DeletableRow } from '@/components/ui/deletable-row';
-import { Icon } from '@/components/ui/icon';
 import { ListRow } from '@/components/ui/list-row';
+import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { ScrollTabs } from '@/components/ui/scroll-tabs';
+import { SwipeSteps } from '@/components/ui/swipe';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
 import { useWealth, type Budget, type Investment, type Transaction } from '@/features/wealth/use-wealth';
-import { formatDate, formatMoney, formatNumber } from '@/lib/format';
+import { useNetWorthHistory } from '@/features/wealth/use-net-worth-history';
+import { formatDate, formatMoney, formatNumber, formatStamp } from '@/lib/format';
 import { openAdd, type WealthTab } from '@/lib/navigation';
 import { buildSmartSpendingGroups } from '@/lib/spending-smart-groups';
 import { space, useTheme } from '@/theme';
@@ -42,6 +45,7 @@ const accountName = (transactions: Transaction[], accounts: ReturnType<typeof us
 
 export default function WealthHub() {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<WealthTab>('overview');
   const { data, isPending, isError, error, refetch, isRefetching, removeTransaction, removeInvestment, removeBudget } =
@@ -51,7 +55,7 @@ export default function WealthHub() {
     if (params.tab && isWealthTab(params.tab)) setTab(params.tab);
   }, [params.tab]);
 
-  const monthLabel = new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const history = useNetWorthHistory();
 
   const metrics = useMemo(() => {
     const accounts = data?.accounts ?? [];
@@ -66,13 +70,13 @@ export default function WealthHub() {
     );
     const netWorth = cash + portfolio;
     const savingsRate = income > 0 ? Math.round(((income - expenses) / income) * 100) : 0;
-    return { income, expenses, cash, portfolio, cost, netWorth, savingsRate };
+    const safeToSpend = Math.max(0, income - expenses - income * 0.2);
+    return { income, expenses, cash, portfolio, cost, netWorth, savingsRate, safeToSpend };
   }, [data]);
 
   const deleteTransaction = (transaction: Transaction) => {
     removeTransaction.mutate(transaction, {
       onSuccess: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
     });
   };
@@ -80,7 +84,6 @@ export default function WealthHub() {
   const deleteInvestment = (investment: Investment) => {
     removeInvestment.mutate(investment, {
       onSuccess: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
     });
   };
@@ -88,7 +91,6 @@ export default function WealthHub() {
   const deleteBudget = (budget: Budget) => {
     removeBudget.mutate(budget, {
       onSuccess: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
     });
   };
@@ -107,49 +109,73 @@ export default function WealthHub() {
         />
       }
     >
-      <View style={{ gap: 2 }}>
-        <AppText variant="title">Wealth</AppText>
-        <AppText variant="footnote" tone="secondary">
-          Accounts, spending, investments, and goals for {monthLabel}.
-        </AppText>
-      </View>
+      <PageHeader
+        title="Wealth"
+        date={formatStamp()}
+        subtitle="Accounts, spending, investments and goals"
+      />
 
       <ScrollTabs options={OPTIONS} value={tab} onChange={setTab} />
 
+      <SwipeSteps
+        index={Math.max(0, OPTIONS.findIndex((option) => option.value === tab))}
+        count={OPTIONS.length}
+        onChange={(next) => setTab(OPTIONS[next].value)}
+      >
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
       {data && tab === 'overview' ? (
         <>
-          <Card raised style={{ gap: space.lg }}>
-            <View style={{ gap: 2 }}>
-              <AppText variant="caption" tone="tertiary">
-                Net worth
-              </AppText>
-              <AppText variant="numeric" selectable style={{ fontSize: 40, lineHeight: 44 }}>
-                {formatMoney(metrics.netWorth)}
-              </AppText>
-              <AppText variant="footnote" tone="secondary">
-                Cash balances plus current investment market value.
-              </AppText>
+          <Card raised style={{ gap: space.xl }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: space.md }}>
+              <View style={{ gap: space.xs }}>
+                <AppText variant="footnote" tone="secondary">
+                  Net worth
+                </AppText>
+                <AppText variant="numeric" selectable>
+                  {formatMoney(metrics.netWorth)}
+                </AppText>
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                <AppText variant="caption" tone="tertiary">
+                  SAFE TO SPEND
+                </AppText>
+                <AppText variant="headline" style={{ color: colors.primary }}>
+                  {formatMoney(metrics.safeToSpend)}
+                </AppText>
+              </View>
             </View>
+            <View style={{ height: 1, backgroundColor: colors.separator }} />
             <StatRow>
-              <Stat value={formatMoney(metrics.income)} label="Income" tone="success" />
-              <Stat value={formatMoney(metrics.expenses)} label="Expenses" tone="danger" />
+              <Stat value={formatMoney(metrics.income)} label="Income" />
+              <Stat value={formatMoney(metrics.expenses)} label="Expenses" />
               <Stat value={`${metrics.savingsRate}%`} label="Savings rate" tone="primary" />
             </StatRow>
           </Card>
 
+          {(history.data?.length ?? 0) > 1 ? (
+            <Card style={{ gap: space.md }}>
+              <SectionHeader title="Net worth" caption="Last 30 days" />
+              <LineChart
+                values={(history.data ?? []).map((point) => point.netWorth)}
+                width={Math.min(720, width) - 80}
+                height={150}
+                maxValue={Math.max(1, ...(history.data ?? []).map((point) => point.netWorth))}
+              />
+            </Card>
+          ) : null}
+
           <View style={{ flexDirection: 'row', gap: space.md }}>
             <View style={{ flex: 1 }}>
-              <Button label="Transaction" variant="primary" onPress={() => openAdd('transaction')} />
+              <Button label="Add transaction" onPress={() => openAdd('transaction')} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button label="Account" variant="secondary" onPress={() => openAdd('account')} />
+              <Button label="Add account" variant="secondary" onPress={() => openAdd('account')} />
             </View>
           </View>
 
-          <SectionHeader title="Accounts" caption={`${data.accounts.length} tracked`} actionLabel="Add" onAction={() => openAdd('account')} />
+          <SectionHeader title="Accounts" actionLabel="Add" onAction={() => openAdd('account')} />
           {data.accounts.length === 0 ? (
             <EmptyState
               icon="wallet"
@@ -163,9 +189,8 @@ export default function WealthHub() {
               {data.accounts.map((account, index) => (
                 <ListRow
                   key={account.id}
-                  icon="wallet"
                   title={account.name}
-                  subtitle={account.type ?? 'Account'}
+                  subtitle={account.type ? account.type[0].toUpperCase() + account.type.slice(1) : 'Account'}
                   value={formatMoney(Number(account.balance ?? 0), account.currency ?? 'USD')}
                   last={index === data.accounts.length - 1}
                 />
@@ -197,6 +222,7 @@ export default function WealthHub() {
       {data && tab === 'goals' ? (
         <GoalsSegment budgets={data.budgets} transactions={data.transactions} onDelete={deleteBudget} />
       ) : null}
+      </SwipeSteps>
     </Screen>
   );
 }
@@ -218,16 +244,24 @@ const InvestmentsSegment = ({
 
   return (
     <>
-      <Card raised style={{ gap: space.lg }}>
+      <Card raised style={{ gap: space.xl }}>
         <StatRow>
-          <Stat value={formatMoney(portfolio)} label="Market value" tone="primary" />
-          <Stat value={formatMoney(gain)} label={gain >= 0 ? 'Unrealized gain' : 'Unrealized loss'} tone={gain >= 0 ? 'success' : 'danger'} />
-          <Stat value={`${gainPct}%`} label="Return" tone={gainPct >= 0 ? 'success' : 'danger'} />
+          <Stat value={formatMoney(portfolio)} label="Market value" />
+          <Stat
+            value={formatMoney(gain)}
+            label={gain >= 0 ? 'Unrealized gain' : 'Unrealized loss'}
+            tone={gain >= 0 ? 'success' : 'danger'}
+          />
+          <Stat
+            value={`${gainPct}%`}
+            label="Return"
+            tone={gainPct >= 0 ? 'success' : 'danger'}
+          />
         </StatRow>
-        <Button label="Add holding" onPress={() => openAdd('investment')} icon={<Icon name="plus" size={18} color={colors.onPrimary} />} />
+        <Button label="Add holding" onPress={() => openAdd('investment')} />
       </Card>
 
-      <SectionHeader title="Holdings" caption="Long press a holding to remove it" />
+      <SectionHeader title="Holdings" />
       {investments.length === 0 ? (
         <EmptyState
           icon="chart"
@@ -245,7 +279,6 @@ const InvestmentsSegment = ({
             return (
               <DeletableRow
                 key={investment.id}
-                icon="chart"
                 title={investment.instrument}
                 subtitle={`${formatNumber(Number(investment.units ?? 0))} units · avg ${formatMoney(Number(investment.avg_cost ?? 0))}`}
                 value={`${formatMoney(value)} (${positionGain >= 0 ? '+' : ''}${formatMoney(positionGain)})`}
@@ -276,45 +309,78 @@ const ExpensesSegment = ({
   const { colors } = useTheme();
   const expenseRows = transactions.filter((row) => row.direction === 'out');
   const groups = buildSmartSpendingGroups(expenseRows);
-  const topGroups = groups.slice(0, 7).map((group) => ({ label: group.label.split(' ')[0], value: group.total }));
+  const donutColors = [colors.primary, colors.amber, colors.bonds, colors.success, colors.danger];
 
   return (
     <>
-      <Card raised style={{ gap: space.lg }}>
+      <Card raised style={{ gap: space.xl }}>
         <StatRow>
-          <Stat value={formatMoney(income)} label="Income" tone="success" />
-          <Stat value={formatMoney(expenses)} label="Expenses" tone="danger" />
-          <Stat value={formatMoney(income - expenses)} label="Net cash flow" tone={income - expenses >= 0 ? 'success' : 'danger'} />
+          <Stat value={formatMoney(income)} label="Income" />
+          <Stat value={formatMoney(expenses)} label="Expenses" />
+          <Stat
+            value={formatMoney(income - expenses)}
+            label="Net cash flow"
+            tone={income - expenses >= 0 ? 'success' : 'danger'}
+          />
         </StatRow>
-        <Button label="Add transaction" onPress={() => openAdd('transaction')} icon={<Icon name="plus" size={18} color={colors.onPrimary} />} />
+        <Button label="Add transaction" onPress={() => openAdd('transaction')} />
       </Card>
 
       {groups.length > 0 ? (
-        <Card style={{ gap: space.lg }}>
-          <SectionHeader title="Smart spending groups" caption="Keyword grouping from category and note" />
-          <BarChart data={topGroups} color={colors.amber} height={150} formatValue={(value) => formatMoney(value)} />
-          <View style={{ gap: space.md }}>
-            {groups.slice(0, 5).map((group) => (
-              <View key={group.groupKey} style={{ gap: space.xs }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-                  <AppText variant="callout">{group.label}</AppText>
-                  <AppText variant="footnote" tone="secondary">
-                    {formatMoney(group.total)}
-                  </AppText>
-                </View>
-                <Progress value={expenses > 0 ? (group.total / expenses) * 100 : 0} color={colors.amber} />
+        <>
+          <SectionHeader title="Spending" />
+          <Card style={{ gap: space.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
+              <Donut
+                size={150}
+                stroke={18}
+                segments={groups.slice(0, 5).map((group, index) => ({
+                  key: group.groupKey,
+                  label: group.label,
+                  value: group.total,
+                  color: donutColors[index % donutColors.length],
+                }))}
+                centerValue={formatMoney(expenses)}
+                centerLabel="total"
+              />
+              <View style={{ flex: 1, gap: 7 }}>
+                {groups.slice(0, 5).map((group, index) => (
+                  <View
+                    key={group.groupKey}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                  >
+                    <View
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: donutColors[index % donutColors.length],
+                      }}
+                    />
+                    <AppText variant="footnote" tone="secondary" style={{ flex: 1 }}>
+                      {group.label}
+                    </AppText>
+                    <AppText variant="footnote" style={{ fontVariant: ['tabular-nums'] }}>
+                      {formatMoney(group.total)}
+                    </AppText>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-        </Card>
+            </View>
+          </Card>
+        </>
       ) : null}
 
-      <SectionHeader title="Transactions" caption="Long press to delete and restore account balance" actionLabel="Add" onAction={() => openAdd('transaction')} />
+      <SectionHeader
+        title="Transactions"
+        actionLabel="Add"
+        onAction={() => openAdd('transaction')}
+      />
       {transactions.length === 0 ? (
         <EmptyState
           icon="wallet"
           title="No transactions this month"
-          message="Log income and expenses to see cash flow, smart groups, and budget usage."
+          message="Log income and expenses to see cash flow and budget usage."
           actionLabel="Add transaction"
           onAction={() => openAdd('transaction')}
         />
@@ -323,7 +389,6 @@ const ExpensesSegment = ({
           {transactions.map((transaction, index) => (
             <DeletableRow
               key={transaction.id}
-              icon={transaction.direction === 'in' ? 'arrowDown' : 'arrowUp'}
               title={transaction.note?.trim() || transaction.category || 'Transaction'}
               subtitle={`${transaction.category || 'Uncategorized'} · ${accountLabel(transaction)} · ${formatDate(transaction.occurred_at)}`}
               value={`${transaction.direction === 'in' ? '+' : '-'}${formatMoney(transaction.amount)}`}
@@ -356,13 +421,7 @@ const GoalsSegment = ({
 
   return (
     <>
-      <Card raised style={{ gap: space.lg }}>
-        <AppText variant="headline">Budget goals</AppText>
-        <AppText variant="footnote" tone="secondary">
-          Set category limits and watch this month's spending update automatically.
-        </AppText>
-        <Button label="New budget" onPress={() => openAdd('budget')} icon={<Icon name="target" size={18} color={colors.onPrimary} />} />
-      </Card>
+      <SectionHeader title="Budgets" actionLabel="New" onAction={() => openAdd('budget')} />
 
       {budgets.length === 0 ? (
         <EmptyState
@@ -373,33 +432,48 @@ const GoalsSegment = ({
           onAction={() => openAdd('budget')}
         />
       ) : (
-        <View style={{ gap: space.lg }}>
+        <View style={{ gap: space.md }}>
           {budgets.map((budget) => {
-            const spent = Math.max(Number(budget.spent_amount ?? 0), spentByCategory.get(budget.category.toLowerCase()) ?? 0);
+            const spent = Math.max(
+              Number(budget.spent_amount ?? 0),
+              spentByCategory.get(budget.category.toLowerCase()) ?? 0,
+            );
             const percent = budget.limit_amount > 0 ? (spent / budget.limit_amount) * 100 : 0;
             const over = percent > 100;
             return (
-              <Card key={budget.id} style={{ gap: space.md }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <AppText variant="headline">{budget.category}</AppText>
-                    <AppText variant="caption" tone="tertiary">
-                      {budget.period ?? 'monthly'} budget · long press row below to remove
+              <Pressable
+                key={budget.id}
+                accessibilityRole="button"
+                accessibilityHint="Long press to delete this budget"
+                onLongPress={() => onDelete(budget)}
+                delayLongPress={350}
+              >
+                <Card style={{ gap: space.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
+                    <AppText variant="callout" style={{ flex: 1 }}>
+                      {budget.category}
+                    </AppText>
+                    <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
+                      {formatMoney(spent)} / {formatMoney(budget.limit_amount)}
                     </AppText>
                   </View>
-                  <AppText variant="footnote" tone={over ? 'danger' : 'secondary'}>
-                    {Math.round(percent)}%
-                  </AppText>
-                </View>
-                <Progress value={percent} color={over ? colors.danger : colors.success} />
-                <DeletableRow
-                  title={`${formatMoney(spent)} spent`}
-                  subtitle={`Limit ${formatMoney(budget.limit_amount)}`}
-                  value={over ? `${formatMoney(spent - budget.limit_amount)} over` : `${formatMoney(budget.limit_amount - spent)} left`}
-                  last
-                  onDelete={() => onDelete(budget)}
-                />
-              </Card>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                    <RingMeter
+                      value={Math.min(percent, 100)}
+                      max={100}
+                      size={48}
+                      stroke={5}
+                      color={over ? colors.danger : colors.primary}
+                      center={`${Math.round(percent)}%`}
+                    />
+                    <AppText variant="footnote" tone={over ? 'danger' : 'tertiary'} style={{ flex: 1 }}>
+                      {over
+                        ? `${formatMoney(spent - budget.limit_amount)} over`
+                        : `${formatMoney(budget.limit_amount - spent)} left`}
+                    </AppText>
+                  </View>
+                </Card>
+              </Pressable>
             );
           })}
         </View>

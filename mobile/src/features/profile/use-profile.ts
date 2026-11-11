@@ -77,7 +77,6 @@ export const useProfile = () => {
         .maybeSingle();
 
       const payload = {
-        user_id: userId!,
         first_name: input.firstName.trim() || null,
         last_name: input.lastName.trim() || null,
         updated_at: new Date().toISOString(),
@@ -90,13 +89,9 @@ export const useProfile = () => {
           .eq('id', existing.data.id);
         if (error) throw new Error(error.message);
       } else {
-        const { error } = await supabase.from('profiles').insert(payload);
+        const { error } = await supabase.from('profiles').insert({ ...payload, user_id: userId! });
         if (error) throw new Error(error.message);
       }
-
-      await supabase.auth.updateUser({
-        data: { first_name: input.firstName.trim() },
-      });
     },
     onSuccess: invalidate,
   });
@@ -119,7 +114,6 @@ export const useProfile = () => {
         .maybeSingle();
 
       const payload = {
-        user_id: userId!,
         birth_date: input.birthDate,
         gender: input.gender,
         height_cm: input.heightCm,
@@ -138,7 +132,9 @@ export const useProfile = () => {
           .eq('id', existing.data.id);
         if (error) throw new Error(error.message);
       } else {
-        const { error } = await supabase.from('user_profiles_health').insert(payload);
+        const { error } = await supabase
+          .from('user_profiles_health')
+          .insert({ ...payload, user_id: userId! });
         if (error) throw new Error(error.message);
       }
     },
@@ -189,12 +185,12 @@ export const useProfile = () => {
         .maybeSingle();
 
       const payload = {
-        user_id: userId!,
         first_name: input.firstName.trim(),
         last_name: input.lastName?.trim() || null,
         data_preferences: {
           focus: input.focus,
           onboarding_goal: input.goal.trim(),
+          onboarding_completed: true,
           onboarded_at: new Date().toISOString(),
         },
         updated_at: new Date().toISOString(),
@@ -207,17 +203,9 @@ export const useProfile = () => {
           .eq('id', existing.data.id);
         if (error) throw new Error(error.message);
       } else {
-        const { error } = await supabase.from('profiles').insert(payload);
+        const { error } = await supabase.from('profiles').insert({ ...payload, user_id: userId! });
         if (error) throw new Error(error.message);
       }
-
-      await supabase.auth.updateUser({
-        data: {
-          first_name: input.firstName.trim(),
-          onboarding_completed: true,
-          focus: input.focus,
-        },
-      });
     },
     onSuccess: invalidate,
   });

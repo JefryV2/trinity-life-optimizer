@@ -3,7 +3,6 @@ import { View } from 'react-native';
 
 import { FormFrame } from '@/components/form-frame';
 import { AppText } from '@/components/ui/app-text';
-import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
 import { Slider } from '@/components/ui/slider';
 import { TextField } from '@/components/ui/text-field';
@@ -38,13 +37,12 @@ export const PersonForm = () => {
   return (
     <FormFrame
       title="Add a person"
-      subtitle="Relationships need names before contact can be tracked"
       submitLabel="Add person"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Name"
           value={name}
@@ -52,7 +50,7 @@ export const PersonForm = () => {
           placeholder="Who matters to you?"
           maxLength={60}
         />
-        <Chips options={RELATION_TYPES} value={type} onChange={setType} />
+        <Chips label="Type" options={RELATION_TYPES} value={type} onChange={setType} />
         <Slider
           label="Importance"
           value={importance}
@@ -69,7 +67,7 @@ export const PersonForm = () => {
           multiline
           maxLength={300}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -109,15 +107,15 @@ export const InteractionForm = ({ personId }: { personId?: string }) => {
   return (
     <FormFrame
       title="Log contact"
-      subtitle="Quality time, not message count"
       submitLabel="Save contact"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         {people.length > 0 ? (
           <Chips
+            label="Person"
             options={people.map((person) => ({ value: person.id, label: person.name }))}
             value={relationshipId}
             onChange={setRelationshipId}
@@ -127,7 +125,7 @@ export const InteractionForm = ({ personId }: { personId?: string }) => {
             Add a person first from the Relations tab.
           </AppText>
         )}
-        <Chips options={CHANNELS} value={channel} onChange={setChannel} />
+        <Chips label="Channel" options={CHANNELS} value={channel} onChange={setChannel} />
         <TextField
           label="Duration (minutes)"
           value={duration}
@@ -136,7 +134,7 @@ export const InteractionForm = ({ personId }: { personId?: string }) => {
           keyboardType="number-pad"
           maxLength={4}
         />
-        <Slider label="How did it feel?" value={mood} onChange={setMood} min={1} max={10} />
+        <Slider label="Feeling" value={mood} onChange={setMood} min={1} max={10} />
         <TextField
           label="Notes (optional)"
           value={notes}
@@ -145,7 +143,7 @@ export const InteractionForm = ({ personId }: { personId?: string }) => {
           multiline
           maxLength={300}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -166,13 +164,12 @@ export const GratitudeForm = () => {
   return (
     <FormFrame
       title="Gratitude"
-      subtitle="One good thing, in your own words"
       submitLabel="Save entry"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Today I'm grateful for…"
           value={text}
@@ -181,7 +178,7 @@ export const GratitudeForm = () => {
           multiline
           maxLength={400}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -203,13 +200,12 @@ export const QualityTimeForm = () => {
   return (
     <FormFrame
       title="Log quality time"
-      subtitle="Counts toward this month's goal"
       submitLabel="Save time"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Minutes"
           value={minutes}
@@ -218,7 +214,7 @@ export const QualityTimeForm = () => {
           keyboardType="number-pad"
           maxLength={4}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };

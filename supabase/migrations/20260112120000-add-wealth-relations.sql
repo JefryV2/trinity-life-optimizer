@@ -116,20 +116,17 @@ begin
     'quality_time_goals'
   ])
   loop
-    execute format('
-      create policy if not exists %I_select on public.%I
-      for select using (auth.uid() = user_id);
-    ', tbl || '_select', tbl);
+    execute format('drop policy if exists %I on public.%I', tbl || '_select', tbl);
+    execute format('create policy %I on public.%I for select using (auth.uid() = user_id)',
+      tbl || '_select', tbl);
 
-    execute format('
-      create policy if not exists %I_insert on public.%I
-      for insert with check (auth.uid() = user_id);
-    ', tbl || '_insert', tbl);
+    execute format('drop policy if exists %I on public.%I', tbl || '_insert', tbl);
+    execute format('create policy %I on public.%I for insert with check (auth.uid() = user_id)',
+      tbl || '_insert', tbl);
 
-    execute format('
-      create policy if not exists %I_update on public.%I
-      for update using (auth.uid() = user_id);
-    ', tbl || '_update', tbl);
+    execute format('drop policy if exists %I on public.%I', tbl || '_update', tbl);
+    execute format('create policy %I on public.%I for update using (auth.uid() = user_id)',
+      tbl || '_update', tbl);
   end loop;
 end$$;
 

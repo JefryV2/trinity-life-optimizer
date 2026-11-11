@@ -1,0 +1,2924 @@
+{
+  "type": "bulk_keep_going",
+  "args": [
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "budgets"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "budgets"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "budgets"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "budgets"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "category",
+            "period",
+            "limit_amount",
+            "spent_amount",
+            "period_start",
+            "period_end",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "budgets"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "exercise_records"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "exercise_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "exercise_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "exercise_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "exercise_type",
+            "exercise_name",
+            "duration_minutes",
+            "calories_burned",
+            "intensity",
+            "notes",
+            "completed_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "exercise_records"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "experiments"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "experiments"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "experiments"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "experiments"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "lever",
+            "target_label",
+            "started_on",
+            "ends_on",
+            "status",
+            "outcome",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "experiments"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "finance_accounts"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "finance_accounts"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "finance_accounts"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "finance_accounts"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "name",
+            "type",
+            "balance",
+            "currency",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "finance_accounts"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "food_entries"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "food_entries"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "food_entries"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "food_entries"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "food_name",
+            "calories_per_serving",
+            "servings",
+            "total_calories",
+            "protein_g",
+            "carbs_g",
+            "fat_g",
+            "fiber_g",
+            "sugar_g",
+            "sodium_mg",
+            "meal_type",
+            "consumed_at",
+            "notes",
+            "fdc_id"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "food_entries"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "gratitude_entries"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "gratitude_entries"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "gratitude_entries"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "gratitude_entries"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "text"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "gratitude_entries"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_daily_scores"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "score"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "goal_type",
+            "title",
+            "description",
+            "target_value",
+            "current_value",
+            "unit",
+            "target_date",
+            "status",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals_progress"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "score",
+            "completed_count",
+            "total_count"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_reminders"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_reminders"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_reminders"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_reminders"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "reminder_type",
+            "title",
+            "message",
+            "scheduled_time",
+            "days_of_week",
+            "is_active",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "health_reminders"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "heart_rate_data"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "heart_rate_data"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "heart_rate_data"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "heart_rate_data"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "heart_rate",
+            "timestamp",
+            "source_device",
+            "activity_type",
+            "confidence"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "heart_rate_data"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "hydration_records"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "hydration_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "hydration_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "hydration_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "water_intake_ml",
+            "target_ml",
+            "cups_consumed",
+            "last_drink_time",
+            "notes",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "hydration_records"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "interactions"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "interactions"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "interactions"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "interactions"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "relationship_id",
+            "channel",
+            "duration_minutes",
+            "mood_rating",
+            "occurred_at",
+            "notes"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "interactions"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "investments"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "investments"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "investments"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "investments"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "instrument",
+            "units",
+            "avg_cost",
+            "market_value",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "investments"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "menstrual_cycles"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "menstrual_cycles"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "menstrual_cycles"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "menstrual_cycles"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "cycle_start_date",
+            "cycle_end_date",
+            "cycle_length_days",
+            "period_length_days",
+            "flow_intensity",
+            "symptoms",
+            "mood_rating",
+            "pain_level",
+            "notes",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "menstrual_cycles"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "mental_health_logs"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "mental_health_logs"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "mental_health_logs"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "mental_health_logs"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "mood_rating",
+            "stress_level",
+            "anxiety_level",
+            "energy_level",
+            "sleep_quality_rating",
+            "physical_symptoms",
+            "thoughts",
+            "activities",
+            "triggers",
+            "coping_strategies",
+            "notes",
+            "logged_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "mental_health_logs"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "profiles"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "profiles"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "profiles"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "profiles"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "first_name",
+            "last_name",
+            "tier",
+            "updated_at",
+            "data_preferences"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "profiles"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "quality_time_goals"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "quality_time_goals"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "quality_time_goals"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "quality_time_goals"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "target_minutes_per_week",
+            "completed_minutes",
+            "period_start",
+            "period_end",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "quality_time_goals"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_daily_scores"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "score"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_goals_progress"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "score",
+            "completed_count",
+            "total_count"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relations_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relationships"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relationships"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relationships"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relationships"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "name",
+            "relation_type",
+            "importance",
+            "last_contact_at",
+            "notes",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "relationships"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "score_snapshots"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "score_snapshots"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "score_snapshots"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "score_snapshots"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "total",
+            "health",
+            "wealth",
+            "bonds",
+            "sleep_hours",
+            "steps",
+            "water_ml",
+            "exercise_min",
+            "savings_rate",
+            "interactions",
+            "mood",
+            "net_worth"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "score_snapshots"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "sleep_records"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "sleep_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "sleep_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "sleep_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "bedtime",
+            "wake_time",
+            "sleep_duration_hours",
+            "sleep_quality",
+            "notes",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "sleep_records"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "step_records"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "step_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "step_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "step_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "steps",
+            "date"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "step_records"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "transactions"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "transactions"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "transactions"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "transactions"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "account_id",
+            "amount",
+            "category",
+            "direction",
+            "occurred_at",
+            "note",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "transactions"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "user_profiles_health"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "user_profiles_health"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "user_profiles_health"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "user_profiles_health"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "height_cm",
+            "weight_kg",
+            "target_weight_kg",
+            "goal_type",
+            "daily_caloric_target",
+            "activity_level",
+            "gender",
+            "birth_date",
+            "updated_at",
+            "resting_heart_rate",
+            "daily_step_goal"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "user_profiles_health"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "uv_index_records"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "uv_index_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "uv_index_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "uv_index_records"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "uv_index",
+            "location",
+            "exposure_duration_minutes",
+            "protection_used",
+            "notes",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "uv_index_records"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_daily_scores"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "score"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_daily_scores"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_goals_progress"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "score",
+            "completed_count",
+            "total_count"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "wealth_goals_progress"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_track_table",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "womens_health_daily_logs"
+        }
+      }
+    },
+    {
+      "type": "pg_create_select_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "womens_health_daily_logs"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_insert_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "womens_health_daily_logs"
+        },
+        "role": "user",
+        "permission": {
+          "columns": "*",
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_update_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "womens_health_daily_logs"
+        },
+        "role": "user",
+        "permission": {
+          "columns": [
+            "date",
+            "flow_intensity",
+            "moods",
+            "symptoms",
+            "pain_level",
+            "notes",
+            "updated_at"
+          ],
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          },
+          "check": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "pg_create_delete_permission",
+      "args": {
+        "source": "default",
+        "table": {
+          "schema": "public",
+          "name": "womens_health_daily_logs"
+        },
+        "role": "user",
+        "permission": {
+          "filter": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

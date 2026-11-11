@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandMark } from '@/components/brand-mark';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { TextField } from '@/components/ui/text-field';
 import { useAuth } from '@/providers/auth-provider';
 import { space, useTheme } from '@/theme';
@@ -25,7 +25,7 @@ export default function SignUpScreen() {
 
   const submit = async () => {
     if (!firstName.trim()) {
-      setError('Tell us your first name.');
+      setError('Enter your first name.');
       return;
     }
     if (!email.trim() || !email.includes('@')) {
@@ -33,7 +33,7 @@ export default function SignUpScreen() {
       return;
     }
     if (password.length < 8) {
-      setError('Use at least 8 characters for your password.');
+      setError('Use at least 8 characters.');
       return;
     }
 
@@ -67,14 +67,11 @@ export default function SignUpScreen() {
             alignSelf: 'center',
           }}
         >
-          <BrandMark size={60} />
-          <View style={{ gap: space.sm }}>
-            <AppText variant="title">Check your email</AppText>
-            <AppText variant="body" tone="secondary">
-              We sent a confirmation link to {email.trim()}. Open it on this device, then come back
-              and sign in.
-            </AppText>
-          </View>
+          <BrandMark size={40} />
+          <PageHeader
+            title="Check your email"
+            subtitle={`We sent a confirmation link to ${email.trim()}. Open it on this device, then sign in.`}
+          />
           <Button label="Back to sign in" onPress={() => router.replace('/sign-in')} />
         </ScrollView>
       </SafeAreaView>
@@ -99,19 +96,17 @@ export default function SignUpScreen() {
             alignSelf: 'center',
           }}
         >
-          <View style={{ gap: space.lg }}>
-            <BrandMark size={68} />
-            <View style={{ gap: space.sm }}>
-              <AppText variant="hero">Start your Trinity</AppText>
-              <AppText variant="body" tone="secondary">
-                One place for the three things that compound: your body, your money, your people.
-              </AppText>
-            </View>
+          <View style={{ gap: space.xl }}>
+            <BrandMark size={44} />
+            <PageHeader
+              title="Create account"
+              subtitle="One place for the three things that compound: your body, your money, your people."
+            />
           </View>
 
-          <Card style={{ gap: space.lg }}>
+          <View style={{ gap: space.lg }}>
             <TextField
-              label="FIRST NAME"
+              label="First name"
               value={firstName}
               onChangeText={setFirstName}
               placeholder="Yomna"
@@ -121,7 +116,7 @@ export default function SignUpScreen() {
               returnKeyType="next"
             />
             <TextField
-              label="EMAIL"
+              label="Email"
               value={email}
               onChangeText={setEmail}
               placeholder="you@example.com"
@@ -133,7 +128,7 @@ export default function SignUpScreen() {
               returnKeyType="next"
             />
             <TextField
-              label="PASSWORD"
+              label="Password"
               value={password}
               onChangeText={setPassword}
               placeholder="At least 8 characters"
@@ -144,7 +139,6 @@ export default function SignUpScreen() {
               returnKeyType="go"
               onSubmitEditing={submit}
               error={error}
-              helper="Stored by Supabase Auth, never in plain text."
             />
             <Button
               label="Create account"
@@ -152,17 +146,17 @@ export default function SignUpScreen() {
               loading={submitting}
               disabled={submitting}
             />
-          </Card>
+          </View>
 
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace('/sign-in')}
             hitSlop={12}
-            style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+            style={{ minHeight: 32, justifyContent: 'center' }}
           >
             <AppText variant="footnote" tone="secondary">
               Already have an account?{' '}
-              <AppText variant="footnote" style={{ color: colors.primary, fontWeight: '600' }}>
+              <AppText variant="footnote" tone="primary">
                 Sign in
               </AppText>
             </AppText>

@@ -2,7 +2,7 @@ import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { radius, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 interface ListRowProps {
   title: string;
@@ -12,8 +12,13 @@ interface ListRowProps {
   onPress?: () => void;
   destructive?: boolean;
   last?: boolean;
+  chevron?: boolean;
 }
 
+/**
+ * A ledger line. The icon shares one column, labels start on one line, the
+ * value sits right, and the rule under the row is the only decoration.
+ */
 export const ListRow = ({
   title,
   subtitle,
@@ -22,6 +27,7 @@ export const ListRow = ({
   onPress,
   destructive = false,
   last = false,
+  chevron = true,
 }: ListRowProps) => {
   const { colors } = useTheme();
   const content = (
@@ -35,25 +41,16 @@ export const ListRow = ({
       }}
     >
       {icon ? (
-        <View
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: radius.small,
-            backgroundColor: colors.primarySoft,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name={icon} size={17} color={colors.primary} />
+        <View style={{ width: 24, alignItems: 'center' }}>
+          <Icon name={icon} size={18} color={destructive ? colors.danger : colors.textTertiary} />
         </View>
       ) : null}
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flex: 1, gap: 1 }}>
         <AppText variant="callout" tone={destructive ? 'danger' : 'default'}>
           {title}
         </AppText>
         {subtitle ? (
-          <AppText variant="caption" tone="tertiary">
+          <AppText variant="footnote" tone="tertiary">
             {subtitle}
           </AppText>
         ) : null}
@@ -63,18 +60,13 @@ export const ListRow = ({
           {value}
         </AppText>
       ) : null}
-      {onPress ? <Icon name="chevron" size={14} color={colors.textTertiary} /> : null}
+      {onPress && chevron ? <Icon name="chevron" size={16} color={colors.textTertiary} /> : null}
     </View>
   );
 
   if (!onPress) {
     return (
-      <View
-        style={{
-          borderBottomWidth: last ? 0 : 1,
-          borderBottomColor: colors.separator,
-        }}
-      >
+      <View style={{ borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.separator }}>
         {content}
       </View>
     );
@@ -87,7 +79,7 @@ export const ListRow = ({
       style={({ pressed }) => ({
         borderBottomWidth: last ? 0 : 1,
         borderBottomColor: colors.separator,
-        opacity: pressed ? 0.6 : 1,
+        opacity: pressed ? 0.55 : 1,
       })}
     >
       {content}

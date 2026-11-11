@@ -7,7 +7,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { radius, space, useTheme } from '@/theme';
 
 export const EmptyState = ({
-  icon = 'sparkles',
+  icon = 'note',
   title,
   message,
   actionLabel,
@@ -21,27 +21,14 @@ export const EmptyState = ({
 }) => {
   const { colors } = useTheme();
   return (
-    <Card style={{ alignItems: 'center', gap: space.md, paddingVertical: space.section }}>
-      <View
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: radius.pill,
-          backgroundColor: colors.primarySoft,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name={icon} size={22} color={colors.primary} />
-      </View>
-      <AppText variant="headline" style={{ textAlign: 'center' }}>
-        {title}
-      </AppText>
-      <AppText variant="footnote" tone="secondary" style={{ textAlign: 'center', maxWidth: 280 }}>
+    <Card style={{ gap: space.md, paddingVertical: space.section }}>
+      <Icon name={icon} size={22} color={colors.textTertiary} />
+      <AppText variant="headline">{title}</AppText>
+      <AppText variant="footnote" tone="secondary" style={{ maxWidth: 300 }}>
         {message}
       </AppText>
       {actionLabel && onAction ? (
-        <Button label={actionLabel} onPress={onAction} size="small" variant="soft" />
+        <Button label={actionLabel} onPress={onAction} size="small" variant="secondary" />
       ) : null}
     </Card>
   );
@@ -58,8 +45,8 @@ export const ErrorState = ({
   return (
     <Card style={{ gap: space.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        <Icon name="bell" size={18} color={colors.danger} />
-        <AppText variant="headline">Could not load</AppText>
+        <Icon name="warning" size={18} color={colors.danger} />
+        <AppText variant="headline">Couldn't load</AppText>
       </View>
       <AppText variant="footnote" tone="secondary" selectable>
         {message}
@@ -74,21 +61,23 @@ export const ErrorState = ({
 export const LoadingState = ({ rows = 3 }: { rows?: number }) => {
   const { colors } = useTheme();
   return (
-    <View style={{ gap: space.lg }}>
+    <View style={{ gap: space.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        <ActivityIndicator color={colors.primary} />
-        <AppText variant="footnote" tone="secondary">
-          Reading your records…
+        <ActivityIndicator size="small" color={colors.textTertiary} />
+        <AppText variant="footnote" tone="tertiary">
+          Loading
         </AppText>
       </View>
       {Array.from({ length: rows }).map((_, index) => (
         <View
           key={index}
           style={{
-            height: 92,
+            height: 64,
             borderRadius: radius.card,
+            borderWidth: 1,
+            borderColor: colors.separator,
             backgroundColor: colors.surfaceAlt,
-            opacity: 0.7 - index * 0.15,
+            opacity: 0.8 - index * 0.15,
           }}
         />
       ))}

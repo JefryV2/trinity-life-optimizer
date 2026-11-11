@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { FormFrame } from '@/components/form-frame';
-import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { Slider } from '@/components/ui/slider';
@@ -52,13 +51,13 @@ export const SleepForm = () => {
   return (
     <FormFrame
       title="Log sleep"
-      subtitle="Last night's recovery"
+      subtitle="Last night"
       submitLabel="Save sleep"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Hours slept"
           value={hours}
@@ -84,7 +83,7 @@ export const SleepForm = () => {
           multiline
           maxLength={300}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -137,13 +136,12 @@ export const ExerciseForm = () => {
   return (
     <FormFrame
       title="Log exercise"
-      subtitle="Movement counts double when it's written down"
       submitLabel="Save session"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Session"
           value={name}
@@ -151,7 +149,7 @@ export const ExerciseForm = () => {
           placeholder="Morning run, push day, yoga…"
           maxLength={80}
         />
-        <Chips options={EXERCISE_TYPES} value={type} onChange={setType} />
+        <Chips label="Type" options={EXERCISE_TYPES} value={type} onChange={setType} />
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <TextField
@@ -174,7 +172,7 @@ export const ExerciseForm = () => {
             />
           </View>
         </View>
-        <Chips options={INTENSITIES} value={intensity} onChange={setIntensity} />
+        <Chips label="Intensity" options={INTENSITIES} value={intensity} onChange={setIntensity} />
         <TextField
           label="Notes (optional)"
           value={notes}
@@ -183,7 +181,7 @@ export const ExerciseForm = () => {
           multiline
           maxLength={300}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -205,13 +203,13 @@ export const StepsForm = () => {
   return (
     <FormFrame
       title="Set today's steps"
-      subtitle="Replaces today's total — use your watch or phone's count"
+      subtitle="Replaces today's total"
       submitLabel="Save steps"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Steps today"
           value={steps}
@@ -220,7 +218,7 @@ export const StepsForm = () => {
           keyboardType="number-pad"
           maxLength={6}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -271,13 +269,13 @@ export const FoodForm = ({ meal = false }: { meal?: boolean }) => {
   return (
     <FormFrame
       title={meal ? 'Log a meal' : 'Log food'}
-      subtitle={meal ? 'Totals for the whole plate' : 'Search the database from the Nutrition tab, or enter it here'}
+      subtitle={meal ? undefined : 'Values from the label'}
       submitLabel={meal ? 'Save meal' : 'Save food'}
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label={meal ? 'Meal name' : 'Food'}
           value={name}
@@ -285,7 +283,7 @@ export const FoodForm = ({ meal = false }: { meal?: boolean }) => {
           placeholder={meal ? 'Chicken rice bowl' : 'Oat milk latte'}
           maxLength={100}
         />
-        <Chips options={MEALS} value={mealType} onChange={setMealType} />
+        <Chips label="Meal" options={MEALS} value={mealType} onChange={setMealType} />
         <TextField
           label="Calories (kcal)"
           value={calories}
@@ -326,7 +324,7 @@ export const FoodForm = ({ meal = false }: { meal?: boolean }) => {
             />
           </View>
         </View>
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -341,8 +339,7 @@ export const MentalForm = () => {
 
   return (
     <FormFrame
-      title="Check in with yourself"
-      subtitle="Thirty seconds, honest answers"
+      title="Check in"
       submitLabel="Save check-in"
       loading={saving}
       error={error}
@@ -350,7 +347,7 @@ export const MentalForm = () => {
         void submit(() => addMental.mutateAsync({ mood, stress, energy, notes }))
       }
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <Slider label="Mood" value={mood} onChange={setMood} min={1} max={10} formatValue={(v) => `${v}/10`} />
         <Slider label="Stress" value={stress} onChange={setStress} min={1} max={10} formatValue={(v) => `${v}/10`} />
         <Slider label="Energy" value={energy} onChange={setEnergy} min={1} max={10} formatValue={(v) => `${v}/10`} />
@@ -362,7 +359,7 @@ export const MentalForm = () => {
           multiline
           maxLength={500}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -384,7 +381,6 @@ export const CycleForm = () => {
   return (
     <FormFrame
       title="Log cycle start"
-      subtitle="Predictions get sharper with every cycle"
       submitLabel="Save cycle"
       loading={saving}
       error={error}
@@ -394,9 +390,9 @@ export const CycleForm = () => {
         )
       }
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <DateTimeField label="First day" value={start} onChange={setStart} />
-        <Chips options={FLOWS} value={flow} onChange={setFlow} />
+        <Chips label="Flow" options={FLOWS} value={flow} onChange={setFlow} />
         <Slider label="Pain level" value={pain} onChange={setPain} min={0} max={10} />
         <TextField
           label="Notes (optional)"
@@ -406,7 +402,7 @@ export const CycleForm = () => {
           multiline
           maxLength={300}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -444,13 +440,12 @@ export const GoalForm = () => {
   return (
     <FormFrame
       title="New health goal"
-      subtitle="A number you can actually reach"
       submitLabel="Create goal"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Goal"
           value={title}
@@ -458,7 +453,7 @@ export const GoalForm = () => {
           placeholder="Walk 10k steps a day"
           maxLength={100}
         />
-        <Chips options={GOAL_TYPES} value={type} onChange={setType} />
+        <Chips label="Type" options={GOAL_TYPES} value={type} onChange={setType} />
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <TextField
@@ -480,7 +475,7 @@ export const GoalForm = () => {
             />
           </View>
         </View>
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -509,13 +504,13 @@ export const HeartManualForm = () => {
   return (
     <FormFrame
       title="Log heart rate"
-      subtitle="From your watch, a manual pulse check, or a connected monitor"
+      subtitle="Manual pulse check"
       submitLabel="Save reading"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Heart rate (bpm)"
           value={bpm}
@@ -524,8 +519,8 @@ export const HeartManualForm = () => {
           keyboardType="number-pad"
           maxLength={3}
         />
-        <Chips options={HEART_CONTEXTS} value={activity} onChange={setActivity} />
-      </Card>
+        <Chips label="Context" options={HEART_CONTEXTS} value={activity} onChange={setActivity} />
+      </View>
     </FormFrame>
   );
 };

@@ -13,6 +13,8 @@ import {
   type TransactionRow,
 } from '@/lib/scoring';
 import { supabase } from '@/lib/supabase';
+import { computeScore, computeStress, type ScoreReport, type StressReport } from '@/lib/score';
+import { saveDailySnapshot } from '@/lib/snapshots';
 import { useAuth } from '@/providers/auth-provider';
 
 export interface DashboardData {
@@ -43,6 +45,9 @@ export interface DashboardData {
     mood: number;
   };
   trinity: number;
+  /** The full explanation of the score; Today and /why both read this. */
+  score: ScoreReport;
+  stress: StressReport;
   insights: Array<{
     title: string;
     body: string;
@@ -162,14 +167,6 @@ export const useDashboard = () => {
       const mentalRows = (mental.data ?? []) as MentalRow[];
       const transactionRows = (transactions.data ?? []) as TransactionRow[];
 
-      const computedHealth = healthScore(sleepRows, exerciseRows, mentalRows);
-      const computedWealth = wealthScore(accounts.data ?? [], transactionRows);
-      const computedRelations = relationsScore(interactions.data ?? []);
-
-      const health = healthDaily.data?.[0]?.score ?? computedHealth;
-      const wealth = wealthDaily.data?.[0]?.score ?? computedWealth;
-      const relations = relationsDaily.data?.[0]?.score ?? computedRelations;
-
       const income = transactionRows
         .filter((row) => row.direction === 'in')
         .reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
@@ -212,6 +209,51 @@ export const useDashboard = () => {
               0,
             ) / (interactions.data ?? []).length
           : 0;
+
+      const scoreInput = {
+        health: {
+          steps: steps.data?.steps ?? 0,
+          sleepHours,
+          sleepQuality,
+          exerciseMinutes,
+          waterMl: hydration.data?.water_intake_ml ?? 0,
+          waterTarget: hydration.data?.target_ml ?? 2500,
+          // a missing log is not an opinion: null, not zero
+          mood: mentalRows.length > 0 ? mood : null,
+          stress: mentalRows.length > 0 ? stress : null,
+        },
+        wealth: { income, expenses, savingsRate: savingsRate(income, expenses) },
+        bonds: {
+          interactions7d: (interactions.data ?? []).length,
+          people: (relationships.data ?? []).length,
+          avgMood: interactionMood,
+        },
+      };
+
+      const score = computeScore(scoreInput);
+      const stressReport = computeStress(scoreInput);
+
+      // fire and forget: today's row is what experiments are judged from
+      void saveDailySnapshot(userId, score, {
+        sleepHours,
+        steps: steps.data?.steps ?? 0,
+        waterMl: hydration.data?.water_intake_ml ?? 0,
+        exerciseMinutes,
+        savingsRate: savingsRate(income, expenses),
+        interactions: (interactions.data ?? []).length,
+        mood: mentalRows.length > 0 ? mood : null,
+        netWorth: (accounts.data ?? []).reduce(
+          (sum, row) => sum + Number(row.balance ?? 0),
+          0,
+        ),
+      });
+
+      const pillarValue = (key: 'health' | 'wealth' | 'bonds') =>
+        score.pillars.find((pillar) => pillar.key === key)?.value ?? 0;
+
+      const health = pillarValue('health');
+      const wealth = pillarValue('wealth');
+      const relations = pillarValue('bonds');
 
       const insights: DashboardData['insights'] = [];
 
@@ -309,7 +351,9 @@ export const useDashboard = () => {
           interactions: (interactions.data ?? []).length,
           mood: interactionMood,
         },
-        trinity: trinityScore(health, wealth, relations),
+        trinity: score.total,
+        score,
+        stress: stressReport,
         insights: insights.slice(0, 3),
       };
     },

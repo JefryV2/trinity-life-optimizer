@@ -36,7 +36,7 @@ export const useReminders = () => {
       await Notifications.setNotificationChannelAsync('hydration', {
         name: 'Hydration',
         importance: Notifications.AndroidImportance.DEFAULT,
-        lightColor: '#B01B10',
+        lightColor: '#C6F24E',
       });
     }
     const permission = await Notifications.requestPermissionsAsync();

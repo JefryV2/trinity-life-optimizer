@@ -1,12 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 
-import { ScoreRing } from '@/components/charts/score-ring';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorState, LoadingState } from '@/components/ui/states';
@@ -43,7 +41,6 @@ export default function HydrationScreen() {
   const add = (amount: number) => {
     addWater.mutate(amount, {
       onSuccess: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
     });
   };
@@ -58,7 +55,6 @@ export default function HydrationScreen() {
     setWaterTarget.mutate(next, {
       onSuccess: () => {
         setMessage('Target saved.');
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
       onError: (err) => setMessage(err.message),
     });
@@ -84,49 +80,67 @@ export default function HydrationScreen() {
       {isPending ? <LoadingState rows={3} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
-      <Card raised style={{ alignItems: 'center', gap: space.lg }}>
-        <ScoreRing score={Math.min(percent, 100)} size={150} stroke={12} color={colors.accent} label="Hydrated" />
-        <View style={{ alignItems: 'center', gap: 2 }}>
-          <AppText variant="numeric" selectable style={{ fontSize: 34 }}>
-            {formatNumber(water)} ml
+      <View style={{ gap: space.sm }}>
+        <AppText variant="caption" tone="secondary" style={{ letterSpacing: 0.6 }}>
+          WATER TODAY
+        </AppText>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.sm }}>
+          <AppText variant="display" selectable>
+            {formatNumber(water)}
           </AppText>
-          <AppText variant="footnote" tone="secondary">
-            Target {formatNumber(target)} ml · {percent}%
+          <AppText variant="callout" tone="secondary">
+            of {formatNumber(target)} ml
           </AppText>
         </View>
-        <View style={{ flexDirection: 'row', gap: space.md }}>
-          <Button label="+250" variant="soft" onPress={() => add(250)} loading={addWater.isPending} />
-          <Button label="+500" variant="soft" onPress={() => add(500)} loading={addWater.isPending} />
-          <Button label="+1000" variant="soft" onPress={() => add(1000)} loading={addWater.isPending} />
+        <Progress value={percent} height={8} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <AppText variant="footnote" tone="tertiary">
+            {percent}% of target
+          </AppText>
+          <AppText variant="footnote" tone="tertiary">
+            {formatNumber(Math.max(0, target - water))} ml left
+          </AppText>
         </View>
-      </Card>
+      </View>
 
-      <SectionHeader title="Daily target" caption="Saved locally and to today's hydration record" />
-      <Card style={{ gap: space.lg }}>
+      <View style={{ flexDirection: 'row', gap: space.md }}>
+        <View style={{ flex: 1 }}>
+          <Button label="+250 ml" onPress={() => add(250)} loading={addWater.isPending} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button label="+500 ml" variant="secondary" onPress={() => add(500)} loading={addWater.isPending} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button label="+1 L" variant="secondary" onPress={() => add(1000)} loading={addWater.isPending} />
+        </View>
+      </View>
+
+      <SectionHeader title="Daily target" />
+      <View style={{ gap: space.lg }}>
         <TextField label="Target ml" value={targetText} onChangeText={setTargetText} keyboardType="number-pad" maxLength={4} />
         <Button label="Save target" onPress={saveTarget} loading={setWaterTarget.isPending} />
-      </Card>
+      </View>
 
       <SectionHeader title="Reminders" caption="Daily nudges at 10:00, 13:00, 16:00 and 19:00" />
-      <Card style={{ gap: space.md }}>
+      <View style={{ gap: space.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
           <View style={{ flex: 1, gap: 2 }}>
             <AppText variant="callout">Hydration reminders</AppText>
-            <AppText variant="caption" tone="tertiary">
-              Keep this on if you want scheduled water nudges.
+            <AppText variant="footnote" tone="tertiary">
+              Four reminders a day
             </AppText>
           </View>
           <Switch value={reminderState.enabled} onValueChange={toggleReminders} accessibilityLabel="Hydration reminders" />
         </View>
         {reminderState.enabled ? (
-          <Button label="Send test notification" variant="soft" size="small" onPress={() => void reminderState.test()} />
+          <Button label="Send test notification" variant="secondary" size="small" onPress={() => void reminderState.test()} />
         ) : null}
         {reminderState.message ? (
           <AppText variant="footnote" tone="secondary">
             {reminderState.message}
           </AppText>
         ) : null}
-      </Card>
+      </View>
 
       {message ? (
         <AppText variant="footnote" tone="secondary">

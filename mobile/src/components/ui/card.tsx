@@ -1,27 +1,15 @@
 import { View, type ViewProps } from 'react-native';
 
-import { radius, shadow, space, useTheme } from '@/theme';
-
 interface CardProps extends ViewProps {
   padded?: boolean;
   raised?: boolean;
 }
 
-export const Card = ({ padded = true, raised = false, style, ...rest }: CardProps) => {
-  const { colors } = useTheme();
-  return (
-    <View
-      {...rest}
-      style={[
-        {
-          backgroundColor: colors.surface,
-          borderRadius: radius.card,
-          borderCurve: 'continuous',
-          padding: padded ? space.xl : 0,
-          boxShadow: raised ? shadow.raised : shadow.card,
-        },
-        style,
-      ]}
-    />
-  );
+/**
+ * A section, not a box. The old bordered/filled card is gone — content now
+ * flows straight down the page. Kept as `Card` so existing screens keep
+ * compiling; `padded` and `raised` are no-ops kept for API compatibility.
+ */
+export const Card = ({ padded: _padded, raised: _raised, style, ...rest }: CardProps) => {
+  return <View {...rest} style={style} />;
 };

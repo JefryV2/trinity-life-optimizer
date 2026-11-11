@@ -1,14 +1,16 @@
-import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
-import { ScoreRing } from '@/components/charts/score-ring';
+import { TrinityRings } from '@/components/charts/trinity-rings';
+import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { Progress } from '@/components/ui/progress';
+import { Nudge } from '@/components/ui/pillar-strip';
 import { Screen } from '@/components/ui/screen';
+import { Reveal } from '@/components/ui/reveal';
 import { SectionHeader } from '@/components/ui/section-header';
 import { LoadingState, ErrorState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
@@ -16,7 +18,9 @@ import { useDashboard } from '@/features/dashboard/use-dashboard';
 import { useEnvironment } from '@/features/dashboard/use-environment';
 import { useHealth } from '@/features/health/use-health';
 import { formatLongDate, formatNumber, greeting, scoreLabel } from '@/lib/format';
+import { aqiColor, pm25Color, uvColor, uvLabel } from '@/lib/health-colors';
 import { openAdd, openHealth, openInsight, openRelations, openWealth } from '@/lib/navigation';
+import { ACTION_HINT, PILLAR_ROUTE } from '@/lib/score-labels';
 import { radius, space, useTheme } from '@/theme';
 
 const PILLAR_ICON: Record<string, IconName> = {
@@ -40,7 +44,6 @@ export default function Dashboard() {
   const drinkWater = useCallback(() => {
     addWater.mutate(250, {
       onSuccess: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
     });
   }, [addWater]);
@@ -71,41 +74,103 @@ export default function Dashboard() {
 
       {data ? (
         <>
-          <Card raised style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
-            <ScoreRing score={data.trinity} size={116} stroke={10} label="Trinity" />
-            <View style={{ flex: 1, gap: space.md }}>
-              <View style={{ gap: 2 }}>
-                <AppText variant="headline">{scoreLabel(data.trinity)}</AppText>
-                <AppText variant="footnote" tone="secondary">
-                  The average of your three pillars today.
-                </AppText>
-              </View>
-              {(['health', 'wealth', 'relations'] as const).map((pillar) => (
-                <View
-                  key={pillar}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}
+          <Reveal index={0}>
+          <View style={{ alignItems: 'center', gap: space.md }}>
+            <TrinityRings
+              size={220}
+              rings={[
+                { key: 'health', label: 'Health', value: data.health.score, color: colors.primary },
+                { key: 'wealth', label: 'Wealth', value: data.wealth.score, color: colors.amber },
+                { key: 'relations', label: 'Bonds', value: data.relations.score, color: colors.success },
+              ]}
+              center={Math.round(data.trinity)}
+              centerLabel="TRINITY"
+            />
+
+            <AppText variant="headline" tone="secondary">
+              {scoreLabel(data.trinity)}
+            </AppText>
+
+            <View style={{ flexDirection: 'row', gap: space.lg, width: '100%' }}>
+              {(
+                [
+                  {
+                    key: 'health' as const,
+                    label: 'Health',
+                    caption: `${formatNumber(data.health.steps)} steps`,
+                    value: data.health.score,
+                    open: () => openHealth(),
+                  },
+                  {
+                    key: 'wealth' as const,
+                    label: 'Wealth',
+                    caption: `${Math.round(data.wealth.rate)}% saved`,
+                    value: data.wealth.score,
+                    open: () => openWealth(),
+                  },
+                  {
+                    key: 'relations' as const,
+                    label: 'Bonds',
+                    caption: `${data.relations.people} people`,
+                    value: data.relations.score,
+                    open: openRelations,
+                  },
+                ]
+              ).map((pillar) => (
+                <Pressable
+                  key={pillar.key}
+                  accessibilityRole="button"
+                  onPress={pillar.open}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    alignItems: 'center',
+                    gap: 2,
+                    opacity: pressed ? 0.6 : 1,
+                  })}
                 >
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: pillarColor[pillar],
-                    }}
-                  />
-                  <AppText variant="footnote" tone="secondary" style={{ flex: 1 }}>
-                    {pillar[0].toUpperCase() + pillar.slice(1)}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 4,
+                        backgroundColor: pillarColor[pillar.key],
+                      }}
+                    />
+                    <AppText variant="caption" tone="secondary" style={{ letterSpacing: 0.4 }}>
+                      {pillar.label.toUpperCase()}
+                    </AppText>
+                  </View>
+                  <AppText
+                    variant="headline"
+                    style={{ fontSize: 30, lineHeight: 34, color: pillarColor[pillar.key] }}
+                  >
+                    {Math.round(pillar.value)}
                   </AppText>
-                  <AppText variant="footnote" style={{ fontVariant: ['tabular-nums'] }}>
-                    {Math.round(data[pillar].score)}
+                  <AppText variant="caption" tone="tertiary">
+                    {pillar.caption}
                   </AppText>
-                </View>
+                </Pressable>
               ))}
             </View>
-          </Card>
+          </View>
+          </Reveal>
 
+          {data.score?.topAction ? (
+            <View style={{ gap: space.sm }}>
+              <SectionHeader index="01" title="One thing" />
+              <Nudge
+                title={data.score.topAction.label}
+                body={ACTION_HINT[data.score.topAction.key] ?? 'Log this and the reading gets sharper.'}
+                actionLabel={`${data.score.topAction.points} points available`}
+                onPress={() => router.push(PILLAR_ROUTE[data.score.topAction!.pillar] as never)}
+              />
+            </View>
+          ) : null}
+
+          <Reveal index={1}>
           <View style={{ gap: space.md }}>
-            <SectionHeader title="Today's vitals" caption="From your latest records" />
+            <SectionHeader index="02" title="Today's vitals" caption="From your latest records" />
             <Card style={{ gap: space.lg }}>
               <StatRow>
                 <Stat value={formatNumber(data.health.steps)} label="Steps" />
@@ -128,33 +193,74 @@ export default function Dashboard() {
               </StatRow>
             </Card>
           </View>
+          </Reveal>
+
+          <Reveal index={2}>
+          <View style={{ gap: space.md }}>
+            <SectionHeader index="03" title="Stress" caption="What is loading you today" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
+              <RingMeter
+                value={data.stress.score}
+                max={100}
+                size={88}
+                stroke={7}
+                color={
+                  data.stress.level === 'High'
+                    ? colors.danger
+                    : data.stress.level === 'Medium'
+                      ? colors.amber
+                      : colors.primary
+                }
+                center={String(data.stress.score)}
+                label="Load"
+              />
+              <View style={{ flex: 1, gap: 4 }}>
+                <AppText variant="headline">{data.stress.level}</AppText>
+                <AppText variant="footnote" tone="secondary">
+                  {data.stress.drivers[0]
+                    ? `${data.stress.drivers[0].label} is the main driver.`
+                    : 'Nothing is loading you right now.'}
+                </AppText>
+                {data.stress.drivers.slice(1).map((driver) => (
+                  <AppText key={driver.key} variant="caption" tone="tertiary">
+                    {driver.label}
+                  </AppText>
+                ))}
+              </View>
+            </View>
+          </View>
+          </Reveal>
 
           {environment.data ? (
+            <Reveal index={3}>
             <View style={{ gap: space.md }}>
-              <SectionHeader title="Around you" caption="UV and air quality near your location" />
+              <SectionHeader index="03" title="Around you" caption="UV and air quality near your location" />
               <Card>
                 <StatRow>
                   <Stat
                     value={environment.data.uv !== null ? environment.data.uv.toFixed(1) : '—'}
-                    label="UV index"
-                    tone={environment.data.uv !== null && environment.data.uv >= 8 ? 'danger' : 'default'}
+                    label={`UV · ${uvLabel(environment.data.uv)}`}
+                    color={uvColor(environment.data.uv)}
                   />
                   <Stat
                     value={environment.data.aqi !== null ? String(environment.data.aqi) : '—'}
                     label={`Air · ${environment.data.label}`}
-                    tone={environment.data.aqi !== null && environment.data.aqi >= 4 ? 'danger' : 'default'}
+                    color={aqiColor(environment.data.aqi)}
                   />
                   <Stat
                     value={environment.data.pm25 !== null ? environment.data.pm25.toFixed(1) : '—'}
                     label="PM2.5 µg/m³"
+                    color={pm25Color(environment.data.pm25)}
                   />
                 </StatRow>
               </Card>
             </View>
+            </Reveal>
           ) : null}
 
+          <Reveal index={4}>
           <View style={{ gap: space.md }}>
-            <SectionHeader title="Quick log" caption="One tap, real records" />
+            <SectionHeader index="05" title="Quick log" caption="One tap, real records" />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
               <Button
                 label="+250 ml water"
@@ -174,78 +280,61 @@ export default function Dashboard() {
               <Button label="Mood" variant="secondary" size="small" onPress={() => openAdd('mental')} />
             </View>
           </View>
+          </Reveal>
 
+          <Reveal index={5}>
           <View style={{ gap: space.md }}>
-            <SectionHeader title="The three pillars" />
-            {(
-              [
-                {
-                  key: 'health' as const,
-                  title: 'Health',
-                  caption: `${data.health.exerciseMinutes} min moved · ${formatNumber(data.health.calories)} kcal eaten`,
-                  score: data.health.score,
-                  open: () => openHealth(),
-                },
-                {
-                  key: 'wealth' as const,
-                  title: 'Wealth',
-                  caption: `Savings rate ${Math.round(data.wealth.rate)}% this month`,
-                  score: data.wealth.score,
-                  open: () => openWealth(),
-                },
-                {
-                  key: 'relations' as const,
-                  title: 'Relations',
-                  caption: `${data.relations.people} people · ${data.relations.interactions} contacts this week`,
-                  score: data.relations.score,
-                  open: openRelations,
-                },
-              ]
-            ).map((pillar) => (
+            <SectionHeader index="06" title="Reading" />
+            <Card padded={false} style={{ paddingHorizontal: space.lg }}>
               <Pressable
-                key={pillar.key}
                 accessibilityRole="button"
-                onPress={pillar.open}
+                onPress={() => router.push('/why' as never)}
                 style={({ pressed }) => ({
-                  borderRadius: radius.card,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                  opacity: pressed ? 0.9 : 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  paddingVertical: space.md,
+                  opacity: pressed ? 0.6 : 1,
                 })}
               >
-                <Card style={{ gap: space.md }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                    <View
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: radius.small,
-                        backgroundColor: colors.surfaceAlt,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Icon name={PILLAR_ICON[pillar.key]} size={18} color={pillarColor[pillar.key]} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <AppText variant="callout" style={{ fontWeight: '600' }}>
-                        {pillar.title}
-                      </AppText>
-                      <AppText variant="caption" tone="tertiary">
-                        {pillar.caption}
-                      </AppText>
-                    </View>
-                    <AppText variant="headline" style={{ fontVariant: ['tabular-nums'] }}>
-                      {Math.round(pillar.score)}
-                    </AppText>
-                    <Icon name="chevron" size={14} color={colors.textTertiary} />
-                  </View>
-                  <Progress value={pillar.score} color={pillarColor[pillar.key]} />
-                </Card>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <AppText variant="callout">
+                    {data.score && data.score.total > 0
+                      ? `Why is it ${data.score.total}?`
+                      : 'How the score works'}
+                  </AppText>
+                  <AppText variant="footnote" tone="tertiary">
+                    Every point traced to something you logged
+                  </AppText>
+                </View>
+                <Icon name="chevron" size={16} color={colors.textTertiary} />
               </Pressable>
-            ))}
+              <View style={{ height: 1, backgroundColor: colors.separator }} />
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/experiments' as never)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  paddingVertical: space.md,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <AppText variant="callout">Run a 7-day experiment</AppText>
+                  <AppText variant="footnote" tone="tertiary">
+                    Hold one rule, then see what it actually changed
+                  </AppText>
+                </View>
+                <Icon name="chevron" size={16} color={colors.textTertiary} />
+              </Pressable>
+            </Card>
           </View>
+          </Reveal>
 
           {data.insights.length > 0 ? (
+            <Reveal index={6}>
             <View style={{ gap: space.md }}>
               <SectionHeader title="Coach notes" caption="Based on what you actually logged" />
               {data.insights.map((insight) => (
@@ -277,6 +366,7 @@ export default function Dashboard() {
                 </Pressable>
               ))}
             </View>
+            </Reveal>
           ) : null}
         </>
       ) : null}

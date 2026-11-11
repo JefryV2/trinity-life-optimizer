@@ -66,11 +66,9 @@ export const Sheet = ({ visible, title, subtitle, onClose, children, footer }: S
               height: 44,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: radius.pill,
-              backgroundColor: colors.surfaceAlt,
             }}
           >
-            <Icon name="close" size={18} color={colors.textSecondary} />
+            <Icon name="close" size={20} color={colors.textSecondary} />
           </Pressable>
         </View>
 

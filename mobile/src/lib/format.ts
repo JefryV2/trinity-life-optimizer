@@ -56,6 +56,14 @@ export const formatLongDate = (value: string | Date = new Date()): string => {
   });
 };
 
+/** Compact date stamp for the ruled header, like "Mon 9 Nov". */
+export const formatStamp = (value: Date = new Date()): string =>
+  value.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+
 export const relativeDay = (value: string | null): string => {
   if (!value) return 'No contact yet';
   const then = new Date(value).getTime();

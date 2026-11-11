@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { ActivityIndicator, Pressable, type PressableProps, type ViewStyle } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
@@ -29,7 +28,7 @@ export const Button = ({
 
   const background: Record<Variant, string> = {
     primary: colors.primary,
-    secondary: colors.surfaceAlt,
+    secondary: colors.surface,
     soft: colors.primarySoft,
     ghost: 'transparent',
     danger: colors.danger,
@@ -41,6 +40,9 @@ export const Button = ({
     ghost: colors.textSecondary,
     danger: '#FFFFFF',
   };
+  const filled = variant === 'primary' || variant === 'soft' || variant === 'danger';
+  const backgroundColor = isDisabled && filled ? colors.surfaceSunken : background[variant];
+  const textColor = isDisabled && filled ? colors.textTertiary : foreground[variant];
 
   return (
     <Pressable
@@ -49,32 +51,30 @@ export const Button = ({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       onPress={(event) => {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress?.(event);
       }}
       style={({ pressed }): ViewStyle => ({
-        minHeight: size === 'small' ? 40 : 48,
+        minHeight: size === 'small' ? 36 : 48,
         paddingHorizontal: size === 'small' ? space.md : space.lg,
-        borderRadius: size === 'small' ? radius.small : radius.inner,
+        borderRadius: radius.pill,
         borderCurve: 'continuous',
-        backgroundColor: background[variant],
+        borderWidth: variant === 'secondary' ? 1 : 0,
+        borderColor: colors.border,
+        backgroundColor,
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
         gap: space.sm,
-        opacity: isDisabled ? 0.45 : 1,
-        transform: [{ scale: pressed ? 0.96 : 1 }],
+        opacity: isDisabled ? 1 : pressed ? 0.8 : 1,
+        transform: [{ scale: pressed && !isDisabled ? 0.97 : 1 }],
       })}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={foreground[variant]} />
+        <ActivityIndicator size="small" color={textColor} />
       ) : (
         <>
           {icon}
-          <AppText
-            variant="callout"
-            style={{ color: foreground[variant], fontWeight: '600' }}
-          >
+          <AppText variant="callout" style={{ color: textColor, fontWeight: '800' }}>
             {label}
           </AppText>
         </>

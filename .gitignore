@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Nhost admin secret (never commit)
+db/.nhost-admin

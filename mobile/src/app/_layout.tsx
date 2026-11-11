@@ -1,14 +1,26 @@
+import {
+  Baloo2_400Regular,
+  Baloo2_500Medium,
+  Baloo2_600SemiBold,
+  Baloo2_700Bold,
+  Baloo2_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/baloo-2';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { CrashScreen } from '@/components/crash-screen';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { installCrashGuard } from '@/lib/crash-guard';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { palette } from '@/theme';
 
+installCrashGuard();
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
@@ -22,9 +34,9 @@ const queryClient = new QueryClient({
   },
 });
 
-const navigationTheme = (dark: boolean) => {
-  const base = dark ? DarkTheme : DefaultTheme;
-  const colors = dark ? palette.dark : palette.light;
+const navigationTheme = (_dark: boolean) => {
+  const base = DarkTheme;
+  const colors = palette.dark;
   return {
     ...base,
     colors: {
@@ -40,15 +52,21 @@ const navigationTheme = (dark: boolean) => {
 };
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, onboarded } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const dark = useColorScheme() === 'dark';
-  const colors = dark ? palette.dark : palette.light;
+  const dark = true;
+  const colors = palette.dark;
 
   useEffect(() => {
     if (!loading) void SplashScreen.hideAsync();
   }, [loading]);
+
+  // if anything stalls (network, fonts, first paint), show the app anyway
+  useEffect(() => {
+    const t = setTimeout(() => void SplashScreen.hideAsync(), 4000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -62,7 +80,6 @@ function RootNavigator() {
       return;
     }
 
-    const onboarded = session.user.user_metadata?.onboarding_completed === true;
     if (!onboarded) {
       if (!onOnboarding) router.replace('/onboarding');
       return;
@@ -71,7 +88,7 @@ function RootNavigator() {
     if (onAuthScreen || onOnboarding || root === undefined) {
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments, router]);
+  }, [session, loading, onboarded, segments, router]);
 
   return (
     <ThemeProvider value={navigationTheme(dark)}>
@@ -99,9 +116,12 @@ function RootNavigator() {
           name="profile"
           options={{ headerShown: false, presentation: 'modal' }}
         />
+        <Stack.Screen name="why" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="experiments" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="insights" options={{ headerShown: true, title: 'Insights' }} />
         <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Progress calendar' }} />
         <Stack.Screen name="hydration" options={{ headerShown: true, title: 'Hydration' }} />
+        <Stack.Screen name="walk" options={{ headerShown: true, title: 'Walk' }} />
         <Stack.Screen
           name="add/[form]"
           options={{ headerShown: false, presentation: 'formSheet', sheetGrabberVisible: true }}
@@ -112,13 +132,29 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Baloo2_400Regular,
+    Baloo2_500Medium,
+    Baloo2_600SemiBold,
+    Baloo2_700Bold,
+    Baloo2_800ExtraBold,
+  });
+
+  // Never block the app on fonts: if they fail, render with the system font.
+  if (!fontsLoaded && !fontError) return null;
+
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
-      </QueryClientProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        </QueryClientProvider>
+        <CrashScreen />
+      </ErrorBoundary>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

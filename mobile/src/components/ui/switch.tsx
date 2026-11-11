@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { Pressable, View } from 'react-native';
 
 import { radius, useTheme } from '@/theme';
@@ -20,7 +19,6 @@ export const Switch = ({ value, onValueChange, disabled = false, accessibilityLa
       disabled={disabled}
       hitSlop={8}
       onPress={() => {
-        void Haptics.selectionAsync();
         onValueChange(!value);
       }}
       style={({ pressed }) => ({
@@ -29,7 +27,7 @@ export const Switch = ({ value, onValueChange, disabled = false, accessibilityLa
         borderRadius: radius.pill,
         padding: 3,
         justifyContent: 'center',
-        backgroundColor: value ? colors.primary : colors.surfaceSunken,
+        backgroundColor: value ? colors.text : colors.surfaceSunken,
         opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
       })}
     >

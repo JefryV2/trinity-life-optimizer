@@ -5,7 +5,7 @@ import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Screen } from '@/components/ui/screen';
-import { radius, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 interface FormFrameProps {
   title: string;
@@ -18,6 +18,10 @@ interface FormFrameProps {
   children: React.ReactNode;
 }
 
+/**
+ * A logging surface. The title is the page, the fields flow straight down it,
+ * and the only "control" is the pill at the end. Nothing is boxed in.
+ */
 export const FormFrame = ({
   title,
   subtitle,
@@ -32,34 +36,32 @@ export const FormFrame = ({
   const router = useRouter();
 
   return (
-    <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <AppText variant="title">{title}</AppText>
-          {subtitle ? (
-            <AppText variant="footnote" tone="secondary">
-              {subtitle}
-            </AppText>
-          ) : null}
-        </View>
+    <Screen contentContainerStyle={{ paddingTop: space.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <AppText variant="caption" tone="primary" style={{ letterSpacing: 1.2 }}>
+          LOG
+        </AppText>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={() => router.back()}
-          style={{
-            width: 44,
-            height: 44,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: radius.pill,
-            backgroundColor: colors.surfaceAlt,
-          }}
+          hitSlop={12}
+          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Icon name="close" size={18} color={colors.textSecondary} />
+          <Icon name="close" size={20} color={colors.textSecondary} />
         </Pressable>
       </View>
 
-      {children}
+      <View style={{ gap: 6 }}>
+        <AppText variant="title">{title}</AppText>
+        {subtitle ? (
+          <AppText variant="callout" tone="secondary">
+            {subtitle}
+          </AppText>
+        ) : null}
+      </View>
+
+      <View style={{ gap: space.xl }}>{children}</View>
 
       {error ? (
         <AppText variant="footnote" tone="danger" selectable>

@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      experiments: {
+        Row: {
+          id: string
+          user_id: string
+          lever: string
+          target_label: string
+          started_on: string
+          ends_on: string
+          status: 'running' | 'done' | 'abandoned'
+          outcome: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          lever: string
+          target_label: string
+          started_on?: string
+          ends_on: string
+          status?: 'running' | 'done' | 'abandoned'
+          outcome?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['experiments']['Insert']>
+        Relationships: []
+      }
+      score_snapshots: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          total: number
+          health: number
+          wealth: number
+          bonds: number
+          sleep_hours: number | null
+          steps: number | null
+          water_ml: number | null
+          exercise_min: number | null
+          savings_rate: number | null
+          interactions: number | null
+          mood: number | null
+          net_worth: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          total: number
+          health: number
+          wealth: number
+          bonds: number
+          sleep_hours?: number | null
+          steps?: number | null
+          water_ml?: number | null
+          exercise_min?: number | null
+          savings_rate?: number | null
+          interactions?: number | null
+          mood?: number | null
+          net_worth?: number | null
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['score_snapshots']['Insert']>
+        Relationships: []
+      }
       exercise_records: {
         Row: {
           calories_burned: number | null

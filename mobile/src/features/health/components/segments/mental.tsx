@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import { BarChart } from '@/components/charts/bar-chart';
+import { Heatmap } from '@/components/charts/heatmap';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,10 +11,9 @@ import { Stat, StatRow } from '@/components/ui/stat';
 import { useHealth } from '@/features/health/use-health';
 import { formatDate } from '@/lib/format';
 import { openAdd } from '@/lib/navigation';
-import { space, useTheme } from '@/theme';
+import { space } from '@/theme';
 
 export const MentalSegment = () => {
-  const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, deleteRecord } = useHealth();
 
   if (isPending) return <LoadingState />;
@@ -27,7 +26,7 @@ export const MentalSegment = () => {
     .reverse()
     .map((record) => ({
       label: record.logged_at ? formatDate(record.logged_at) : '—',
-      value: record.mood_rating ?? 0,
+      value: record.mood_rating ?? null,
     }));
 
   return (
@@ -41,26 +40,26 @@ export const MentalSegment = () => {
           </StatRow>
         ) : (
           <AppText variant="footnote" tone="secondary">
-            No check-ins yet. Thirty seconds of honesty beats a week of guessing.
+            No check-ins yet.
           </AppText>
         )}
-        <Button label="Check in now" onPress={() => openAdd('mental')} />
+        <Button label="Check in" onPress={() => openAdd('mental')} />
       </Card>
 
-      {chart.length > 1 ? (
+      {chart.length > 0 ? (
         <Card style={{ gap: space.md }}>
           <SectionHeader title="Mood" caption="Last 7 check-ins" />
-          <BarChart data={chart} maxValue={10} color={colors.success} />
+          <Heatmap days={chart} />
         </Card>
       ) : null}
 
       <View style={{ gap: space.md }}>
-        <SectionHeader title="Journal" caption="Hold a row to delete" />
+        <SectionHeader title="Journal" />
         {data.mental.length === 0 ? (
           <EmptyState
             icon="brain"
             title="Nothing written yet"
-            message="Mood, stress, energy — three sliders and whatever is on your mind."
+            message="Mood, stress and energy, with a note."
             actionLabel="First check-in"
             onAction={() => openAdd('mental')}
           />

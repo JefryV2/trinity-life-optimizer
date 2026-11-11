@@ -208,6 +208,42 @@ export const useInsights = (days: 7 | 30) => {
         'Higher-step days have scored lower so far.',
       );
       addCorrelation(
+        'Sleep vs mood',
+        ordered.map((day) => day.sleep),
+        ordered.map((day) => day.mood),
+        'More sleep tends to lift your mood.',
+        'More sleep has tracked with lower mood so far.',
+      );
+      addCorrelation(
+        'Steps vs mood',
+        ordered.map((day) => day.steps),
+        ordered.map((day) => day.mood),
+        'Higher-step days tend to feel better.',
+        'Higher-step days have felt lower so far.',
+      );
+      addCorrelation(
+        'Health vs mood',
+        ordered.map((day) => day.health),
+        ordered.map((day) => day.mood),
+        'Health and mood move together.',
+        'Health and mood have moved apart.',
+      );
+      addCorrelation(
+        'Wealth vs mood',
+        ordered.map((day) => day.wealth),
+        ordered.map((day) => day.mood),
+        'Wealth and mood move together.',
+        'Wealth and mood have moved apart.',
+      );
+      addCorrelation(
+        'Bonds vs mood',
+        ordered.map((day) => day.relations),
+        ordered.map((day) => day.mood),
+        'Contact and mood move together.',
+        'Contact and mood have moved apart.',
+      );
+
+      addCorrelation(
         'Mood vs relations score',
         ordered.map((day) => day.mood),
         ordered.map((day) => day.relations),

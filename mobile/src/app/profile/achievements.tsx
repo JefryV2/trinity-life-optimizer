@@ -1,9 +1,8 @@
 import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { Card } from '@/components/ui/card';
+import { RingMeter } from '@/components/charts/ring-meter';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorState, LoadingState } from '@/components/ui/states';
@@ -11,7 +10,7 @@ import { useHealth } from '@/features/health/use-health';
 import { useRelations } from '@/features/relations/use-relations';
 import { useWealth } from '@/features/wealth/use-wealth';
 import { formatNumber } from '@/lib/format';
-import { radius, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 interface Achievement {
   title: string;
@@ -56,38 +55,44 @@ export default function AchievementsScreen() {
       {pending ? <LoadingState rows={4} /> : null}
       {failed ? <ErrorState message={failed.message} onRetry={retry} /> : null}
 
-      <SectionHeader title="Achievements" caption="Computed from your current records; no fake streaks." />
-      <View style={{ gap: space.lg }}>
-        {achievements.map((achievement) => {
+      <SectionHeader title="Milestones" caption="Everything you have logged so far" />
+      <View>
+        {achievements.map((achievement, index) => {
           const percent = achievement.target > 0 ? (achievement.current / achievement.target) * 100 : 0;
           const done = percent >= 100;
           return (
-            <Card key={achievement.title} style={{ gap: space.md }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: radius.inner,
-                    backgroundColor: done ? colors.surfaceAlt : colors.primarySoft,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon name={done ? 'check' : achievement.icon} size={20} color={done ? colors.success : colors.primary} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="headline">{achievement.title}</AppText>
-                  <AppText variant="footnote" tone="secondary">
-                    {achievement.body}
-                  </AppText>
-                </View>
-                <AppText variant="caption" tone={done ? 'success' : 'tertiary'}>
-                  {done ? 'Done' : `${formatNumber(achievement.current)}/${formatNumber(achievement.target)}`}
+            <View
+              key={achievement.title}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+                paddingVertical: space.md,
+                borderTopWidth: index === 0 ? 0 : 1,
+                borderTopColor: colors.separator,
+              }}
+            >
+              <RingMeter
+                value={Math.min(100, percent)}
+                max={100}
+                size={54}
+                stroke={5}
+                color={done ? colors.primary : colors.textFaint}
+                center={`${Math.round(Math.min(100, percent))}%`}
+              />
+              <View style={{ flex: 1, gap: 2 }}>
+                <AppText variant="callout">{achievement.title}</AppText>
+                <AppText variant="footnote" tone="tertiary">
+                  {achievement.body}
+                </AppText>
+                <AppText variant="caption" tone={done ? 'primary' : 'tertiary'}>
+                  {done
+                    ? 'Done'
+                    : `${formatNumber(achievement.current)} / ${formatNumber(achievement.target)}`}
                 </AppText>
               </View>
-              <Progress value={percent} color={done ? colors.success : colors.primary} />
-            </Card>
+              {done ? <Icon name="check" size={16} color={colors.primary} /> : null}
+            </View>
           );
         })}
       </View>

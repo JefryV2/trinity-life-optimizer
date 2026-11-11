@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { BarChart } from '@/components/charts/bar-chart';
@@ -12,10 +13,10 @@ import { useHealth } from '@/features/health/use-health';
 import { usePedometer } from '@/features/health/use-pedometer';
 import { formatDate, formatNumber, isoDate } from '@/lib/format';
 import { openAdd } from '@/lib/navigation';
-import { space, useTheme } from '@/theme';
+import { space } from '@/theme';
 
 export const FitnessSegment = () => {
-  const { colors } = useTheme();
+  const router = useRouter();
   const { data, isPending, isError, error, refetch, deleteRecord } = useHealth();
   const pedometer = usePedometer();
 
@@ -44,23 +45,24 @@ export const FitnessSegment = () => {
             of 10,000 steps
           </AppText>
         </View>
-        <Progress value={(stepsToday / 10000) * 100} color={colors.accent} height={10} />
-        <AppText variant="caption" tone="tertiary">
+        <Progress value={(stepsToday / 10000) * 100} height={6} />
+        <AppText variant="footnote" tone="tertiary">
           {stepsToday >= 10000
-            ? 'Target reached — everything extra is bonus.'
-            : `${formatNumber(10000 - stepsToday)} to go. A 20-minute walk is roughly 2,000.`}
+            ? 'Target reached.'
+            : `${formatNumber(10000 - stepsToday)} steps to target.`}
         </AppText>
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
+          <Button label="Walk with GPS" size="small" onPress={() => router.push('/walk' as never)} />
           <Button label="Set steps" variant="secondary" size="small" onPress={() => openAdd('steps')} />
-          <Button label="Log workout" size="small" onPress={() => openAdd('exercise')} />
+          <Button label="Log workout" variant="secondary" size="small" onPress={() => openAdd('exercise')} />
           {pedometer.tracking ? (
-            <Button label="Stop tracking" variant="soft" size="small" onPress={pedometer.stop} />
+            <Button label="Stop sensor" variant="secondary" size="small" onPress={pedometer.stop} />
           ) : (
-            <Button label="Track steps" variant="soft" size="small" onPress={() => void pedometer.start()} />
+            <Button label="Use sensor" variant="secondary" size="small" onPress={() => void pedometer.start()} />
           )}
         </View>
         {pedometer.message ? (
-          <AppText variant="caption" tone="secondary">
+          <AppText variant="footnote" tone="secondary">
             {pedometer.message}
           </AppText>
         ) : null}
@@ -69,22 +71,17 @@ export const FitnessSegment = () => {
       {stepHistory.length > 1 ? (
         <Card style={{ gap: space.md }}>
           <SectionHeader title="Steps" caption="Last 14 recorded days" />
-          <BarChart data={stepHistory} color={colors.accent} formatValue={(value) => `${Math.round(value / 100) / 10}k`} />
+          <BarChart data={stepHistory} />
         </Card>
       ) : null}
 
       <View style={{ gap: space.md }}>
-        <SectionHeader
-          title="Workouts"
-          caption="Hold a row to delete"
-          actionLabel="Add"
-          onAction={() => openAdd('exercise')}
-        />
+        <SectionHeader title="Workouts" actionLabel="Add" onAction={() => openAdd('exercise')} />
         {data.exercise.length === 0 ? (
           <EmptyState
             icon="dumbbell"
             title="No sessions yet"
-            message="Log the first one — even a 15-minute walk counts toward the activity score."
+            message="Log a workout to see weekly volume."
             actionLabel="Log exercise"
             onAction={() => openAdd('exercise')}
           />

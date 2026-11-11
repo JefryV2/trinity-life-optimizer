@@ -1,7 +1,7 @@
-import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 
+import { Donut } from '@/components/charts/donut';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -61,7 +61,6 @@ export const NutritionSegment = () => {
       },
       {
         onSuccess: () => {
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setSearchVisible(false);
           setQuery('');
           search.reset();
@@ -74,34 +73,49 @@ export const NutritionSegment = () => {
     <>
       <Card style={{ gap: space.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <AppText variant="headline">Today's fuel</AppText>
+          <AppText variant="headline">Calories</AppText>
           <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
             {formatNumber(calories)} / {formatNumber(calorieTarget)} kcal
           </AppText>
         </View>
         <Progress
           value={(calories / calorieTarget) * 100}
-          color={calories > calorieTarget ? colors.danger : colors.primary}
-          height={10}
+          color={calories > calorieTarget ? colors.danger : undefined}
         />
-        <View style={{ gap: space.sm, marginTop: space.xs }}>
-          {[
-            { label: 'Protein', value: protein, target: proteinTarget, color: colors.success },
-            { label: 'Carbs', value: carbs, target: 250, color: colors.amber },
-            { label: 'Fat', value: fat, target: 70, color: colors.accent },
-          ].map((macro) => (
-            <View key={macro.label} style={{ gap: 4 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <AppText variant="caption" tone="secondary">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg, marginTop: space.xs }}>
+          <Donut
+            size={128}
+            stroke={15}
+            segments={[
+              { key: 'protein', label: 'Protein', value: protein, color: colors.success },
+              { key: 'carbs', label: 'Carbs', value: carbs, color: colors.amber },
+              { key: 'fat', label: 'Fat', value: fat, color: colors.bonds },
+            ]}
+            centerValue={formatNumber(calories)}
+            centerLabel="kcal"
+          />
+          <View style={{ flex: 1, gap: 8 }}>
+            {[
+              { label: 'Protein', value: protein, target: proteinTarget, color: colors.success },
+              { label: 'Carbs', value: carbs, target: 250, color: colors.amber },
+              { label: 'Fat', value: fat, target: 70, color: colors.bonds },
+            ].map((macro) => (
+              <View key={macro.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View
+                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: macro.color }}
+                />
+                <AppText variant="footnote" tone="secondary" style={{ flex: 1 }}>
                   {macro.label}
                 </AppText>
-                <AppText variant="caption" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
-                  {Math.round(macro.value)} / {macro.target} g
+                <AppText variant="footnote" style={{ fontVariant: ['tabular-nums'] }}>
+                  {Math.round(macro.value)}
+                  <AppText variant="caption" tone="tertiary">
+                    {` / ${macro.target}g`}
+                  </AppText>
                 </AppText>
               </View>
-              <Progress value={(macro.value / macro.target) * 100} color={macro.color} height={6} />
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
       </Card>
 
@@ -109,7 +123,7 @@ export const NutritionSegment = () => {
         <View style={{ flex: 1 }}>
           <Button
             label="Search foods"
-            icon={<Icon name="food" size={15} color={colors.onPrimary} />}
+            icon={<Icon name="food" size={16} color={colors.onPrimary} />}
             onPress={() => setSearchVisible(true)}
           />
         </View>
@@ -122,7 +136,7 @@ export const NutritionSegment = () => {
         <EmptyState
           icon="food"
           title="Nothing logged today"
-          message="Search the USDA database or enter calories manually — both count the same."
+          message="Search the database or enter calories manually."
           actionLabel="Log a meal"
           onAction={() => openAdd('meal')}
         />
@@ -157,10 +171,11 @@ export const NutritionSegment = () => {
       <Sheet
         visible={searchVisible}
         title="Search foods"
-        subtitle="USDA FoodData Central · values per serving"
+        subtitle="Nutrition per 100 g"
         onClose={() => setSearchVisible(false)}
       >
         <Chips
+          label="Meal"
           options={MEAL_ORDER.map((meal) => ({ value: meal, label: meal[0].toUpperCase() + meal.slice(1) }))}
           value={searchMeal}
           onChange={setSearchMeal}
@@ -171,7 +186,7 @@ export const NutritionSegment = () => {
               label="Find a food"
               value={query}
               onChangeText={setQuery}
-              placeholder="chicken breast, banana…"
+              placeholder="chicken breast, or a barcode…"
               onSubmitEditing={runSearch}
               returnKeyType="search"
               autoFocus
@@ -179,6 +194,10 @@ export const NutritionSegment = () => {
           </View>
           <Button label="Search" size="small" loading={search.isPending} onPress={runSearch} />
         </View>
+
+        <AppText variant="caption" tone="tertiary">
+          Search by name, or type the 8–14 digit barcode from a package.
+        </AppText>
 
         {search.isError ? (
           <AppText variant="footnote" tone="danger">
@@ -196,17 +215,39 @@ export const NutritionSegment = () => {
           data={search.data ?? []}
           keyExtractor={(item, index) => `${item.name}-${index}`}
           scrollEnabled={false}
-          renderItem={({ item }) => (
-            <Button
-              label={`${item.name} · ${item.calories} kcal`}
-              variant="secondary"
+          renderItem={({ item, index }) => (
+            <Pressable
+              accessibilityRole="button"
               onPress={() => addResult(item)}
-            />
+              style={({ pressed }) => ({
+                paddingVertical: space.md,
+                borderTopWidth: index === 0 ? 0 : 1,
+                borderTopColor: colors.separator,
+                opacity: pressed ? 0.6 : 1,
+                gap: 2,
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
+                <AppText variant="callout" style={{ flex: 1 }} numberOfLines={2}>
+                  {item.name}
+                </AppText>
+                <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
+                  {item.calories} kcal
+                </AppText>
+              </View>
+              <AppText variant="caption" tone="tertiary">
+                {item.brand ? `${item.brand} · ` : ''}
+                {item.serving}
+              </AppText>
+              <AppText variant="caption" tone="tertiary" style={{ fontVariant: ['tabular-nums'] }}>
+                {`${item.protein}P · ${item.carbs}C · ${item.fat}F`}
+              </AppText>
+            </Pressable>
           )}
           ItemSeparatorComponent={() => <View style={{ height: space.sm }} />}
         />
         {addFood.isPending ? (
-          <AppText variant="caption" tone="secondary">
+          <AppText variant="footnote" tone="secondary">
             Saving…
           </AppText>
         ) : null}

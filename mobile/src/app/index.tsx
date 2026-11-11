@@ -6,7 +6,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { space, useTheme } from '@/theme';
 
 export default function Index() {
-  const { session, loading } = useAuth();
+  const { session, loading, onboarded } = useAuth();
   const { colors } = useTheme();
 
   if (loading) {
@@ -30,6 +30,5 @@ export default function Index() {
 
   if (!session) return <Redirect href="/sign-in" />;
 
-  const onboarded = session.user.user_metadata?.onboarding_completed === true;
   return <Redirect href={onboarded ? '/(tabs)' : '/onboarding'} />;
 }

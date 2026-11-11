@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 
@@ -14,7 +13,6 @@ export const useFormSubmit = () => {
       setError(null);
       try {
         await action();
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         router.back();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'Could not save. Try again.');

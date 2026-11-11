@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { FormFrame } from '@/components/form-frame';
-import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { TextField } from '@/components/ui/text-field';
@@ -51,13 +50,12 @@ export const AccountForm = () => {
   return (
     <FormFrame
       title="Add account"
-      subtitle="Net worth is the sum of these balances"
       submitLabel="Add account"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Account name"
           value={name}
@@ -65,7 +63,7 @@ export const AccountForm = () => {
           placeholder="Main checking, emergency fund…"
           maxLength={60}
         />
-        <Chips options={ACCOUNT_TYPES} value={type} onChange={setType} />
+        <Chips label="Type" options={ACCOUNT_TYPES} value={type} onChange={setType} />
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 2 }}>
             <TextField
@@ -88,7 +86,7 @@ export const AccountForm = () => {
             />
           </View>
         </View>
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -137,14 +135,14 @@ export const TransactionForm = () => {
   return (
     <FormFrame
       title="Add transaction"
-      subtitle="The account balance updates automatically"
       submitLabel="Save transaction"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <Chips
+          label="Direction"
           options={[
             { value: 'out', label: 'Expense' },
             { value: 'in', label: 'Income' },
@@ -173,6 +171,7 @@ export const TransactionForm = () => {
         {accounts.length > 0 ? (
           <View style={{ gap: space.sm }}>
             <Chips
+              label="Account"
               options={[
                 { value: 'none', label: 'No account' },
                 ...accounts.map((account) => ({ value: account.id, label: account.name })),
@@ -190,7 +189,7 @@ export const TransactionForm = () => {
           placeholder="What was it for?"
           maxLength={140}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -218,13 +217,12 @@ export const BudgetForm = () => {
   return (
     <FormFrame
       title="New budget"
-      subtitle="Spending in this category counts against the limit"
       submitLabel="Create budget"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Category"
           value={category}
@@ -241,6 +239,7 @@ export const BudgetForm = () => {
           maxLength={10}
         />
         <Chips
+          label="Period"
           options={[
             { value: 'monthly', label: 'Monthly' },
             { value: 'weekly', label: 'Weekly' },
@@ -248,7 +247,7 @@ export const BudgetForm = () => {
           value={period}
           onChange={setPeriod}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };
@@ -286,13 +285,12 @@ export const InvestmentForm = () => {
   return (
     <FormFrame
       title="Add position"
-      subtitle="Track what you hold and what it's worth"
       submitLabel="Add position"
       loading={saving}
       error={error}
       onSubmit={save}
     >
-      <Card style={{ gap: space.lg }}>
+      <View style={{ gap: space.xl }}>
         <TextField
           label="Instrument"
           value={instrument}
@@ -330,7 +328,7 @@ export const InvestmentForm = () => {
           keyboardType="decimal-pad"
           maxLength={12}
         />
-      </Card>
+      </View>
     </FormFrame>
   );
 };

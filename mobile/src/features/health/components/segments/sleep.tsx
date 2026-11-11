@@ -11,10 +11,9 @@ import { Stat, StatRow } from '@/components/ui/stat';
 import { useHealth } from '@/features/health/use-health';
 import { formatDate } from '@/lib/format';
 import { openAdd } from '@/lib/navigation';
-import { space, useTheme } from '@/theme';
+import { space } from '@/theme';
 
 export const SleepSegment = () => {
-  const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, deleteRecord } = useHealth();
 
   if (isPending) return <LoadingState />;
@@ -40,16 +39,16 @@ export const SleepSegment = () => {
     <>
       <Card raised style={{ gap: space.lg }}>
         <StatRow>
-          <Stat value={avgHours > 0 ? avgHours.toFixed(1) : '—'} label="Avg hours (7d)" tone={avgHours >= 7 ? 'success' : 'default'} />
-          <Stat value={avgQuality > 0 ? avgQuality.toFixed(1) : '—'} label="Avg quality /10" />
+          <Stat value={avgHours > 0 ? avgHours.toFixed(1) : '—'} label="Avg hours, 7d" tone={avgHours >= 7 ? 'success' : 'default'} />
+          <Stat value={avgQuality > 0 ? avgQuality.toFixed(1) : '—'} label="Quality, /10" />
           <Stat value={String(data.sleep.length)} label="Records" />
         </StatRow>
         <AppText variant="footnote" tone="secondary">
           {avgHours === 0
-            ? 'Log last night to start the picture.'
+            ? 'Log last night to start the trend.'
             : avgHours >= 7
-              ? 'You are hitting the recovery target. Keep the rhythm.'
-              : `Averaging ${(7 - avgHours).toFixed(1)}h below the 7h target — an earlier bedtime is the cheapest fix.`}
+              ? 'Above the 7-hour target.'
+              : `${(7 - avgHours).toFixed(1)} hours below the 7-hour target.`}
         </AppText>
         <Button label="Log sleep" onPress={() => openAdd('sleep')} />
       </Card>
@@ -57,17 +56,17 @@ export const SleepSegment = () => {
       {chart.length > 1 ? (
         <Card style={{ gap: space.md }}>
           <SectionHeader title="Duration" caption="Target: 7–9 hours" />
-          <BarChart data={chart} maxValue={10} color={colors.amber} formatValue={(value) => value.toFixed(1)} />
+          <BarChart data={chart} maxValue={10} />
         </Card>
       ) : null}
 
       <View style={{ gap: space.md }}>
-        <SectionHeader title="History" caption="Hold a row to delete" />
+        <SectionHeader title="History" />
         {data.sleep.length === 0 ? (
           <EmptyState
             icon="moon"
             title="No sleep records"
-            message="One record gives the health score something real to read."
+            message="Log a night to start the trend."
             actionLabel="Log last night"
             onAction={() => openAdd('sleep')}
           />

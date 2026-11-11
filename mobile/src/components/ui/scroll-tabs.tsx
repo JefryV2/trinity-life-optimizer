@@ -1,8 +1,7 @@
-import * as Haptics from 'expo-haptics';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { radius, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 interface ScrollTabsProps<T extends string> {
   options: Array<{ value: T; label: string }>;
@@ -10,15 +9,20 @@ interface ScrollTabsProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-/** Horizontally scrolling pill tabs for hubs with more segments than fit one row. */
+/** Ruled tabs: a label and a short underline, no pills. */
 export const ScrollTabs = <T extends string>({ options, value, onChange }: ScrollTabsProps<T>) => {
   const { colors } = useTheme();
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: space.sm, paddingHorizontal: 2 }}
-      style={{ marginHorizontal: -space.xl, paddingHorizontal: space.xl }}
+      contentContainerStyle={{ gap: space.xl }}
+      style={{
+        marginHorizontal: -space.xl,
+        paddingHorizontal: space.xl,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.separator,
+      }}
     >
       {options.map((option) => {
         const selected = option.value === value;
@@ -28,32 +32,21 @@ export const ScrollTabs = <T extends string>({ options, value, onChange }: Scrol
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             onPress={() => {
-              void Haptics.selectionAsync();
               onChange(option.value);
             }}
-            style={({ pressed }) => ({
-              minHeight: 40,
-              paddingHorizontal: space.lg,
-              borderRadius: radius.pill,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: selected ? colors.primary : colors.surfaceAlt,
-              transform: [{ scale: pressed ? 0.96 : 1 }],
-            })}
+            style={{
+              paddingVertical: space.md,
+              marginBottom: -1,
+              borderBottomWidth: 2,
+              borderBottomColor: selected ? colors.primary : 'transparent',
+            }}
           >
-            <AppText
-              variant="footnote"
-              style={{
-                color: selected ? colors.onPrimary : colors.textSecondary,
-                fontWeight: '600',
-              }}
-            >
+            <AppText variant="callout" tone={selected ? 'default' : 'secondary'}>
               {option.label}
             </AppText>
           </Pressable>
         );
       })}
-      <View style={{ width: space.sm }} />
     </ScrollView>
   );
 };

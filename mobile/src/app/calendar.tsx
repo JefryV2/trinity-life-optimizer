@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
+import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -40,6 +41,15 @@ export default function CalendarScreen() {
   const selectedDay = days.find((day) => day.date === selected) ?? null;
   const offset = startOfMonth(month).getDay();
   const cells = useMemo(() => [...Array.from({ length: offset }, () => null), ...days], [days, offset]);
+  const weeks = useMemo(() => {
+    const rows: (CalendarDay | null)[][] = [];
+    for (let index = 0; index < cells.length; index += 7) {
+      const row = cells.slice(index, index + 7);
+      while (row.length < 7) row.push(null);
+      rows.push(row);
+    }
+    return rows;
+  }, [cells]);
   const monthLabel = month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
   const shiftMonth = (delta: number) => {
@@ -63,62 +73,125 @@ export default function CalendarScreen() {
       }
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-        <Button label="Prev" variant="secondary" size="small" onPress={() => shiftMonth(-1)} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous month"
+          onPress={() => shiftMonth(-1)}
+          hitSlop={10}
+          style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="back" size={18} color={colors.textSecondary} />
+        </Pressable>
         <AppText variant="headline" style={{ flex: 1, textAlign: 'center' }}>
           {monthLabel}
         </AppText>
-        <Button label="Next" variant="secondary" size="small" onPress={() => shiftMonth(1)} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next month"
+          onPress={() => shiftMonth(1)}
+          hitSlop={10}
+          style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="chevron" size={18} color={colors.textSecondary} />
+        </Pressable>
       </View>
 
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
       <Card style={{ gap: space.md }}>
-        <View style={{ flexDirection: 'row' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           {WEEKDAYS.map((day, index) => (
-            <AppText key={`${day}-${index}`} variant="caption" tone="tertiary" style={{ flex: 1, textAlign: 'center' }}>
+            <AppText
+              key={`${day}-${index}`}
+              variant="mono"
+              tone="tertiary"
+              style={{ width: '13%', textAlign: 'center' }}
+            >
               {day}
             </AppText>
           ))}
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
-          {cells.map((day, index) => {
-            if (!day) return <View key={`blank-${index}`} style={{ width: '13.4%', aspectRatio: 1 }} />;
-            const score = trinity(day);
-            const active = day.date === selected;
-            return (
-              <Pressable
-                key={day.date}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => setSelected(day.date)}
-                style={({ pressed }) => ({
-                  width: '13.4%',
-                  aspectRatio: 1,
-                  borderRadius: radius.small,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: scoreColor(score, colors),
-                  borderWidth: active ? 2 : 0,
-                  borderColor: colors.text,
-                  opacity: pressed ? 0.75 : 1,
-                })}
-              >
-                <AppText variant="caption" style={{ color: score && score >= 50 ? '#FFFFFF' : colors.text }}>
-                  {Number(day.date.slice(-2))}
-                </AppText>
-              </Pressable>
-            );
-          })}
+        <View style={{ gap: space.sm }}>
+          {weeks.map((week, weekIndex) => (
+            <View
+              key={`week-${weekIndex}`}
+              style={{ flexDirection: 'row', justifyContent: 'space-between' }}
+            >
+              {week.map((day, dayIndex) => {
+                if (!day) {
+                  return <View key={`blank-${weekIndex}-${dayIndex}`} style={{ width: '13%', aspectRatio: 1 }} />;
+                }
+                const score = trinity(day);
+                const active = day.date === selected;
+                return (
+                  <Pressable
+                    key={day.date}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    onPress={() => setSelected(day.date)}
+                    style={({ pressed }) => ({
+                      width: '13%',
+                      aspectRatio: 1,
+                      borderRadius: radius.pill,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 3,
+                      backgroundColor: active ? colors.primary : 'transparent',
+                      borderWidth: !active && day.date === isoDate() ? 1 : 0,
+                      borderColor: colors.primary,
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                  >
+                    <AppText
+                      variant="footnote"
+                      style={{ color: active ? colors.onPrimary : undefined }}
+                      tone={active ? 'default' : score ? 'default' : 'tertiary'}
+                    >
+                      {Number(day.date.slice(-2))}
+                    </AppText>
+                    <View
+                      style={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: 2,
+                        backgroundColor: active
+                          ? colors.onPrimary
+                          : scoreColor(score, colors),
+                      }}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
         </View>
       </Card>
 
       <SectionHeader title="Day detail" caption={formatLongDate(selected)} />
       <Card style={{ gap: space.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
+          <RingMeter
+            value={trinity(selectedDay) ?? 0}
+            max={100}
+            size={96}
+            stroke={7}
+            center={trinity(selectedDay) === null ? '—' : String(trinity(selectedDay))}
+            label="Trinity"
+          />
+          <View style={{ flex: 1, gap: 4 }}>
+            <AppText variant="headline">
+              {trinity(selectedDay) === null ? 'No reading' : 'Day reading'}
+            </AppText>
+            <AppText variant="footnote" tone="secondary">
+              {selectedDay?.completedGoals ?? 0} of {selectedDay?.totalGoals ?? 0} goals met
+            </AppText>
+          </View>
+        </View>
         <StatRow>
-          <Stat value={selectedDay?.health === null || !selectedDay ? '—' : String(selectedDay.health)} label="Health" tone="primary" />
+          <Stat value={selectedDay?.health === null || !selectedDay ? '—' : String(selectedDay.health)} label="Health" />
           <Stat value={selectedDay?.wealth === null || !selectedDay ? '—' : String(selectedDay.wealth)} label="Wealth" />
-          <Stat value={selectedDay?.relations === null || !selectedDay ? '—' : String(selectedDay.relations)} label="Relations" tone="success" />
+          <Stat value={selectedDay?.relations === null || !selectedDay ? '—' : String(selectedDay.relations)} label="Relations" />
         </StatRow>
         <View style={{ gap: space.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -127,10 +200,7 @@ export default function CalendarScreen() {
               {selectedDay?.goals ?? 0}%
             </AppText>
           </View>
-          <Progress value={selectedDay?.goals ?? 0} color={colors.success} />
-          <AppText variant="caption" tone="tertiary">
-            {selectedDay?.completedGoals ?? 0} of {selectedDay?.totalGoals ?? 0} tracked goals completed.
-          </AppText>
+          <Progress value={selectedDay?.goals ?? 0} />
         </View>
       </Card>
     </Screen>

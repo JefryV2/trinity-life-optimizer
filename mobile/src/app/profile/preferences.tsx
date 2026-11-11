@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
@@ -11,9 +10,10 @@ import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Switch } from '@/components/ui/switch';
 import { useProfile } from '@/features/profile/use-profile';
 import { FEATURE_FLAGS, readFeatureFlags, type FeatureFlagKey } from '@/lib/feature-flags';
-import { space } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 export default function PreferencesScreen() {
+  const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, savePreferences } = useProfile();
   const [flags, setFlags] = useState<Record<FeatureFlagKey, boolean>>(() => readFeatureFlags(null));
   const [message, setMessage] = useState<string | null>(null);
@@ -30,7 +30,6 @@ export default function PreferencesScreen() {
   const save = async () => {
     try {
       await savePreferences.mutateAsync(flags);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setMessage('Preferences saved.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Could not save preferences.');
@@ -42,13 +41,24 @@ export default function PreferencesScreen() {
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
-      <SectionHeader title="Feature preferences" caption="These are saved to your profile and match the web app keys." />
-      <Card style={{ gap: space.lg }}>
-        {FEATURE_FLAGS.map((flag) => (
-          <View key={flag.key} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <View style={{ flex: 1, gap: 2 }}>
+      <SectionHeader title="What to track" />
+      <Card padded={false} style={{ paddingHorizontal: space.xl }}>
+        {FEATURE_FLAGS.map((flag, index) => (
+          <View
+            key={flag.key}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space.md,
+              paddingVertical: space.md,
+              minHeight: 56,
+              borderBottomWidth: index === FEATURE_FLAGS.length - 1 ? 0 : 1,
+              borderBottomColor: colors.separator,
+            }}
+          >
+            <View style={{ flex: 1, gap: 1 }}>
               <AppText variant="callout">{flag.label}</AppText>
-              <AppText variant="caption" tone="tertiary">
+              <AppText variant="footnote" tone="tertiary">
                 {flag.caption}
               </AppText>
             </View>
@@ -66,7 +76,7 @@ export default function PreferencesScreen() {
           {message}
         </AppText>
       ) : null}
-      <Button label="Save preferences" onPress={save} loading={savePreferences.isPending} />
+      <Button label="Save changes" onPress={save} loading={savePreferences.isPending} />
     </Screen>
   );
 }

@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
 import { PanResponder, View } from 'react-native';
 
@@ -37,7 +36,6 @@ export const Slider = ({
       onPanResponderGrant: (event) => setFromX(event.nativeEvent.locationX),
       onPanResponderMove: (event) => setFromX(event.nativeEvent.locationX),
       onPanResponderRelease: () => {
-        void Haptics.selectionAsync();
       },
     }),
   ).current;
@@ -56,10 +54,10 @@ export const Slider = ({
     <View style={{ gap: space.xs }}>
       {label ? (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <AppText variant="caption" tone="secondary">
+          <AppText variant="footnote" tone="secondary">
             {label}
           </AppText>
-          <AppText variant="caption" style={{ fontVariant: ['tabular-nums'], fontWeight: '700' }}>
+          <AppText variant="footnote" style={{ fontVariant: ['tabular-nums'] }}>
             {formatValue ? formatValue(value) : value}
           </AppText>
         </View>
@@ -99,10 +97,9 @@ export const Slider = ({
               width: 28,
               height: 28,
               borderRadius: 14,
-              backgroundColor: colors.surface,
+              backgroundColor: colors.background,
               borderWidth: 2,
               borderColor: colors.primary,
-              boxShadow: '0 2px 8px rgba(60, 42, 24, 0.18)',
             }}
           />
         </View>

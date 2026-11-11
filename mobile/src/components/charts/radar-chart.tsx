@@ -45,11 +45,25 @@ export const RadarChart = ({
       {data.map((datum, index) => {
         const [x, y] = point(index, maxValue);
         return (
-          <Line key={datum.label} x1={center} y1={center} x2={x} y2={y} stroke={colors.separator} strokeWidth={1} />
+          <Line
+            key={datum.label}
+            x1={center}
+            y1={center}
+            x2={x}
+            y2={y}
+            stroke={colors.separator}
+            strokeWidth={1}
+          />
         );
       })}
-      <Polygon points={outer} stroke={colors.separator} strokeWidth={1} fill="none" />
-      <Polygon points={inner} stroke={colors.primary} strokeWidth={2} fill={colors.primary} fillOpacity={0.18} />
+      <Polygon points={outer} stroke={colors.border} strokeWidth={1} fill="none" />
+      <Polygon
+        points={inner}
+        stroke={colors.primary}
+        strokeWidth={1.5}
+        fill={colors.primary}
+        fillOpacity={0.08}
+      />
       {data.map((datum, index) => {
         const angle = angleFor(index);
         const labelX = center + Math.cos(angle) * labelRadius;
@@ -60,8 +74,8 @@ export const RadarChart = ({
             x={labelX}
             y={labelY}
             fill={colors.textSecondary}
-            fontSize={12}
-            fontWeight="600"
+            fontSize={11}
+            fontWeight="400"
             textAnchor="middle"
             alignmentBaseline="middle"
           >

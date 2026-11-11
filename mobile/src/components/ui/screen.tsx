@@ -1,6 +1,7 @@
 import { ScrollView, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SwipeTabs, useIsTabRoute } from '@/components/ui/swipe';
 import { space, useTheme } from '@/theme';
 
 interface ScreenProps extends ScrollViewProps {
@@ -11,8 +12,10 @@ interface ScreenProps extends ScrollViewProps {
 export const Screen = ({ children, contentContainerStyle, safeAreaTop = true, ...rest }: ScreenProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const isTab = useIsTabRoute();
   return (
-    <ScrollView
+    <SwipeTabs>
+      <ScrollView
       {...rest}
       style={{ flex: 1, backgroundColor: colors.background }}
       contentInsetAdjustmentBehavior="automatic"
@@ -21,7 +24,7 @@ export const Screen = ({ children, contentContainerStyle, safeAreaTop = true, ..
         {
           paddingHorizontal: space.xl,
           paddingTop: (safeAreaTop ? insets.top : 0) + space.lg,
-          paddingBottom: space.section,
+          paddingBottom: isTab ? space.section + 84 : space.section,
           gap: space.lg,
           width: '100%',
           maxWidth: 720,
@@ -29,8 +32,9 @@ export const Screen = ({ children, contentContainerStyle, safeAreaTop = true, ..
         },
         contentContainerStyle,
       ]}
-    >
-      {children}
-    </ScrollView>
+      >
+        {children}
+      </ScrollView>
+    </SwipeTabs>
   );
 };

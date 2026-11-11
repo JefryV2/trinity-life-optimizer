@@ -1,8 +1,7 @@
-import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { ScoreRing } from '@/components/charts/score-ring';
+import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -31,10 +30,10 @@ const FLOWS = [
 ];
 
 const phaseFor = (day: number): { name: string; note: string } => {
-  if (day <= 5) return { name: 'Menstrual', note: 'Rest and warmth. Iron-rich food helps.' };
-  if (day <= 13) return { name: 'Follicular', note: 'Energy climbs — good days for hard training.' };
-  if (day <= 16) return { name: 'Ovulation', note: 'Peak energy and fertility window.' };
-  return { name: 'Luteal', note: 'Wind down gradually; prioritize sleep and steady meals.' };
+  if (day <= 5) return { name: 'Menstrual', note: 'Lower energy; prioritize rest.' };
+  if (day <= 13) return { name: 'Follicular', note: 'Energy rising.' };
+  if (day <= 16) return { name: 'Ovulation', note: 'Peak energy.' };
+  return { name: 'Luteal', note: 'Energy declining; prioritize sleep.' };
 };
 
 export const WomenSegment = () => {
@@ -92,13 +91,24 @@ export const WomenSegment = () => {
   return (
     <>
       {lastStart && cycleDay && phase ? (
-        <Card raised style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
-          <ScoreRing
-            score={(((cycleDay - 1) % avgLength) / avgLength) * 100}
+        <Card raised style={{ gap: space.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
+          <RingMeter
+            value={cycleDay}
+            max={avgLength}
             size={104}
-            stroke={9}
-            color={colors.accent}
-            label={`Day ${cycleDay}`}
+            stroke={8}
+            color={
+              phase.name === 'Menstrual'
+                ? colors.danger
+                : phase.name === 'Ovulation'
+                  ? colors.amber
+                  : phase.name === 'Luteal'
+                    ? colors.bonds
+                    : colors.primary
+            }
+            center={String(cycleDay)}
+            label="Cycle day"
           />
           <View style={{ flex: 1, gap: space.xs }}>
             <AppText variant="headline">{phase.name} phase</AppText>
@@ -106,20 +116,35 @@ export const WomenSegment = () => {
               {phase.note}
             </AppText>
             {daysUntil !== null ? (
-              <AppText variant="caption" tone="primary" style={{ fontWeight: '600' }}>
+              <AppText variant="footnote" tone="primary">
                 {daysUntil > 0
                   ? `Next period in ~${daysUntil} day${daysUntil === 1 ? '' : 's'}`
                   : daysUntil === 0
                     ? 'Period expected today'
-                    : `Period is ${Math.abs(daysUntil)} day${Math.abs(daysUntil) === 1 ? '' : 's'} late — log the start when it comes`}
+                    : `Period is ${Math.abs(daysUntil)} day${Math.abs(daysUntil) === 1 ? '' : 's'} late`}
               </AppText>
             ) : null}
             {ovulation ? (
-              <AppText variant="caption" tone="tertiary">
-                Estimated fertile window:{' '}
-                {formatDate(addDays(ovulation, -5))} – {formatDate(addDays(ovulation, 1))}
+              <AppText variant="footnote" tone="tertiary">
+                Fertile window: {formatDate(addDays(ovulation, -5))} – {formatDate(addDays(ovulation, 1))}
               </AppText>
             ) : null}
+          </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 3 }}>
+            {[
+              { key: 'menstrual', label: 'Menstrual', days: 5, color: colors.danger },
+              { key: 'follicular', label: 'Follicular', days: 8, color: colors.primary },
+              { key: 'ovulation', label: 'Ovulation', days: 3, color: colors.amber },
+              { key: 'luteal', label: 'Luteal', days: Math.max(4, avgLength - 16), color: colors.bonds },
+            ].map((phasePart) => (
+              <View key={phasePart.key} style={{ flex: phasePart.days, gap: 5 }}>
+                <View style={{ height: 5, borderRadius: 3, backgroundColor: phasePart.color }} />
+                <AppText variant="caption" tone="tertiary">
+                  {phasePart.label}
+                </AppText>
+              </View>
+            ))}
           </View>
         </Card>
       ) : (
@@ -135,7 +160,7 @@ export const WomenSegment = () => {
       <Card style={{ gap: space.md }}>
         <SectionHeader
           title="Today"
-          caption={todayLog ? 'Logged — tap to update' : 'How is your body today?'}
+          caption={todayLog ? 'Logged today' : undefined}
           actionLabel={todayLog ? 'Update' : 'Log'}
           onAction={openDailyLog}
         />
@@ -145,22 +170,22 @@ export const WomenSegment = () => {
               Flow: {todayLog.flow_intensity ?? 'not set'} · Pain: {todayLog.pain_level ?? 0}/10
             </AppText>
             {todayLog.symptoms?.length ? (
-              <AppText variant="caption" tone="tertiary">
+              <AppText variant="footnote" tone="tertiary">
                 {todayLog.symptoms.join(' · ')}
               </AppText>
             ) : null}
             {todayLog.moods?.length ? (
-              <AppText variant="caption" tone="tertiary">
+              <AppText variant="footnote" tone="tertiary">
                 Mood: {todayLog.moods.join(', ')}
               </AppText>
             ) : null}
           </View>
         ) : (
-          <Button label="Log symptoms & mood" variant="soft" size="small" onPress={openDailyLog} />
+          <Button label="Log symptoms and mood" variant="secondary" size="small" onPress={openDailyLog} />
         )}
         {dailyData?.available === false ? (
-          <AppText variant="caption" tone="tertiary">
-            Daily logs are not enabled on this database yet — cycle tracking still works.
+          <AppText variant="footnote" tone="tertiary">
+            Daily logs are not enabled on this database yet; cycle tracking still works.
           </AppText>
         ) : null}
       </Card>
@@ -202,32 +227,19 @@ export const WomenSegment = () => {
           <Button label="Save today's log" loading={saving} onPress={saveDaily} />
         }
       >
-        <View style={{ gap: space.sm }}>
-          <AppText variant="caption" tone="secondary">
-            Flow
-          </AppText>
-          <Chips options={FLOWS} value={flow} onChange={setFlow} />
-        </View>
-        <View style={{ gap: space.sm }}>
-          <AppText variant="caption" tone="secondary">
-            Symptoms
-          </AppText>
-          <MultiChips
-            options={SYMPTOMS.map((symptom) => ({ value: symptom, label: symptom }))}
-            values={symptoms}
-            onChange={setSymptoms}
-          />
-        </View>
-        <View style={{ gap: space.sm }}>
-          <AppText variant="caption" tone="secondary">
-            Mood
-          </AppText>
-          <MultiChips
-            options={MOODS.map((mood) => ({ value: mood, label: mood }))}
-            values={moods}
-            onChange={setMoods}
-          />
-        </View>
+        <Chips label="Flow" options={FLOWS} value={flow} onChange={setFlow} />
+        <MultiChips
+          label="Symptoms"
+          options={SYMPTOMS.map((symptom) => ({ value: symptom, label: symptom }))}
+          values={symptoms}
+          onChange={setSymptoms}
+        />
+        <MultiChips
+          label="Mood"
+          options={MOODS.map((mood) => ({ value: mood, label: mood }))}
+          values={moods}
+          onChange={setMoods}
+        />
         <Slider label="Pain" value={pain} onChange={setPain} min={0} max={10} />
         <TextField
           label="Notes (optional)"

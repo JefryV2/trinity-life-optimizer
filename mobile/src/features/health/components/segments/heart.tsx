@@ -1,5 +1,6 @@
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
+import { Sparkline } from '@/components/charts/sparkline';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { space, useTheme } from '@/theme';
 
 export const HeartSegment = () => {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const { data, isPending, isError, error, refetch } = useHeart();
   const ble = useHeartRate();
 
@@ -47,7 +49,7 @@ export const HeartSegment = () => {
             {ble.status === 'scanning' || ble.status === 'connecting' || ble.status === 'connected' ? (
               <Button
                 label={ble.status === 'connected' ? 'Disconnect' : 'Cancel'}
-                variant="soft"
+                variant="secondary"
                 onPress={ble.stop}
               />
             ) : (
@@ -66,6 +68,21 @@ export const HeartSegment = () => {
           </AppText>
         ) : null}
       </Card>
+
+      {readings.length > 1 ? (
+        <Card style={{ gap: space.md }}>
+          <SectionHeader title="Trend" caption="Recent readings" />
+          <Sparkline
+            values={readings
+              .slice(0, 7)
+              .reverse()
+              .map((reading) => reading.heart_rate)}
+            width={Math.min(720, width) - 80}
+            height={64}
+            color={colors.primary}
+          />
+        </Card>
+      ) : null}
 
       <View style={{ gap: space.md }}>
         <SectionHeader title="Recent readings" caption="Last 7 days" />

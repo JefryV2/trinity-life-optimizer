@@ -3,7 +3,7 @@ import { Text, type TextProps } from 'react-native';
 import { type, useTheme } from '@/theme';
 
 type Variant = keyof typeof type;
-type Tone = 'default' | 'secondary' | 'tertiary' | 'primary' | 'danger' | 'success' | 'onPrimary';
+type Tone = 'default' | 'secondary' | 'tertiary' | 'faint' | 'primary' | 'danger' | 'success' | 'onPrimary';
 
 interface AppTextProps extends TextProps {
   variant?: Variant;
@@ -21,6 +21,7 @@ export const AppText = ({
     default: colors.text,
     secondary: colors.textSecondary,
     tertiary: colors.textTertiary,
+    faint: colors.textFaint,
     primary: colors.primary,
     danger: colors.danger,
     success: colors.success,

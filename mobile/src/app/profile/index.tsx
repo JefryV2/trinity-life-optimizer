@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
@@ -12,7 +11,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { TextField } from '@/components/ui/text-field';
 import { useProfile } from '@/features/profile/use-profile';
-import { daysBetween, isoDate } from '@/lib/format';
+import { daysBetween, formatNumber, isoDate } from '@/lib/format';
 import { ACTIVITY_OPTIONS, calculateCalorieTarget, GOAL_OPTIONS } from '@/lib/health-utils';
 import { space } from '@/theme';
 
@@ -82,7 +81,6 @@ export default function ProfileScreen() {
         goalType: goal,
         dailyCalories,
       });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setMessage('Profile saved.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Could not save profile.');
@@ -94,7 +92,7 @@ export default function ProfileScreen() {
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
-      <SectionHeader title="Identity" caption="Used across the dashboard and reports" />
+      <SectionHeader title="Identity" />
       <Card style={{ gap: space.lg }}>
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
@@ -105,22 +103,22 @@ export default function ProfileScreen() {
           </View>
         </View>
         <DateTimeField label="Birth date" value={birthDate ?? new Date(1990, 0, 1)} onChange={setBirthDate} />
-        <Chips options={GENDERS} value={gender} onChange={setGender} />
+        <Chips label="Gender" options={GENDERS} value={gender} onChange={setGender} />
       </Card>
 
-      <SectionHeader title="Body metrics" caption="Nutrition targets use these values" />
+      <SectionHeader title="Body metrics" />
       <Card style={{ gap: space.lg }}>
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
-            <TextField label="Height cm" value={height} onChangeText={setHeight} keyboardType="decimal-pad" maxLength={6} />
+            <TextField label="Height, cm" value={height} onChangeText={setHeight} keyboardType="decimal-pad" maxLength={6} />
           </View>
           <View style={{ flex: 1 }}>
-            <TextField label="Weight kg" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" maxLength={6} />
+            <TextField label="Weight, kg" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" maxLength={6} />
           </View>
         </View>
-        <TextField label="Target weight kg" value={targetWeight} onChangeText={setTargetWeight} keyboardType="decimal-pad" maxLength={6} />
-        <Chips options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} />
-        <Chips options={GOAL_OPTIONS} value={goal} onChange={setGoal} />
+        <TextField label="Target weight, kg" value={targetWeight} onChangeText={setTargetWeight} keyboardType="decimal-pad" maxLength={6} />
+        <Chips label="Activity level" options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} />
+        <Chips label="Goal" options={GOAL_OPTIONS} value={goal} onChange={setGoal} />
         <TextField
           label="Daily calorie target"
           value={calories}
@@ -128,10 +126,15 @@ export default function ProfileScreen() {
           placeholder={estimatedCalories ? String(estimatedCalories) : '2000'}
           keyboardType="number-pad"
           maxLength={5}
-          helper={estimatedCalories ? `Estimated from your profile: ${estimatedCalories} kcal` : undefined}
+          helper={estimatedCalories ? `Estimate: ${formatNumber(estimatedCalories)} kcal` : undefined}
         />
         {estimatedCalories ? (
-          <Button label="Use estimated target" variant="soft" onPress={() => setCalories(String(estimatedCalories))} />
+          <Button
+            label="Use estimate"
+            variant="secondary"
+            size="small"
+            onPress={() => setCalories(String(estimatedCalories))}
+          />
         ) : null}
       </Card>
 
@@ -140,7 +143,7 @@ export default function ProfileScreen() {
           {message}
         </AppText>
       ) : null}
-      <Button label="Save profile" onPress={save} loading={saveProfile.isPending || saveHealthProfile.isPending} />
+      <Button label="Save changes" onPress={save} loading={saveProfile.isPending || saveHealthProfile.isPending} />
     </Screen>
   );
 }

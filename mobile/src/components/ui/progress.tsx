@@ -5,7 +5,7 @@ import { useTheme } from '@/theme';
 export const Progress = ({
   value,
   color,
-  height = 8,
+  height = 6,
 }: {
   value: number;
   color?: string;
@@ -28,7 +28,6 @@ export const Progress = ({
         style={{
           width: `${percent}%`,
           height: '100%',
-          borderRadius: height / 2,
           backgroundColor: color ?? colors.primary,
         }}
       />

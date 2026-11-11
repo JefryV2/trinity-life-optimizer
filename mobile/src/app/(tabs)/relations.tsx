@@ -1,23 +1,24 @@
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { RefreshControl, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import type { IconName } from '@/components/ui/icon';
 import { ListRow } from '@/components/ui/list-row';
+import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
 import { useRelations } from '@/features/relations/use-relations';
-import { formatDate, formatNumber, relativeDay } from '@/lib/format';
+import { daysBetween, formatDate, formatNumber, formatStamp, relativeDay } from '@/lib/format';
 import { openAdd } from '@/lib/navigation';
 import { space, useTheme } from '@/theme';
 
-const channelIcon = (channel: string | null) => {
+const channelIcon = (channel: string | null): IconName => {
   if (channel === 'call') return 'phone';
   if (channel === 'video') return 'video';
   if (channel === 'text') return 'message';
@@ -40,10 +41,34 @@ export default function RelationsScreen() {
     : 0;
   const personName = new Map(people.map((person) => [person.id, person.name]));
 
+  const cadenceFor = (personId: string) => {
+    const times = interactions
+      .filter((interaction) => interaction.relationship_id === personId)
+      .map((interaction) => new Date(interaction.occurred_at).getTime())
+      .sort((a, b) => a - b);
+    if (times.length < 2) return 30;
+    const gaps = times.slice(1).map((time, index) => (time - times[index]) / 86_400_000);
+    const average = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+    return Math.max(3, Math.round(average));
+  };
+
+  const circle = people.map((person) => {
+    const cadence = cadenceFor(person.id);
+    const days = person.last_contact_at ? daysBetween(person.last_contact_at) : null;
+    return {
+      id: person.id,
+      name: person.name,
+      cadence,
+      days,
+      overdue: days !== null && days > cadence,
+    };
+  });
+  const inTouch = circle.filter((person) => !person.overdue).length;
+  const overdue = circle.filter((person) => person.overdue);
+
   const addQuickTime = () => {
     addQualityTime.mutate(30, {
       onSuccess: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
     });
   };
@@ -60,44 +85,87 @@ export default function RelationsScreen() {
         />
       }
     >
-      <View style={{ gap: 2 }}>
-        <AppText variant="title">Relations</AppText>
-        <AppText variant="footnote" tone="secondary">
-          People, meaningful contact, gratitude, and quality time.
-        </AppText>
-      </View>
+      <PageHeader
+        title="Relations"
+        date={formatStamp()}
+        subtitle="People, contact and gratitude"
+      />
 
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
       {data ? (
         <>
-          <Card raised style={{ gap: space.lg }}>
+          <Card raised style={{ gap: space.xl }}>
             <StatRow>
-              <Stat value={formatNumber(people.length)} label="People" tone="primary" />
-              <Stat value={formatNumber(recentMinutes)} label="Minutes / 30d" />
-              <Stat value={averageMood ? averageMood.toFixed(1) : '—'} label="Avg feeling" tone="success" />
+              <Stat value={formatNumber(people.length)} label="People" />
+              <Stat value={formatNumber(recentMinutes)} label="Minutes, 30d" />
+              <Stat
+                value={averageMood ? averageMood.toFixed(1) : '—'}
+                label="Avg feeling"
+              />
             </StatRow>
-            <View style={{ gap: space.sm }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <AppText variant="callout">Quality time goal</AppText>
-                <AppText variant="footnote" tone="secondary">
+            <View style={{ gap: space.xs }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
+                <AppText variant="callout">Quality time</AppText>
+                <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
                   {formatNumber(qualityDone)} / {formatNumber(qualityTarget)} min
                 </AppText>
               </View>
-              <Progress value={qualityPct} color={colors.success} />
+              <Progress value={qualityPct} />
             </View>
             <View style={{ flexDirection: 'row', gap: space.md }}>
               <View style={{ flex: 1 }}>
                 <Button label="Log contact" onPress={() => openAdd('interaction')} />
               </View>
               <View style={{ flex: 1 }}>
-                <Button label="+30 min" variant="secondary" onPress={addQuickTime} loading={addQualityTime.isPending} />
+                <Button
+                  label="Add 30 min"
+                  variant="secondary"
+                  onPress={addQuickTime}
+                  loading={addQualityTime.isPending}
+                />
               </View>
             </View>
           </Card>
 
-          <SectionHeader title="People" caption="Tap a person to log contact" actionLabel="Add" onAction={() => openAdd('person')} />
+          {circle.length > 0 ? (
+            <View style={{ gap: space.md }}>
+              <SectionHeader title="Your circle" caption="Who is still within their usual cadence" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
+                <RingMeter
+                  value={inTouch}
+                  max={circle.length}
+                  size={116}
+                  stroke={9}
+                  color={colors.primary}
+                  center={`${inTouch}/${circle.length}`}
+                  label="In touch"
+                />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <AppText variant="headline">
+                    {overdue.length === 0 ? 'Everyone is current' : `${overdue.length} overdue`}
+                  </AppText>
+                  <AppText variant="footnote" tone="secondary">
+                    {overdue.length === 0
+                      ? 'No one has drifted past their usual cadence.'
+                      : `${overdue
+                          .slice(0, 3)
+                          .map((person) => person.name)
+                          .join(', ')}${
+                          overdue.length > 3 ? ` and ${overdue.length - 3} more` : ''
+                        } — worth a message.`}
+                  </AppText>
+                </View>
+              </View>
+            </View>
+          ) : null}
+
+          <SectionHeader
+            title="People"
+            actionLabel="Add"
+            onAction={() => openAdd('person')}
+          />
           {people.length === 0 ? (
             <EmptyState
               icon="people"
@@ -108,21 +176,50 @@ export default function RelationsScreen() {
             />
           ) : (
             <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              {people.map((person, index) => (
-                <ListRow
-                  key={person.id}
-                  icon="user"
-                  title={person.name}
-                  subtitle={`${person.relation_type ?? 'Relationship'} · ${relativeDay(person.last_contact_at)}`}
-                  value={person.importance ? `Importance ${person.importance}/5` : undefined}
-                  onPress={() => router.push({ pathname: '/add/[form]', params: { form: 'interaction', person: person.id } })}
-                  last={index === people.length - 1}
-                />
-              ))}
+              {people.map((person, index) => {
+                const cadence = cadenceFor(person.id);
+                const days = person.last_contact_at ? daysBetween(person.last_contact_at) : null;
+                const overdue = days !== null && days > cadence;
+                const progress = days === null ? 0 : Math.min(100, (days / cadence) * 100);
+                return (
+                  <Pressable
+                    key={person.id}
+                    accessibilityRole="button"
+                    onPress={() =>
+                      router.push({ pathname: '/add/[form]', params: { form: 'interaction', person: person.id } })
+                    }
+                    style={({ pressed }) => ({
+                      gap: 7,
+                      paddingVertical: space.md,
+                      borderTopWidth: index === 0 ? 0 : 1,
+                      borderTopColor: colors.separator,
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
+                      <AppText variant="callout" style={{ flex: 1 }}>
+                        {person.name}
+                      </AppText>
+                      <AppText variant="footnote" tone={overdue ? 'danger' : 'secondary'}>
+                        {relativeDay(person.last_contact_at)}
+                      </AppText>
+                    </View>
+                    <Progress value={progress} color={overdue ? colors.danger : colors.primary} />
+                    <AppText variant="caption" tone="tertiary">
+                      {`Usually every ${cadence} days`}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
             </Card>
           )}
 
-          <SectionHeader title="Recent contact" caption="Last 30 days" actionLabel="Log" onAction={() => openAdd('interaction')} />
+          <SectionHeader
+            title="Recent contact"
+            caption="Last 30 days"
+            actionLabel="Log"
+            onAction={() => openAdd('interaction')}
+          />
           {interactions.length === 0 ? (
             <EmptyState
               icon="message"
@@ -146,7 +243,11 @@ export default function RelationsScreen() {
             </Card>
           )}
 
-          <SectionHeader title="Gratitude" caption="Recent entries" actionLabel="Add" onAction={() => openAdd('gratitude')} />
+          <SectionHeader
+            title="Gratitude"
+            actionLabel="Add"
+            onAction={() => openAdd('gratitude')}
+          />
           {gratitude.length === 0 ? (
             <EmptyState
               icon="gift"
@@ -158,14 +259,13 @@ export default function RelationsScreen() {
           ) : (
             <Card style={{ gap: space.md }}>
               {gratitude.slice(0, 5).map((entry) => (
-                <View key={entry.id} style={{ gap: space.xs }}>
+                <View key={entry.id} style={{ gap: 2 }}>
                   <AppText variant="callout">{entry.text}</AppText>
-                  <AppText variant="caption" tone="tertiary">
+                  <AppText variant="footnote" tone="tertiary">
                     {formatDate(entry.created_at)}
                   </AppText>
                 </View>
               ))}
-              <Button label="Add gratitude" variant="soft" onPress={() => openAdd('gratitude')} icon={<Icon name="plus" size={18} color={colors.primary} />} />
             </Card>
           )}
         </>
