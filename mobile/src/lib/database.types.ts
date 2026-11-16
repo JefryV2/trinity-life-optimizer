@@ -93,6 +93,7 @@ export type Database = {
           id: string
           intensity: string | null
           notes: string | null
+          route: Json | null
           user_id: string
         }
         Insert: {
@@ -105,6 +106,7 @@ export type Database = {
           id?: string
           intensity?: string | null
           notes?: string | null
+          route?: Json | null
           user_id: string
         }
         Update: {
@@ -117,6 +119,7 @@ export type Database = {
           id?: string
           intensity?: string | null
           notes?: string | null
+          route?: Json | null
           user_id?: string
         }
         Relationships: []
@@ -125,6 +128,7 @@ export type Database = {
         Row: {
           calories_per_serving: number | null
           carbs_g: number | null
+          components: Json | null
           consumed_at: string | null
           created_at: string
           fat_g: number | null
@@ -133,6 +137,7 @@ export type Database = {
           fdc_id: number | null
           id: string
           meal_type: string | null
+          micronutrients: Json | null
           notes: string | null
           protein_g: number | null
           servings: number | null
@@ -144,6 +149,7 @@ export type Database = {
         Insert: {
           calories_per_serving?: number | null
           carbs_g?: number | null
+          components?: Json | null
           consumed_at?: string | null
           created_at?: string
           fat_g?: number | null
@@ -152,6 +158,7 @@ export type Database = {
           fdc_id?: number | null
           id?: string
           meal_type?: string | null
+          micronutrients?: Json | null
           notes?: string | null
           protein_g?: number | null
           servings?: number | null
@@ -163,6 +170,7 @@ export type Database = {
         Update: {
           calories_per_serving?: number | null
           carbs_g?: number | null
+          components?: Json | null
           consumed_at?: string | null
           created_at?: string
           fat_g?: number | null
@@ -171,6 +179,7 @@ export type Database = {
           fdc_id?: number | null
           id?: string
           meal_type?: string | null
+          micronutrients?: Json | null
           notes?: string | null
           protein_g?: number | null
           servings?: number | null

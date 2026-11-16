@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import Health from "./pages/Health";
 import Insights from "./pages/Insights";
+import Why from "./pages/Why";
+import Experiments from "./pages/Experiments";
 import Wealth from "./pages/Wealth";
 import Relations from "./pages/Relations";
 import NotFound from "./pages/NotFound";
@@ -17,111 +19,43 @@ import ProgressCalendar from "@/components/trinity/ProgressCalendar";
 
 const queryClient = new QueryClient();
 
-// Protected Route Component
+/** Guest access: the UI is browsable without a session. Set to false to require sign-in. */
+const ALLOW_GUEST = true;
+
+const Spinner = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#232326] border-t-primary" />
+  </div>
+);
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  
-  // Temporarily bypass authentication for testing
-  if (!user && !loading) {
-    // For testing purposes, we'll simulate a user
-    console.log("No user found, simulating user for testing");
-    return children;
-  }
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-  
-  return children;
+  if (loading) return <Spinner />;
+  if (!user) return ALLOW_GUEST ? <>{children}</> : <Navigate to="/auth" replace />;
+  return <>{children}</>;
 };
 
-// Onboarding Route Component
-const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  // Temporarily bypass onboarding for testing
-  if (!user && !loading) {
-    return children;
-  }
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-  
-  // Check if user has completed onboarding
-  const hasCompletedOnboarding = user?.user_metadata?.onboarding_completed;
-  
-  if (hasCompletedOnboarding) {
-    return <Navigate to="/" replace />;
-  }
-  
-  return children;
-};
-
-// Home Route Component (checks if onboarding is needed)
 const HomeRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  
-  // Temporarily bypass home route protection for testing
-  if (!user && !loading) {
-    return children;
-  }
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-  
-  // Check if user has completed onboarding
-  const hasCompletedOnboarding = user?.user_metadata?.onboarding_completed;
-  
-  if (!hasCompletedOnboarding) {
-    return <Navigate to="/onboarding" replace />;
-  }
-  
-  return children;
+  if (loading) return <Spinner />;
+  if (!user) return ALLOW_GUEST ? <>{children}</> : <Navigate to="/auth" replace />;
+  if (!user.user_metadata?.onboarding_completed) return <Navigate to="/onboarding" replace />;
+  return <>{children}</>;
 };
 
-// Public route that redirects authenticated users
+const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!user) return ALLOW_GUEST ? <>{children}</> : <Navigate to="/auth" replace />;
+  if (user.user_metadata?.onboarding_completed) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
-      </div>
-    );
-  }
-  
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
-  
-  return children;
+  if (loading) return <Spinner />;
+  if (user) return <Navigate to="/" replace />;
+  return <>{children}</>;
 };
 
 const App = () => (
@@ -132,16 +66,94 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<HomeRoute><Index /></HomeRoute>} />
-            <Route path="/onboarding" element={<OnboardingRoute><Onboarding /></OnboardingRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/health" element={<ProtectedRoute><Health /></ProtectedRoute>} />
-            <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
-            <Route path="/wealth" element={<ProtectedRoute><Wealth /></ProtectedRoute>} />
-            <Route path="/relations" element={<ProtectedRoute><Relations /></ProtectedRoute>} />
-            <Route path="/calendar" element={<ProtectedRoute><ProgressCalendar /></ProtectedRoute>} />
-            <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route
+              path="/"
+              element={
+                <HomeRoute>
+                  <Index />
+                </HomeRoute>
+              }
+            />
+            <Route
+              path="/onboarding"
+              element={
+                <OnboardingRoute>
+                  <Onboarding />
+                </OnboardingRoute>
+              }
+            />
+            <Route
+              path="/experiments"
+              element={
+                <ProtectedRoute>
+                  <Experiments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/why"
+              element={
+                <ProtectedRoute>
+                  <Why />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/health"
+              element={
+                <ProtectedRoute>
+                  <Health />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/insights"
+              element={
+                <ProtectedRoute>
+                  <Insights />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wealth"
+              element={
+                <ProtectedRoute>
+                  <Wealth />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relations"
+              element={
+                <ProtectedRoute>
+                  <Relations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedRoute>
+                  <ProgressCalendar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/auth"
+              element={
+                <PublicRoute>
+                  <Auth />
+                </PublicRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
@@ -9,6 +10,8 @@ interface ListRowProps {
   subtitle?: string;
   value?: string;
   icon?: IconName;
+  /** Replaces the icon column, e.g. a saved walk's route. */
+  leading?: ReactNode;
   onPress?: () => void;
   destructive?: boolean;
   last?: boolean;
@@ -24,6 +27,7 @@ export const ListRow = ({
   subtitle,
   value,
   icon,
+  leading,
   onPress,
   destructive = false,
   last = false,
@@ -40,7 +44,9 @@ export const ListRow = ({
         minHeight: 56,
       }}
     >
-      {icon ? (
+      {leading ? (
+        leading
+      ) : icon ? (
         <View style={{ width: 24, alignItems: 'center' }}>
           <Icon name={icon} size={18} color={destructive ? colors.danger : colors.textTertiary} />
         </View>

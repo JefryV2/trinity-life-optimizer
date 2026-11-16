@@ -18,6 +18,16 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['"Baloo 2"', 'ui-rounded', 'system-ui', 'sans-serif'],
+				display: ['"Baloo 2"', 'ui-rounded', 'system-ui', 'sans-serif'],
+				mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+			},
+			borderRadius: {
+				group: 'var(--r-group)',
+				seg: 'var(--r-seg)',
+				pill: 'var(--r-pill)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -65,8 +75,8 @@ export default {
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				md: '16px',
+				sm: 'var(--r-seg)'
 			},
 			keyframes: {
 				'accordion-down': {

@@ -236,7 +236,7 @@ export const useInsights = (days: 7 | 30) => {
         'Wealth and mood have moved apart.',
       );
       addCorrelation(
-        'Bonds vs mood',
+        'People vs mood',
         ordered.map((day) => day.relations),
         ordered.map((day) => day.mood),
         'Contact and mood move together.',

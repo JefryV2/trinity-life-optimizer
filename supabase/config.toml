@@ -43,3 +43,6 @@ verify_jwt = true
 
 [functions.search-food]
 verify_jwt = true
+# Matches deployed slug on hosted project; use this name when deploying USDA search from dashboard or CLI.
+[functions.smooth-responder]
+verify_jwt = false

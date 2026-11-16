@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
  * writes today's snapshot whenever the dashboard loads. Idempotent by
  * (user_id, date).
  */
+let lastSnapshotKey = '';
+
 export const saveDailySnapshot = async (
   userId: string,
   report: ScoreReport,
@@ -23,10 +25,28 @@ export const saveDailySnapshot = async (
   const pillar = (key: 'health' | 'wealth' | 'bonds') =>
     report.pillars.find((item) => item.key === key)?.value ?? 0;
 
+  const date = new Date().toISOString().slice(0, 10);
+  const key = JSON.stringify([
+    userId,
+    date,
+    report.total,
+    report.pillars.map((pillarItem) => pillarItem.value),
+    inputs.sleepHours,
+    inputs.steps,
+    inputs.waterMl,
+    inputs.exerciseMinutes,
+    inputs.savingsRate,
+    inputs.interactions,
+    inputs.mood,
+    inputs.netWorth,
+  ]);
+  if (key === lastSnapshotKey) return;
+  lastSnapshotKey = key;
+
   const { error } = await supabase.from('score_snapshots').upsert(
     {
       user_id: userId,
-      date: new Date().toISOString().slice(0, 10),
+      date,
       total: report.total,
       health: pillar('health'),
       wealth: pillar('wealth'),
@@ -44,5 +64,8 @@ export const saveDailySnapshot = async (
   );
 
   // A failed snapshot must never break the dashboard.
-  if (error) console.warn('[snapshot]', error.message);
+  if (error) {
+    lastSnapshotKey = '';
+    console.warn('[snapshot]', error.message);
+  }
 };

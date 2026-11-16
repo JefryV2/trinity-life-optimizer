@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   Calendar,
   Target,
   Settings,
@@ -24,28 +24,57 @@ import {
   Gift,
   Plus,
   Search,
-  Filter
-} from 'lucide-react';
+  Filter,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
+import { PageHeader } from "@/components/ds";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Relations() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [gratitudeText, setGratitudeText] = useState('');
-  const [connectionNote, setConnectionNote] = useState('');
+  const [activeTab, setActiveTab] = useState("overview");
+  const [gratitudeText, setGratitudeText] = useState("");
+  const [connectionNote, setConnectionNote] = useState("");
   const [loading, setLoading] = useState(true);
 
   const [relationshipMetrics, setRelationshipMetrics] = useState([
-    { label: 'Connection Score', value: 0, unit: '/100', icon: Heart, color: 'bg-red-500', trend: '0%' },
-    { label: 'Social Energy', value: 0, unit: '%', icon: Zap, color: 'bg-yellow-500', trend: '0%' },
-    { label: 'Quality Time', value: 0, unit: 'hrs/week', icon: Clock, color: 'bg-green-500', trend: '0%' },
-    { label: 'Empathy Score', value: 0, unit: '/100', icon: Brain, color: 'bg-purple-500', trend: '0%' }
+    {
+      label: "Connection Score",
+      value: 0,
+      unit: "/100",
+      icon: Heart,
+      color: "bg-red-500",
+      trend: "0%",
+    },
+    {
+      label: "Social Energy",
+      value: 0,
+      unit: "%",
+      icon: Zap,
+      color: "bg-yellow-500",
+      trend: "0%",
+    },
+    {
+      label: "Quality Time",
+      value: 0,
+      unit: "hrs/week",
+      icon: Clock,
+      color: "bg-green-500",
+      trend: "0%",
+    },
+    {
+      label: "Empathy Score",
+      value: 0,
+      unit: "/100",
+      icon: Brain,
+      color: "bg-purple-500",
+      trend: "0%",
+    },
   ]);
 
   const handleAddGratitude = async () => {
@@ -63,16 +92,16 @@ export default function Relations() {
       const newEntry = {
         id: 1, // This will be replaced by actual backend data
         text: gratitudeText,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split("T")[0],
       };
-      setGratitudeText('');
-      
+      setGratitudeText("");
+
       toast({
         title: "Success",
         description: "Gratitude entry added!",
       });
     } catch (error) {
-      console.error('Error adding gratitude:', error);
+      console.error("Error adding gratitude:", error);
       toast({
         title: "Error",
         description: "Failed to add gratitude entry",
@@ -93,14 +122,14 @@ export default function Relations() {
 
     try {
       // In a real app, this would connect to the backend
-      setConnectionNote('');
-      
+      setConnectionNote("");
+
       toast({
         title: "Success",
         description: "Interaction recorded!",
       });
     } catch (error) {
-      console.error('Error adding interaction:', error);
+      console.error("Error adding interaction:", error);
       toast({
         title: "Error",
         description: "Failed to record interaction",
@@ -109,120 +138,231 @@ export default function Relations() {
     }
   };
   const quickActions = [
-    { 
-      label: 'Send Message', 
-      icon: MessageCircle, 
+    {
+      label: "Send Message",
+      icon: MessageCircle,
       action: () => {
-        toast({ title: "Message sent!", description: "Reached out to a loved one" });
-      }
+        toast({
+          title: "Message sent!",
+          description: "Reached out to a loved one",
+        });
+      },
     },
-    { 
-      label: 'Schedule Call', 
-      icon: Phone, 
+    {
+      label: "Schedule Call",
+      icon: Phone,
       action: () => {
-        toast({ title: "Call scheduled!", description: "Quality time planned" });
-      }
+        toast({
+          title: "Call scheduled!",
+          description: "Quality time planned",
+        });
+      },
     },
-    { 
-      label: 'Video Chat', 
-      icon: Video, 
+    {
+      label: "Video Chat",
+      icon: Video,
       action: () => {
-        toast({ title: "Video call started!", description: "Connecting face-to-face" });
-      }
+        toast({
+          title: "Video call started!",
+          description: "Connecting face-to-face",
+        });
+      },
     },
-    { 
-      label: 'Send Gift', 
-      icon: Gift, 
+    {
+      label: "Send Gift",
+      icon: Gift,
       action: () => {
-        toast({ title: "Gift idea noted!", description: "Thoughtful gesture planned" });
-      }
-    }
+        toast({
+          title: "Gift idea noted!",
+          description: "Thoughtful gesture planned",
+        });
+      },
+    },
   ];
 
   const [todaysGoals, setTodaysGoals] = useState([
-    { label: 'Quality conversations', current: 0, target: 3, unit: '' },
-    { label: 'Gratitude expressions', current: 0, target: 3, unit: '' },
-    { label: 'Active listening moments', current: 0, target: 2, unit: '' }
+    { label: "Quality conversations", current: 0, target: 3, unit: "" },
+    { label: "Gratitude expressions", current: 0, target: 3, unit: "" },
+    { label: "Active listening moments", current: 0, target: 2, unit: "" },
   ]);
 
-  const [relationships, setRelationships] = useState<Array<{ emoji: string; name: string; type: string; lastContact: string; strength: number; status: string }>>([]);
+  const [relationships, setRelationships] = useState<
+    Array<{
+      emoji: string;
+      name: string;
+      type: string;
+      lastContact: string;
+      strength: number;
+      status: string;
+    }>
+  >([]);
   const [activities, setActivities] = useState([
-    { title: 'Daily Gratitude', emoji: '🙏', description: 'Write 3 things you\'re grateful for', completed: false },
-    { title: 'Quality Time', emoji: '⏰', description: 'Spend 30 minutes with loved ones', completed: false },
-    { title: 'Active Listening', emoji: '👂', description: 'Practice mindful listening today', completed: false },
-    { title: 'Express Appreciation', emoji: '💝', description: 'Tell someone why they matter', completed: false }
+    {
+      title: "Daily Gratitude",
+      emoji: "🙏",
+      description: "Write 3 things you're grateful for",
+      completed: false,
+    },
+    {
+      title: "Quality Time",
+      emoji: "⏰",
+      description: "Spend 30 minutes with loved ones",
+      completed: false,
+    },
+    {
+      title: "Active Listening",
+      emoji: "👂",
+      description: "Practice mindful listening today",
+      completed: false,
+    },
+    {
+      title: "Express Appreciation",
+      emoji: "💝",
+      description: "Tell someone why they matter",
+      completed: false,
+    },
   ]);
 
   const [learningModules, setLearningModules] = useState([
-    { title: 'Love Languages', description: 'Discover your primary love language', time: '10 min', completed: false },
-    { title: 'Conflict Resolution', description: 'Learn healthy dispute techniques', time: '15 min', completed: false },
-    { title: 'Emotional Intelligence', description: 'Build empathy and awareness', time: '20 min', completed: false }
+    {
+      title: "Love Languages",
+      description: "Discover your primary love language",
+      time: "10 min",
+      completed: false,
+    },
+    {
+      title: "Conflict Resolution",
+      description: "Learn healthy dispute techniques",
+      time: "15 min",
+      completed: false,
+    },
+    {
+      title: "Emotional Intelligence",
+      description: "Build empathy and awareness",
+      time: "20 min",
+      completed: false,
+    },
   ]);
 
   const fetchRelationshipData = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       // Fetch relationships
       const { data: relationshipsData } = await supabase
-        .from('relationships')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      const formattedRelationships = relationshipsData?.map(rel => ({
-        emoji: rel.relation_type === 'family' ? '👨‍👩‍👧' : rel.relation_type === 'friend' ? '👫' : '💼',
-        name: rel.name,
-        type: rel.relation_type || 'Other',
-        lastContact: rel.last_contact_at ? new Date(rel.last_contact_at).toLocaleDateString() : 'Never',
-        strength: rel.importance || 0,
-        status: rel.importance && rel.importance > 3 ? 'Strong' : 'Developing'
-      })) || [];
-      
+        .from("relationships")
+        .select("*")
+        .eq("user_id", user.id);
+
+      const formattedRelationships =
+        relationshipsData?.map((rel) => ({
+          emoji:
+            rel.relation_type === "family"
+              ? "👨‍👩‍👧"
+              : rel.relation_type === "friend"
+                ? "👫"
+                : "💼",
+          name: rel.name,
+          type: rel.relation_type || "Other",
+          lastContact: rel.last_contact_at
+            ? new Date(rel.last_contact_at).toLocaleDateString()
+            : "Never",
+          strength: rel.importance || 0,
+          status:
+            rel.importance && rel.importance > 3 ? "Strong" : "Developing",
+        })) || [];
+
       setRelationships(formattedRelationships);
-      
+
       // Fetch gratitude entries
       const { data: gratitudeData } = await supabase
-        .from('gratitude_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .from("gratitude_entries")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
         .limit(1);
-      
+
       // Fetch quality time goals
       const { data: qtGoalsData } = await supabase
-        .from('quality_time_goals')
-        .select('*')
-        .eq('user_id', user.id)
+        .from("quality_time_goals")
+        .select("*")
+        .eq("user_id", user.id)
         .limit(1);
-      
+
       if (qtGoalsData && qtGoalsData.length > 0) {
         const qtGoal = qtGoalsData[0];
         setTodaysGoals([
-          { label: 'Quality conversations', current: qtGoal.completed_minutes || 0, target: qtGoal.target_minutes_per_week || 120, unit: ' min' },
-          { label: 'Gratitude expressions', current: gratitudeData?.length || 0, target: 7, unit: '' }, // Weekly target
-          { label: 'Active listening moments', current: 0, target: 7, unit: '' } // Placeholder
+          {
+            label: "Quality conversations",
+            current: qtGoal.completed_minutes || 0,
+            target: qtGoal.target_minutes_per_week || 120,
+            unit: " min",
+          },
+          {
+            label: "Gratitude expressions",
+            current: gratitudeData?.length || 0,
+            target: 7,
+            unit: "",
+          }, // Weekly target
+          {
+            label: "Active listening moments",
+            current: 0,
+            target: 7,
+            unit: "",
+          }, // Placeholder
         ]);
       }
-      
+
       // Calculate relationship metrics based on data
       if (relationshipsData && relationshipsData.length > 0) {
-        const avgImportance = relationshipsData.reduce((sum, rel) => sum + (rel.importance || 0), 0) / relationshipsData.length;
+        const avgImportance =
+          relationshipsData.reduce(
+            (sum, rel) => sum + (rel.importance || 0),
+            0,
+          ) / relationshipsData.length;
         const connectionScore = Math.round((avgImportance / 5) * 100);
-        
+
         setRelationshipMetrics([
-          { label: 'Connection Score', value: connectionScore, unit: '/100', icon: Heart, color: 'bg-red-500', trend: '0%' },
-          { label: 'Social Energy', value: 50, unit: '%', icon: Zap, color: 'bg-yellow-500', trend: '0%' }, // Placeholder
-          { label: 'Quality Time', value: qtGoalsData?.[0]?.completed_minutes || 0, unit: 'hrs/week', icon: Clock, color: 'bg-green-500', trend: '0%' },
-          { label: 'Empathy Score', value: 60, unit: '/100', icon: Brain, color: 'bg-purple-500', trend: '0%' } // Placeholder
+          {
+            label: "Connection Score",
+            value: connectionScore,
+            unit: "/100",
+            icon: Heart,
+            color: "bg-red-500",
+            trend: "0%",
+          },
+          {
+            label: "Social Energy",
+            value: 50,
+            unit: "%",
+            icon: Zap,
+            color: "bg-yellow-500",
+            trend: "0%",
+          }, // Placeholder
+          {
+            label: "Quality Time",
+            value: qtGoalsData?.[0]?.completed_minutes || 0,
+            unit: "hrs/week",
+            icon: Clock,
+            color: "bg-green-500",
+            trend: "0%",
+          },
+          {
+            label: "Empathy Score",
+            value: 60,
+            unit: "/100",
+            icon: Brain,
+            color: "bg-purple-500",
+            trend: "0%",
+          }, // Placeholder
         ]);
       }
-      
     } catch (error) {
-      console.error('Error fetching relationship data:', error);
+      console.error("Error fetching relationship data:", error);
       toast({
         title: "Error",
         description: "Failed to load relationship data",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -239,52 +379,52 @@ export default function Relations() {
 
   const handleGratitudeSubmit = async () => {
     if (!user || !gratitudeText.trim()) return;
-    
+
     try {
-      const { error } = await supabase
-        .from('gratitude_entries')
-        .insert([{
+      const { error } = await supabase.from("gratitude_entries").insert([
+        {
           user_id: user.id,
-          text: gratitudeText
-        }]);
-      
+          text: gratitudeText,
+        },
+      ]);
+
       if (error) throw error;
-      
+
       toast({
         title: "Gratitude logged!",
-        description: "Your appreciation has been recorded."
+        description: "Your appreciation has been recorded.",
       });
-      
-      setGratitudeText('');
+
+      setGratitudeText("");
       fetchRelationshipData(); // Refresh data
     } catch (error) {
-      console.error('Error adding gratitude:', error);
+      console.error("Error adding gratitude:", error);
       toast({
         title: "Error",
         description: "Failed to save gratitude entry",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   const handleConnectionNote = async () => {
     if (!user || !connectionNote.trim()) return;
-    
+
     try {
       // In a real app, we might want to store connection notes in a separate table
       // For now, just show a success message
       toast({
         title: "Connection noted!",
-        description: "Your relationship insight has been saved."
+        description: "Your relationship insight has been saved.",
       });
-      
-      setConnectionNote('');
+
+      setConnectionNote("");
     } catch (error) {
-      console.error('Error saving connection note:', error);
+      console.error("Error saving connection note:", error);
       toast({
         title: "Error",
         description: "Failed to save connection note",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -312,7 +452,7 @@ export default function Relations() {
               <span>Relationship wellness</span>
               <span>0%</span>
             </div>
-            <Progress value={0} className="h-2 bg-white/20" />
+            <Progress value={0} className="h-2 bg-[#101012]" />
           </div>
         </CardContent>
       </Card>
@@ -325,14 +465,23 @@ export default function Relations() {
             <Card key={index} className="metric-card haptic-light">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <div className={`w-10 h-10 rounded-xl ${metric.color} flex items-center justify-center`}>
+                  <div
+                    className={`w-10 h-10 rounded-xl ${metric.color} flex items-center justify-center`}
+                  >
                     <Icon className="h-5 w-5 text-white" />
                   </div>
-                  <span className="text-xs text-green-600 font-medium">{metric.trend}</span>
+                  <span className="text-xs text-green-600 font-medium">
+                    {metric.trend}
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">{metric.label}</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  {metric.label}
+                </p>
                 <p className="text-lg font-bold">
-                  {metric.value}<span className="text-sm font-normal text-muted-foreground">{metric.unit}</span>
+                  {metric.value}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {metric.unit}
+                  </span>
                 </p>
               </CardContent>
             </Card>
@@ -353,7 +502,9 @@ export default function Relations() {
               <div key={index}>
                 <div className="flex justify-between text-sm mb-2">
                   <span>{goal.label}</span>
-                  <span>{goal.current} / {goal.target}</span>
+                  <span>
+                    {goal.current} / {goal.target}
+                  </span>
                 </div>
                 <Progress value={progress} className="h-2" />
               </div>
@@ -393,11 +544,17 @@ export default function Relations() {
                 <div className="text-2xl mr-3">{relationship.emoji}</div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">{relationship.name}</p>
-                  <p className="text-xs text-muted-foreground">{relationship.type} • {relationship.lastContact}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {relationship.type} • {relationship.lastContact}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium">{relationship.strength}%</div>
-                  <div className="text-xs text-muted-foreground">{relationship.status}</div>
+                  <div className="text-sm font-medium">
+                    {relationship.strength}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {relationship.status}
+                  </div>
                 </div>
               </div>
             ))}
@@ -418,7 +575,7 @@ export default function Relations() {
             onChange={(e) => setGratitudeText(e.target.value)}
             className="min-h-20"
           />
-          <Button 
+          <Button
             onClick={handleGratitudeSubmit}
             className="w-full ios-button-primary"
             disabled={!gratitudeText.trim()}
@@ -438,7 +595,7 @@ export default function Relations() {
             onChange={(e) => setConnectionNote(e.target.value)}
             className="min-h-20"
           />
-          <Button 
+          <Button
             onClick={handleConnectionNote}
             variant="outline"
             className="w-full ios-button-secondary"
@@ -455,10 +612,42 @@ export default function Relations() {
         <h3 className="font-semibold mb-4">Quick Connect</h3>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { name: 'Mom', emoji: '👵', action: () => toast({ title: "Called Mom!", description: "Quality time scheduled" }) },
-            { name: 'Best Friend', emoji: '👫', action: () => toast({ title: "Texted friend!", description: "Check-in message sent" }) },
-            { name: 'Partner', emoji: '💕', action: () => toast({ title: "Date planned!", description: "Romantic evening scheduled" }) },
-            { name: 'Sibling', emoji: '👨‍👩‍👧', action: () => toast({ title: "Family time!", description: "Catch-up call made" }) }
+            {
+              name: "Mom",
+              emoji: "👵",
+              action: () =>
+                toast({
+                  title: "Called Mom!",
+                  description: "Quality time scheduled",
+                }),
+            },
+            {
+              name: "Best Friend",
+              emoji: "👫",
+              action: () =>
+                toast({
+                  title: "Texted friend!",
+                  description: "Check-in message sent",
+                }),
+            },
+            {
+              name: "Partner",
+              emoji: "💕",
+              action: () =>
+                toast({
+                  title: "Date planned!",
+                  description: "Romantic evening scheduled",
+                }),
+            },
+            {
+              name: "Sibling",
+              emoji: "👨‍👩‍👧",
+              action: () =>
+                toast({
+                  title: "Family time!",
+                  description: "Catch-up call made",
+                }),
+            },
           ].map((contact) => (
             <Button
               key={contact.name}
@@ -482,19 +671,29 @@ export default function Relations() {
         <div className="space-y-3">
           {activities.map((activity, index) => (
             <div key={index} className="ios-list-item haptic-selection">
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 ${
-                activity.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'
-              }`}>
-                {activity.completed && <div className="w-2 h-2 bg-white rounded-full"></div>}
+              <div
+                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 ${
+                  activity.completed
+                    ? "bg-green-500 border-green-500"
+                    : "border-gray-300"
+                }`}
+              >
+                {activity.completed && (
+                  <div className="w-2 h-2 bg-[#0a0a0c] rounded-full"></div>
+                )}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">{activity.emoji}</span>
                   <p className="text-sm font-medium">{activity.title}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{activity.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {activity.description}
+                </p>
               </div>
-              {activity.completed && <span className="text-xs text-green-600 font-medium">Done</span>}
+              {activity.completed && (
+                <span className="text-xs text-green-600 font-medium">Done</span>
+              )}
             </div>
           ))}
         </div>
@@ -505,10 +704,38 @@ export default function Relations() {
         <h3 className="font-semibold mb-4">Relationship Builders</h3>
         <div className="space-y-3">
           {[
-            { title: 'Send Appreciation', action: () => toast({ title: "Appreciation sent!", description: "Made someone's day brighter" }) },
-            { title: 'Plan Quality Time', action: () => toast({ title: "Time blocked!", description: "Quality time scheduled" }) },
-            { title: 'Practice Active Listening', action: () => toast({ title: "Mindful listening!", description: "Attention focused on others" }) },
-            { title: 'Share a Memory', action: () => toast({ title: "Memory shared!", description: "Beautiful moment reconnected" }) }
+            {
+              title: "Send Appreciation",
+              action: () =>
+                toast({
+                  title: "Appreciation sent!",
+                  description: "Made someone's day brighter",
+                }),
+            },
+            {
+              title: "Plan Quality Time",
+              action: () =>
+                toast({
+                  title: "Time blocked!",
+                  description: "Quality time scheduled",
+                }),
+            },
+            {
+              title: "Practice Active Listening",
+              action: () =>
+                toast({
+                  title: "Mindful listening!",
+                  description: "Attention focused on others",
+                }),
+            },
+            {
+              title: "Share a Memory",
+              action: () =>
+                toast({
+                  title: "Memory shared!",
+                  description: "Beautiful moment reconnected",
+                }),
+            },
           ].map((activity, index) => (
             <Button
               key={index}
@@ -534,21 +761,30 @@ export default function Relations() {
             <div key={index} className="p-4 border rounded-xl">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium text-sm">{module.title}</h4>
-                <span className="text-xs text-muted-foreground">{module.time}</span>
+                <span className="text-xs text-muted-foreground">
+                  {module.time}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">{module.description}</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                {module.description}
+              </p>
               {module.completed ? (
                 <div className="text-xs text-green-600 font-medium flex items-center gap-1">
                   <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <div className="w-2 h-2 bg-[#0a0a0c] rounded-full"></div>
                   </div>
                   Completed
                 </div>
               ) : (
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   className="ios-button-primary w-full haptic-medium"
-                  onClick={() => toast({ title: `Started ${module.title}!`, description: "Learning module in progress" })}
+                  onClick={() =>
+                    toast({
+                      title: `Started ${module.title}!`,
+                      description: "Learning module in progress",
+                    })
+                  }
                 >
                   <BookOpen className="h-3 w-3 mr-1" />
                   Start Module
@@ -564,34 +800,17 @@ export default function Relations() {
   return (
     <div className="min-h-screen bg-background safe-area-top safe-area-bottom ios-scroll">
       {/* iOS-style Header */}
-      <div className="ios-header safe-area-left safe-area-right">
-        <div className="flex items-center justify-between w-full px-4">
-          <div className="flex items-center gap-3">
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="h-10 w-10 p-0 haptic-light"
-              onClick={() => navigate('/')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <div className="ios-large-title">Relations 🤝</div>
-              <p className="text-sm text-muted-foreground">Sunday, Dec 15</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" className="h-10 w-10 p-0 haptic-light">
-              <Calendar className="h-4 w-4" />
-            </Button>
-            <Button size="sm" variant="ghost" className="h-10 w-10 p-0 haptic-light">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="BONDS"
+        context={new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
+        onBack={() => navigate("/")}
+        action={{ label: 'CALENDAR', onClick: () => navigate('/calendar') }}
+      />
 
-      <div className="px-4 safe-area-left safe-area-right" style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}>
+      <div
+        className="px-4 safe-area-left safe-area-right"
+        style={{ paddingBottom: "calc(100px + env(safe-area-inset-bottom))" }}
+      >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsContent value="overview" className="mt-0">
             {renderOverview()}
@@ -613,29 +832,32 @@ export default function Relations() {
 
       {/* Bottom Tab Navigation - Full Width */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-xl border-t border-border/30">
-        <div className="w-full px-4 py-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+        <div
+          className="w-full px-4 py-2"
+          style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
+        >
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full h-12 flex bg-muted/50 rounded-xl p-1">
-              <TabsTrigger 
-                value="overview" 
+              <TabsTrigger
+                value="overview"
                 className="flex-1 py-2 px-3 text-xs font-medium transition-all duration-200 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
               >
                 Overview
               </TabsTrigger>
-              <TabsTrigger 
-                value="connections" 
+              <TabsTrigger
+                value="connections"
                 className="flex-1 py-2 px-3 text-xs font-medium transition-all duration-200 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
               >
                 Connect
               </TabsTrigger>
-              <TabsTrigger 
-                value="activities" 
+              <TabsTrigger
+                value="activities"
                 className="flex-1 py-2 px-3 text-xs font-medium transition-all duration-200 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
               >
                 Activities
               </TabsTrigger>
-              <TabsTrigger 
-                value="growth" 
+              <TabsTrigger
+                value="growth"
                 className="flex-1 py-2 px-3 text-xs font-medium transition-all duration-200 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
               >
                 Growth

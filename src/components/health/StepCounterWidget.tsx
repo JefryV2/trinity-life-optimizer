@@ -1,14 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { MapPin, Zap, Settings, Activity } from 'lucide-react';
-import { useAuth } from '@/components/AuthProvider';
-import { stepCounterService } from '@/services/StepCounterService';
-import { supabase } from '@/integrations/supabase/client';
-import { CircularProgress } from '@/components/ui/circular-progress';
-
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { MapPin, Zap, Settings, Activity } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
+import { stepCounterService } from "@/services/StepCounterService";
+import { supabase } from "@/integrations/supabase/client";
+import { CircularProgress } from "@/components/ui/circular-progress";
 export const StepCounterWidget = () => {
   const { user } = useAuth();
   const [steps, setSteps] = useState(0);
@@ -16,12 +21,9 @@ export const StepCounterWidget = () => {
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [isTracking, setIsTracking] = useState(false);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
-  const [tempGoal, setTempGoal] = useState('10000');
-
+  const [tempGoal, setTempGoal] = useState("10000");
   useEffect(() => {
-    if (!user) return;
-
-    // If the step service is already running, trust its in-memory state first
+    if (!user) return; // If the step service is already running, trust its in-memory state first
     if (stepCounterService.isActive()) {
       setSteps(stepCounterService.getCurrentSteps());
       setDistance(stepCounterService.getCurrentDistance());
@@ -29,135 +31,111 @@ export const StepCounterWidget = () => {
       // Fallback to last persisted value in the database
       loadTodaySteps();
     }
-
-    loadDailyGoal();
-    // Auto-start tracking (will reuse existing if already running)
+    loadDailyGoal(); // Auto-start tracking (will reuse existing if already running)
     startAutoTracking();
-  }, [user]);
-
-  // Auto-start tracking when app loads (even before user is authenticated)
+  }, [user]); // Auto-start tracking when app loads (even before user is authenticated)
   useEffect(() => {
     // Try to auto-start once
     stepCounterService.autoStart();
   }, []);
-
   const loadTodaySteps = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
-        .from('step_records')
-        .select('steps')
-        .eq('user_id', user?.id)
-        .eq('date', today)
+        .from("step_records")
+        .select("steps")
+        .eq("user_id", user?.id)
+        .eq("date", today)
         .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading steps:', error);
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading steps:", error);
         return;
       }
-
       if (data) {
         setSteps(data.steps || 0);
       }
     } catch (error) {
-      console.error('Error loading steps:', error);
+      console.error("Error loading steps:", error);
     }
   };
-
   const loadDailyGoal = async () => {
     try {
       // Try to load from user_profiles_health first
       const { data: profileData } = await supabase
-        .from('user_profiles_health')
-        .select('daily_step_goal, activity_level')
-        .eq('user_id', user?.id)
+        .from("user_profiles_health")
+        .select("daily_step_goal, activity_level")
+        .eq("user_id", user?.id)
         .maybeSingle();
-
       if (profileData?.daily_step_goal) {
         setDailyGoal(profileData.daily_step_goal);
         setTempGoal(profileData.daily_step_goal.toString());
         return;
-      }
-
-      // Fallback to activity level based goals
+      } // Fallback to activity level based goals
       if (profileData?.activity_level) {
         const goals: Record<string, number> = {
           sedentary: 5000,
           light: 7500,
           moderate: 10000,
           active: 12500,
-          very_active: 15000
+          very_active: 15000,
         };
         const goal = goals[profileData.activity_level] || 10000;
         setDailyGoal(goal);
         setTempGoal(goal.toString());
       }
     } catch (error) {
-      console.error('Error loading goal:', error);
+      console.error("Error loading goal:", error);
     }
   };
-
   const saveDailyGoal = async (newGoal: number) => {
     try {
-      if (!user) return;
-
-      // Update user_profiles_health with daily_step_goal
+      if (!user) return; // Update user_profiles_health with daily_step_goal
       const { error } = await supabase
-        .from('user_profiles_health')
-        .upsert({
-          user_id: user.id,
-          daily_step_goal: newGoal,
-        }, {
-          onConflict: 'user_id'
-        });
-
+        .from("user_profiles_health")
+        .upsert(
+          { user_id: user.id, daily_step_goal: newGoal },
+          { onConflict: "user_id" },
+        );
       if (error) {
-        console.error('Error saving goal:', error);
+        console.error("Error saving goal:", error);
         return;
       }
-
       setDailyGoal(newGoal);
       setIsEditingGoal(false);
     } catch (error) {
-      console.error('Error saving goal:', error);
+      console.error("Error saving goal:", error);
     }
   };
-
   const handleGoalSubmit = () => {
     const goal = parseInt(tempGoal);
     if (goal && goal > 0 && goal <= 100000) {
       saveDailyGoal(goal);
     }
   };
-
   const startAutoTracking = async () => {
     try {
       // Check if already tracking
       if (stepCounterService.isActive()) {
-        setIsTracking(true);
-        // Update current values
+        setIsTracking(true); // Update current values
         setSteps(stepCounterService.getCurrentSteps());
         setDistance(stepCounterService.getCurrentDistance());
         return;
-      }
-
-      // Start tracking with callback
-      const started = await stepCounterService.startCounting((currentSteps, currentDistance) => {
-        setSteps(currentSteps);
-        setDistance(currentDistance);
-      });
-
+      } // Start tracking with callback
+      const started = await stepCounterService.startCounting(
+        (currentSteps, currentDistance) => {
+          setSteps(currentSteps);
+          setDistance(currentDistance);
+        },
+      );
       if (started) {
         setIsTracking(true);
         setSteps(stepCounterService.getCurrentSteps());
         setDistance(stepCounterService.getCurrentDistance());
       }
     } catch (error) {
-      console.error('Error starting auto-tracking:', error);
+      console.error("Error starting auto-tracking:", error);
     }
-  };
-
-  // Update display periodically even if service is running
+  }; // Update display periodically even if service is running
   useEffect(() => {
     const interval = setInterval(() => {
       if (stepCounterService.isActive()) {
@@ -165,27 +143,25 @@ export const StepCounterWidget = () => {
         setDistance(stepCounterService.getCurrentDistance());
       }
     }, 2000); // Update every 2 seconds
-
     return () => clearInterval(interval);
   }, []);
-
-  const progress = Math.min((steps / dailyGoal) * 100, 100);
-  // Keep distance/calories aligned with Overview and other step displays.
+  const progress = Math.min((steps / dailyGoal) * 100, 100); // Keep distance/calories aligned with Overview and other step displays.
   const distanceKm = ((steps / 1000) * 0.8).toFixed(2);
   const caloriesBurned = Math.round(steps * 0.04);
   const stepsRemaining = Math.max(0, dailyGoal - steps);
-
   return (
-    <Card className="glass-panel bg-white/70 border border-white/60">
+    <Card className="glass-panel bg-[#0a0a0c] border border-white/60">
       <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-              <Activity className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-primary from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+              <Activity className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground text-lg">Steps Today</h3>
+              <h3 className="font-semibold text-foreground text-lg">
+                Steps Today
+              </h3>
               <p className="text-xs text-muted-foreground">
                 {isTracking ? (
                   <span className="flex items-center gap-1 text-green-600">
@@ -193,19 +169,18 @@ export const StepCounterWidget = () => {
                     Tracking
                   </span>
                 ) : (
-                  'Starting...'
+                  "Starting..."
                 )}
               </p>
             </div>
           </div>
-          
           {/* Goal Edit Button */}
           <Dialog open={isEditingGoal} onOpenChange={setIsEditingGoal}>
             <DialogTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full hover:bg-white/60"
+                className="h-8 w-8 rounded-full hover:bg-[#0a0a0c]"
               >
                 <Settings className="h-4 w-4 text-muted-foreground" />
               </Button>
@@ -234,10 +209,7 @@ export const StepCounterWidget = () => {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    onClick={handleGoalSubmit}
-                    className="flex-1"
-                  >
+                  <Button onClick={handleGoalSubmit} className="flex-1">
                     Save Goal
                   </Button>
                   <Button
@@ -252,7 +224,6 @@ export const StepCounterWidget = () => {
             </DialogContent>
           </Dialog>
         </div>
-
         {/* Circular Progress */}
         <div className="flex items-center justify-center mb-6">
           <CircularProgress
@@ -276,28 +247,37 @@ export const StepCounterWidget = () => {
             </div>
           </CircularProgress>
         </div>
-
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white/60 rounded-xl p-3 border border-white/40 text-center">
+          <div className="bg-[#0a0a0c] rounded-xl p-3 border border-white/40 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Distance</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                Distance
+              </p>
             </div>
             <p className="text-lg font-bold text-foreground">{distanceKm}</p>
             <p className="text-[10px] text-muted-foreground">km</p>
           </div>
-          <div className="bg-white/60 rounded-xl p-3 border border-white/40 text-center">
+          <div className="bg-[#0a0a0c] rounded-xl p-3 border border-white/40 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Calories</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                Calories
+              </p>
             </div>
-            <p className="text-lg font-bold text-foreground">{caloriesBurned}</p>
+            <p className="text-lg font-bold text-foreground">
+              {caloriesBurned}
+            </p>
             <p className="text-[10px] text-muted-foreground">burned</p>
           </div>
-          <div className="bg-white/60 rounded-xl p-3 border border-white/40 text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Remaining</p>
-            <p className="text-lg font-bold text-foreground">{stepsRemaining.toLocaleString()}</p>
+          <div className="bg-[#0a0a0c] rounded-xl p-3 border border-white/40 text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+              Remaining
+            </p>
+            <p className="text-lg font-bold text-foreground">
+              {stepsRemaining.toLocaleString()}
+            </p>
             <p className="text-[10px] text-muted-foreground">steps</p>
           </div>
         </div>

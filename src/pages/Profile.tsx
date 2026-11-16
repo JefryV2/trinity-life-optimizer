@@ -131,14 +131,14 @@ export default function Profile() {
       }
 
       setProfile(data);
-      
+
       // Also fetch health profile to get gender
       const { data: healthData, error: healthError } = await supabase
         .from("user_profiles_health")
         .select("gender")
         .eq("user_id", user?.id)
         .maybeSingle();
-      
+
       if (healthError && healthError.code !== "PGRST116") {
         console.error("Error fetching health profile:", healthError);
       } else {
@@ -299,7 +299,7 @@ export default function Profile() {
       <section className="glass-panel p-6 rounded-3xl">
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20 border-2 border-white/50 shadow-lg">
-            <AvatarFallback className="text-2xl bg-gradient-to-br from-orange-500 to-orange-400 text-white">
+            <AvatarFallback className="text-2xl bg-primary from-orange-500 to-orange-400 text-primary-foreground">
               {profile?.first_name?.[0] ||
                 user?.email?.[0]?.toUpperCase() ||
                 "U"}
@@ -319,12 +319,19 @@ export default function Profile() {
               </Badge>
               {healthProfile?.gender && (
                 <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                  {healthProfile.gender === 'female' ? '♀️' : 
-                   healthProfile.gender === 'male' ? '♂️' : 
-                   healthProfile.gender === 'other' ? '🏳️‍🌈' : 
-                   healthProfile.gender === 'prefer-not-to-say' ? '🤫' : '👤'}
+                  {healthProfile.gender === "female"
+                    ? "♀️"
+                    : healthProfile.gender === "male"
+                      ? "♂️"
+                      : healthProfile.gender === "other"
+                        ? "🏳️‍🌈"
+                        : healthProfile.gender === "prefer-not-to-say"
+                          ? "🤫"
+                          : "👤"}
                   <span className="ml-1 capitalize">
-                    {healthProfile.gender === 'prefer-not-to-say' ? 'Not specified' : healthProfile.gender}
+                    {healthProfile.gender === "prefer-not-to-say"
+                      ? "Not specified"
+                      : healthProfile.gender}
                   </span>
                 </Badge>
               )}
@@ -341,7 +348,7 @@ export default function Profile() {
               Wellness Overview
             </p>
             <h3 className="text-lg font-semibold text-foreground">
-              Your Trinity Scores
+              Your Auxo scores
             </h3>
           </div>
           <Star className="h-5 w-5 text-primary" />
@@ -352,7 +359,7 @@ export default function Profile() {
             return (
               <div
                 key={index}
-                className="bg-white/70 rounded-2xl p-4 border border-white/60 text-center"
+                className="bg-[#0a0a0c] rounded-2xl p-4 border border-white/60 text-center"
               >
                 <div className="flex items-center justify-center mb-2">
                   <Icon className={`h-5 w-5 ${stat.color}`} />
@@ -389,7 +396,7 @@ export default function Profile() {
         <div className="grid grid-cols-2 gap-3">
           <Button
             variant="outline"
-            className="h-16 flex-col gap-2 bg-white/70 border-white/60 rounded-2xl hover:bg-white/90"
+            className="h-16 flex-col gap-2 bg-[#0a0a0c] border-white/60 rounded-2xl hover:bg-[#0a0a0c]"
             onClick={() => navigate("/health")}
           >
             <Heart className="h-5 w-5 text-green-600" />
@@ -397,7 +404,7 @@ export default function Profile() {
           </Button>
           <Button
             variant="outline"
-            className="h-16 flex-col gap-2 bg-white/70 border-white/60 rounded-2xl hover:bg-white/90"
+            className="h-16 flex-col gap-2 bg-[#0a0a0c] border-white/60 rounded-2xl hover:bg-[#0a0a0c]"
             onClick={() => navigate("/wealth")}
           >
             <DollarSign className="h-5 w-5 text-blue-600" />
@@ -405,7 +412,7 @@ export default function Profile() {
           </Button>
           <Button
             variant="outline"
-            className="h-16 flex-col gap-2 bg-white/70 border-white/60 rounded-2xl hover:bg-white/90"
+            className="h-16 flex-col gap-2 bg-[#0a0a0c] border-white/60 rounded-2xl hover:bg-[#0a0a0c]"
             onClick={() => navigate("/relations")}
           >
             <Target className="h-5 w-5 text-purple-600" />
@@ -413,7 +420,7 @@ export default function Profile() {
           </Button>
           <Button
             variant="outline"
-            className="h-16 flex-col gap-2 bg-white/70 border-white/60 rounded-2xl hover:bg-white/90"
+            className="h-16 flex-col gap-2 bg-[#0a0a0c] border-white/60 rounded-2xl hover:bg-[#0a0a0c]"
             onClick={() => setActiveTab("settings")}
           >
             <Settings className="h-5 w-5 text-orange-600" />
@@ -445,7 +452,7 @@ export default function Profile() {
               className={`p-4 rounded-2xl border-2 transition-all ${
                 achievement.earned
                   ? "border-primary bg-primary/5 shadow-sm"
-                  : "border-white/40 bg-white/30"
+                  : "border-white/40 bg-[#101012]/60"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -459,7 +466,9 @@ export default function Profile() {
                 <div className="flex-1">
                   <h4
                     className={`font-semibold text-sm ${
-                      achievement.earned ? "text-primary" : "text-muted-foreground"
+                      achievement.earned
+                        ? "text-primary"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {achievement.title}
@@ -484,7 +493,7 @@ export default function Profile() {
   const renderSettings = () => (
     <div className="space-y-4">
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 mb-6 bg-white/50 rounded-2xl p-1">
+        <TabsList className="w-full grid grid-cols-4 mb-6 bg-[#0a0a0c] rounded-2xl p-1">
           <TabsTrigger
             value="profile"
             className="flex items-center gap-2 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -537,7 +546,9 @@ export default function Profile() {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Subscription
           </p>
-          <h3 className="text-lg font-semibold text-foreground">Plan Details</h3>
+          <h3 className="text-lg font-semibold text-foreground">
+            Plan Details
+          </h3>
         </header>
         <div className="text-center py-6">
           <Crown className="h-12 w-12 mx-auto mb-4 text-primary/60" />
@@ -581,7 +592,10 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--gradient-bg)] safe-area-top safe-area-bottom" style={{ paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}>
+    <div
+      className="min-h-screen bg-[var(--gradient-bg)] safe-area-top safe-area-bottom"
+      style={{ paddingBottom: "calc(100px + env(safe-area-inset-bottom))" }}
+    >
       {/* Modern Header */}
       <header className="pt-10 pb-6 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -607,7 +621,7 @@ export default function Profile() {
             size="sm"
             variant="ghost"
             className="h-10 w-10 p-0 haptic-light rounded-full glass-panel"
-            onClick={() => navigate('/calendar')}
+            onClick={() => navigate("/calendar")}
           >
             <Calendar className="h-4 w-4" />
           </Button>
@@ -637,7 +651,7 @@ export default function Profile() {
           style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full h-12 flex bg-white/50 rounded-2xl p-1">
+            <TabsList className="w-full h-12 flex bg-[#0a0a0c] rounded-2xl p-1">
               <TabsTrigger
                 value="overview"
                 className="flex-1 py-2 px-3 text-xs font-medium transition-all duration-200 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"

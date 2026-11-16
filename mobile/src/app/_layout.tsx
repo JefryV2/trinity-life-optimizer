@@ -6,7 +6,10 @@ import {
   Baloo2_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/baloo-2';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { QueryClient } from '@tanstack/react-query';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { DarkTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -15,10 +18,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CrashScreen } from '@/components/crash-screen';
+import { ArrivalOverlay } from '@/features/landing/arrival-overlay';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { ToastHost } from '@/components/ui/toast';
 import { installCrashGuard } from '@/lib/crash-guard';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { palette } from '@/theme';
+import '@/features/health/walk-task';
 
 installCrashGuard();
 SplashScreen.preventAutoHideAsync();
@@ -27,11 +33,16 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
-      gcTime: 5 * 60_000,
-      retry: 1,
+      gcTime: 24 * 60 * 60_000,
+      retry: 0,
       refetchOnWindowFocus: false,
     },
   },
+});
+
+const persister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: 'auxo.query.cache.v1',
 });
 
 const navigationTheme = (_dark: boolean) => {
@@ -58,9 +69,11 @@ function RootNavigator() {
   const dark = true;
   const colors = palette.dark;
 
+  // The landing owns the boot animation; don't leave the native splash
+  // (a still logo) sitting on top of it.
   useEffect(() => {
-    if (!loading) void SplashScreen.hideAsync();
-  }, [loading]);
+    void SplashScreen.hideAsync();
+  }, []);
 
   // if anything stalls (network, fonts, first paint), show the app anyway
   useEffect(() => {
@@ -71,12 +84,17 @@ function RootNavigator() {
   useEffect(() => {
     if (loading) return;
 
-    const root = segments[0];
-    const onAuthScreen = root === 'sign-in' || root === 'sign-up';
+    const root = segments[0] as string | undefined;
+    const onAuthScreen =
+      root === 'welcome' ||
+      root === 'sign-in' ||
+      root === 'sign-up' ||
+      root === 'reset' ||
+      root === 'oauth';
     const onOnboarding = root === 'onboarding';
 
     if (!session) {
-      if (!onAuthScreen) router.replace('/sign-in');
+      if (!onAuthScreen) router.replace('/welcome' as never);
       return;
     }
 
@@ -86,7 +104,8 @@ function RootNavigator() {
     }
 
     if (onAuthScreen || onOnboarding || root === undefined) {
-      router.replace('/(tabs)');
+      // A reset ticket may arrive while a session is still cached.
+      if (root !== 'reset') router.replace('/(tabs)');
     }
   }, [session, loading, onboarded, segments, router]);
 
@@ -99,15 +118,20 @@ function RootNavigator() {
           contentStyle: { backgroundColor: colors.background },
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.primary,
-          headerTitleStyle: { color: colors.text },
+          headerTitleStyle: { color: colors.text, fontFamily: 'Baloo2_700Bold', fontSize: 18 },
+          headerBackTitleStyle: { fontFamily: 'Baloo2_600SemiBold' },
           headerShadowVisible: false,
           headerBackTitle: 'Back',
         }}
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="index" />
+        <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen name="sign-in" options={{ animation: 'fade' }} />
         <Stack.Screen name="sign-up" options={{ animation: 'fade' }} />
+        <Stack.Screen name="reset" options={{ animation: 'fade' }} />
+        <Stack.Screen name="oauth" options={{ animation: 'fade' }} />
+        <Stack.Screen name="account/password" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen
           name="onboarding"
           options={{ animation: 'fade', gestureEnabled: false }}
@@ -119,20 +143,33 @@ function RootNavigator() {
         <Stack.Screen name="why" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="experiments" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="insights" options={{ headerShown: true, title: 'Insights' }} />
+        <Stack.Screen name="weekly-review" options={{ headerShown: false }} />
+        <Stack.Screen name="data-privacy" options={{ headerShown: false }} />
+        <Stack.Screen name="reminders" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="scan-food" options={{ headerShown: false }} />
+        <Stack.Screen name="meal-builder" options={{ headerShown: false }} />
+        <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="health-import" options={{ headerShown: false }} />
+        <Stack.Screen name="legal" options={{ headerShown: false }} />
         <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Progress calendar' }} />
         <Stack.Screen name="hydration" options={{ headerShown: true, title: 'Hydration' }} />
-        <Stack.Screen name="walk" options={{ headerShown: true, title: 'Walk' }} />
+        <Stack.Screen name="walk" options={{ headerShown: true, title: 'GPS walk' }} />
         <Stack.Screen
           name="add/[form]"
           options={{ headerShown: false, presentation: 'formSheet', sheetGrabberVisible: true }}
         />
       </Stack>
+      <ToastHost />
+      <ArrivalOverlay />
     </ThemeProvider>
   );
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
+  // Load the family in the background. The first screen is the canvas
+  // animation, which has its own embedded font, so boot never waits on this.
+  useFonts({
     Baloo2_400Regular,
     Baloo2_500Medium,
     Baloo2_600SemiBold,
@@ -140,18 +177,18 @@ export default function RootLayout() {
     Baloo2_800ExtraBold,
   });
 
-  // Never block the app on fonts: if they fail, render with the system font.
-  if (!fontsLoaded && !fontError) return null;
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{ persister, maxAge: 24 * 60 * 60_000 }}
+        >
           <AuthProvider>
             <RootNavigator />
           </AuthProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
         <CrashScreen />
       </ErrorBoundary>
     </SafeAreaProvider>

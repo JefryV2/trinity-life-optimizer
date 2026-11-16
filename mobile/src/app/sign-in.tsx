@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandMark } from '@/components/brand-mark';
+import { Wordmark } from '@/components/wordmark';
+import { BackLink } from '@/components/ui/back-link';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { TextField } from '@/components/ui/text-field';
+import { SocialSignIn } from '@/features/auth/social-sign-in';
 import { useAuth } from '@/providers/auth-provider';
 import { radius, space, useTheme } from '@/theme';
 
@@ -63,8 +65,8 @@ export default function SignInScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Passwords are at least 6 characters.');
+    if (password.length < 8) {
+      setError('Passwords are at least 8 characters.');
       return;
     }
 
@@ -97,14 +99,13 @@ export default function SignInScreen() {
             alignSelf: 'center',
           }}
         >
+          <BackLink />
           <View style={{ gap: space.lg }}>
-            <BrandMark size={44} />
+            <Wordmark height={30} />
             <PageHeader
-              title={mode === 'signin' ? 'Sign in' : 'Reset password'}
+              title={mode === 'signin' ? 'Welcome back' : 'Reset password'}
               subtitle={
-                mode === 'signin'
-                  ? 'Health, money and relationships, tracked in one place.'
-                  : 'We will email you a link to set a new password.'
+                mode === 'signin' ? undefined : 'We will email you a link to set a new password.'
               }
             />
           </View>
@@ -138,6 +139,22 @@ export default function SignInScreen() {
               <AppText variant="footnote" tone="danger" selectable>
                 {error}
               </AppText>
+            </View>
+          ) : null}
+
+          {mode === 'signin' ? (
+            <View style={{ gap: space.lg }}>
+              <SocialSignIn
+                onError={setError}
+                disabled={submitting || demoLoading}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
+                <AppText variant="mono" tone="tertiary">
+                  or use email
+                </AppText>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
+              </View>
             </View>
           ) : null}
 
@@ -184,6 +201,22 @@ export default function SignInScreen() {
               disabled={submitting}
             />
 
+            {mode === 'reset' ? (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={10}
+                onPress={() => router.push('/reset?manual=1' as never)}
+                style={{ minHeight: 32, justifyContent: 'center' }}
+              >
+                <AppText variant="footnote" tone="secondary">
+                  Already have a reset link?{' '}
+                  <AppText variant="footnote" tone="primary">
+                    Enter it
+                  </AppText>
+                </AppText>
+              </Pressable>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
               hitSlop={10}
@@ -201,13 +234,7 @@ export default function SignInScreen() {
           </View>
 
           <View style={{ gap: space.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
-              <AppText variant="mono" tone="tertiary">
-                or
-              </AppText>
-              <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
-            </View>
+            <View style={{ height: 1, backgroundColor: colors.separator }} />
 
             <Button
               label="Explore the offline demo"
@@ -227,7 +254,7 @@ export default function SignInScreen() {
               style={{ minHeight: 44, justifyContent: 'center' }}
             >
               <AppText variant="footnote" tone="secondary">
-                New to Trinity?{' '}
+                New to Auxo?{' '}
                 <AppText variant="footnote" tone="primary">
                   Create an account
                 </AppText>

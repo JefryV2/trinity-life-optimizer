@@ -1,21 +1,27 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Shield, 
-  Eye, 
-  Database, 
-  Download, 
-  Trash2, 
-  Lock, 
+import {
+  Shield,
+  Eye,
+  Database,
+  Download,
+  Trash2,
+  Lock,
   AlertTriangle,
   Save,
   FileText,
-  UserX
-} from 'lucide-react';
+  UserX,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -37,7 +43,7 @@ export function PrivacySettings() {
     personalizedAds: false,
     shareWithPartners: false,
     publicProfile: false,
-    showActivity: false
+    showActivity: false,
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,17 +51,17 @@ export function PrivacySettings() {
     setIsLoading(true);
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       toast({
         title: "Privacy settings updated",
-        description: "Your privacy preferences have been saved"
+        description: "Your privacy preferences have been saved",
       });
     } catch (error) {
       toast({
         title: "Error saving settings",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -63,13 +69,14 @@ export function PrivacySettings() {
   };
 
   const updateSetting = (key: keyof PrivacySettings, value: boolean) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const exportData = async () => {
     toast({
       title: "Data export requested",
-      description: "Your data export will be ready within 24 hours and sent to your email"
+      description:
+        "Your data export will be ready within 24 hours and sent to your email",
     });
   };
 
@@ -77,7 +84,7 @@ export function PrivacySettings() {
     toast({
       title: "Account deletion requested",
       description: "Please contact support to complete account deletion",
-      variant: "destructive"
+      variant: "destructive",
     });
   };
 
@@ -102,10 +109,7 @@ export function PrivacySettings() {
                 Required for app functionality (cannot be disabled)
               </div>
             </div>
-            <Switch
-              checked={settings.dataCollection}
-              disabled={true}
-            />
+            <Switch checked={settings.dataCollection} disabled={true} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -117,7 +121,9 @@ export function PrivacySettings() {
             </div>
             <Switch
               checked={settings.analyticsTracking}
-              onCheckedChange={(checked) => updateSetting('analyticsTracking', checked)}
+              onCheckedChange={(checked) =>
+                updateSetting("analyticsTracking", checked)
+              }
             />
           </div>
 
@@ -130,7 +136,9 @@ export function PrivacySettings() {
             </div>
             <Switch
               checked={settings.personalizedAds}
-              onCheckedChange={(checked) => updateSetting('personalizedAds', checked)}
+              onCheckedChange={(checked) =>
+                updateSetting("personalizedAds", checked)
+              }
             />
           </div>
 
@@ -143,7 +151,9 @@ export function PrivacySettings() {
             </div>
             <Switch
               checked={settings.shareWithPartners}
-              onCheckedChange={(checked) => updateSetting('shareWithPartners', checked)}
+              onCheckedChange={(checked) =>
+                updateSetting("shareWithPartners", checked)
+              }
             />
           </div>
         </CardContent>
@@ -170,7 +180,9 @@ export function PrivacySettings() {
             </div>
             <Switch
               checked={settings.publicProfile}
-              onCheckedChange={(checked) => updateSetting('publicProfile', checked)}
+              onCheckedChange={(checked) =>
+                updateSetting("publicProfile", checked)
+              }
             />
           </div>
 
@@ -183,7 +195,9 @@ export function PrivacySettings() {
             </div>
             <Switch
               checked={settings.showActivity}
-              onCheckedChange={(checked) => updateSetting('showActivity', checked)}
+              onCheckedChange={(checked) =>
+                updateSetting("showActivity", checked)
+              }
             />
           </div>
         </CardContent>
@@ -201,28 +215,43 @@ export function PrivacySettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full justify-start h-12"
-            onClick={() => toast({ title: "Password change", description: "Password change feature coming soon!" })}
+            onClick={() =>
+              toast({
+                title: "Password change",
+                description: "Password change feature coming soon!",
+              })
+            }
           >
             <Lock className="h-4 w-4 mr-3" />
             Change Password
           </Button>
 
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full justify-start h-12"
-            onClick={() => toast({ title: "Two-factor auth", description: "2FA setup coming soon!" })}
+            onClick={() =>
+              toast({
+                title: "Two-factor auth",
+                description: "2FA setup coming soon!",
+              })
+            }
           >
             <Shield className="h-4 w-4 mr-3" />
             Enable Two-Factor Authentication
           </Button>
 
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full justify-start h-12"
-            onClick={() => toast({ title: "Login history", description: "Login history feature coming soon!" })}
+            onClick={() =>
+              toast({
+                title: "Login history",
+                description: "Login history feature coming soon!",
+              })
+            }
           >
             <Eye className="h-4 w-4 mr-3" />
             View Login History
@@ -237,13 +266,11 @@ export function PrivacySettings() {
             <FileText className="h-5 w-5" />
             Data Management
           </CardTitle>
-          <CardDescription>
-            Export or delete your personal data
-          </CardDescription>
+          <CardDescription>Export or delete your personal data</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full justify-start h-12"
             onClick={exportData}
           >
@@ -254,7 +281,8 @@ export function PrivacySettings() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Data exports include all your health data, preferences, and account information in JSON format.
+              Data exports include all your health data, preferences, and
+              account information in JSON format.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -275,12 +303,13 @@ export function PrivacySettings() {
           <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800 dark:text-red-200">
-              Account deletion is permanent and cannot be undone. All your data will be permanently removed.
+              Account deletion is permanent and cannot be undone. All your data
+              will be permanently removed.
             </AlertDescription>
           </Alert>
 
-          <Button 
-            variant="destructive" 
+          <Button
+            variant="destructive"
             className="w-full"
             onClick={deleteAccount}
           >
@@ -291,13 +320,13 @@ export function PrivacySettings() {
       </Card>
 
       {/* Save Button */}
-      <Button 
+      <Button
         onClick={saveSettings}
         disabled={isLoading}
         className="w-full ios-button-primary"
       >
         <Save className="h-4 w-4 mr-2" />
-        {isLoading ? 'Saving...' : 'Save Privacy Settings'}
+        {isLoading ? "Saving..." : "Save Privacy Settings"}
       </Button>
     </div>
   );

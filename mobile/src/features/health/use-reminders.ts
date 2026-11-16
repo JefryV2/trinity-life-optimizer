@@ -52,7 +52,7 @@ export const useReminders = () => {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Hydration check',
-          body: 'Take a water break and log it in Trinity.',
+          body: 'Take a water break and log it in Auxo.',
           sound: false,
         },
         trigger: {
@@ -79,7 +79,7 @@ export const useReminders = () => {
 
   const test = useCallback(async () => {
     await Notifications.scheduleNotificationAsync({
-      content: { title: 'Trinity reminder test', body: 'Notifications are working.', sound: false },
+      content: { title: 'Auxo reminder test', body: 'Notifications are working.', sound: false },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 60, channelId: 'hydration' },
     });
     setMessage('Test notification scheduled for about one minute from now.');

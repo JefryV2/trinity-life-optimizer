@@ -27,25 +27,25 @@ import {
 import { space, useTheme } from '@/theme';
 
 export default function AddFormRoute() {
-  const { form, person } = useLocalSearchParams<{ form: string; person?: string }>();
+  const { form, person, id } = useLocalSearchParams<{ form: string; person?: string; id?: string }>();
   const { colors } = useTheme();
 
   const forms: Record<string, React.ReactNode> = {
-    sleep: <SleepForm />,
-    exercise: <ExerciseForm />,
+    sleep: <SleepForm recordId={id} />,
+    exercise: <ExerciseForm recordId={id} />,
     steps: <StepsForm />,
-    food: <FoodForm />,
-    meal: <FoodForm meal />,
-    mental: <MentalForm />,
+    food: <FoodForm recordId={id} />,
+    meal: <FoodForm meal recordId={id} />,
+    mental: <MentalForm recordId={id} />,
     cycle: <CycleForm />,
     goal: <GoalForm />,
     'heart-manual': <HeartManualForm />,
     account: <AccountForm />,
-    transaction: <TransactionForm />,
+    transaction: <TransactionForm recordId={id} />,
     budget: <BudgetForm />,
     investment: <InvestmentForm />,
-    person: <PersonForm />,
-    interaction: <InteractionForm personId={person} />,
+    person: <PersonForm recordId={id} />,
+    interaction: <InteractionForm personId={person} recordId={id} />,
     gratitude: <GratitudeForm />,
     'quality-time': <QualityTimeForm />,
   };

@@ -1,7 +1,12 @@
-import { Activity, DollarSign, Heart, TrendingUp, ArrowRight } from "lucide-react";
+import {
+  Activity,
+  DollarSign,
+  Heart,
+  TrendingUp,
+  ArrowRight,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
-
 interface PillarData {
   id: string;
   title: string;
@@ -11,27 +16,20 @@ interface PillarData {
   trend: string;
   color: string;
   gradient: string;
-  metrics: Array<{
-    label: string;
-    value: string | number;
-    unit?: string;
-  }>;
+  metrics: Array<{ label: string; value: string | number; unit?: string }>;
   backendStatus: "connected" | "partial" | "coming-soon";
   backendInfo: string[];
 }
-
 interface PillarOverviewProps {
   pillars: PillarData[];
 }
-
 export const PillarOverview = ({ pillars }: PillarOverviewProps) => {
   const navigate = useNavigate();
-
   return (
     <section className="glass-panel p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-muted-foreground">Trinity Pillars</p>
+          <p className="text-sm text-muted-foreground">Auxo pillars</p>
           <h2 className="text-3xl font-semibold text-foreground">
             Life Optimization
           </h2>
@@ -48,14 +46,13 @@ export const PillarOverview = ({ pillars }: PillarOverviewProps) => {
           <p className="text-xs text-muted-foreground">Overall Score</p>
         </div>
       </header>
-
       <div className="space-y-4">
         {pillars.map((pillar) => {
           const Icon = pillar.icon;
           return (
             <div
               key={pillar.id}
-              className="glass-panel bg-white/60 border border-white/80 rounded-2xl p-4 cursor-pointer hover:bg-white/80 transition-all shadow-sm"
+              className="glass-panel bg-[#0a0a0c] border border-white/80 rounded-2xl p-4 cursor-pointer hover:bg-[#0a0a0c] transition-all shadow-sm"
               onClick={() => navigate(`/${pillar.id}`)}
             >
               <div className="flex items-start justify-between mb-3">
@@ -77,13 +74,7 @@ export const PillarOverview = ({ pillars }: PillarOverviewProps) => {
                         %
                       </span>
                       <span
-                        className={`text-xs font-medium ${
-                          pillar.trend.startsWith("+")
-                            ? "text-green-600"
-                            : pillar.trend === "0%"
-                              ? "text-muted-foreground"
-                              : "text-red-600"
-                        }`}
+                        className={`text-xs font-medium ${pillar.trend.startsWith("+") ? "text-green-600" : pillar.trend === "0%" ? "text-muted-foreground" : "text-red-600"}`}
                       >
                         {pillar.trend}
                       </span>
@@ -92,7 +83,6 @@ export const PillarOverview = ({ pillars }: PillarOverviewProps) => {
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground" />
               </div>
-
               <div className="mb-3">
                 <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                   <div
@@ -101,34 +91,25 @@ export const PillarOverview = ({ pillars }: PillarOverviewProps) => {
                   />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-2 mb-3">
                 {pillar.metrics.slice(0, 2).map((metric, idx) => (
                   <div
                     key={idx}
-                    className="bg-white/50 rounded-xl p-2.5 border border-white/60"
+                    className="bg-[#0a0a0c] rounded-xl p-2.5 border border-white/60"
                   >
                     <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
                       {metric.label}
                     </p>
                     <p className="text-sm font-semibold text-foreground">
-                      {metric.value}
-                      {metric.unit}
+                      {metric.value} {metric.unit}
                     </p>
                   </div>
                 ))}
               </div>
-
               <div className="flex items-center justify-between pt-3 border-t border-white/50">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      pillar.backendStatus === "connected"
-                        ? "bg-green-500 animate-pulse"
-                        : pillar.backendStatus === "partial"
-                          ? "bg-yellow-500"
-                          : "bg-gray-400"
-                    }`}
+                    className={`w-2.5 h-2.5 rounded-full ${pillar.backendStatus === "connected" ? "bg-green-500 animate-pulse" : pillar.backendStatus === "partial" ? "bg-yellow-500" : "bg-gray-400"}`}
                   />
                   <span className="text-xs text-muted-foreground">
                     {pillar.backendStatus === "connected"
@@ -151,4 +132,3 @@ export const PillarOverview = ({ pillars }: PillarOverviewProps) => {
     </section>
   );
 };
-

@@ -44,12 +44,10 @@ export interface RelationsData {
   qualityTime: QualityTimeGoal | null;
 }
 
-const invalidate = async (queryClient: ReturnType<typeof useQueryClient>) => {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ['relations'] }),
-    queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    queryClient.invalidateQueries({ queryKey: ['insights'] }),
-  ]);
+const invalidate = (queryClient: ReturnType<typeof useQueryClient>) => {
+  void queryClient.invalidateQueries({ queryKey: ['relations'] });
+  void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+  void queryClient.invalidateQueries({ queryKey: ['insights'] });
 };
 
 export const useRelations = () => {
@@ -121,6 +119,28 @@ export const useRelations = () => {
     onSuccess: () => invalidate(queryClient),
   });
 
+  const updatePerson = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      type: string;
+      importance: number;
+      notes?: string;
+    }) => {
+      const { error } = await supabase
+        .from('relationships')
+        .update({
+          name: input.name.trim(),
+          relation_type: input.type,
+          importance: input.importance,
+          notes: input.notes?.trim() || null,
+        })
+        .eq('id', input.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
   const logInteraction = useMutation({
     mutationFn: async (input: {
       relationshipId: string;
@@ -128,8 +148,9 @@ export const useRelations = () => {
       duration: number;
       mood: number;
       notes?: string;
+      occurredAt?: string;
     }) => {
-      const occurredAt = new Date().toISOString();
+      const occurredAt = input.occurredAt ?? new Date().toISOString();
       const { error } = await supabase.from('interactions').insert({
         user_id: userId!,
         relationship_id: input.relationshipId,
@@ -145,6 +166,32 @@ export const useRelations = () => {
         .from('relationships')
         .update({ last_contact_at: occurredAt, updated_at: occurredAt })
         .eq('id', input.relationshipId);
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
+  const updateInteraction = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      relationshipId: string;
+      channel: string;
+      duration: number;
+      mood: number;
+      notes?: string;
+      occurredAt: string;
+    }) => {
+      const { error } = await supabase
+        .from('interactions')
+        .update({
+          relationship_id: input.relationshipId,
+          channel: input.channel,
+          duration_minutes: input.duration,
+          mood_rating: input.mood,
+          notes: input.notes?.trim() || null,
+          occurred_at: input.occurredAt,
+        })
+        .eq('id', input.id);
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => invalidate(queryClient),
   });
@@ -196,7 +243,9 @@ export const useRelations = () => {
   return {
     ...query,
     addRelationship,
+    updatePerson,
     logInteraction,
+    updateInteraction,
     addGratitude,
     addQualityTime,
   };

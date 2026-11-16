@@ -70,7 +70,7 @@ check('weakest pillar is identified', weakest.weakest === 'bonds');
 check('strongest pillar is identified', weakest.strongest === 'health');
 
 const action = computeScore({ ...empty, bonds: { interactions7d: 0, people: 0, avgMood: 0 } });
-check('top action points at the biggest available gain', action.topAction?.key === 'steps' || action.topAction?.key === 'savings' || action.topAction?.key === 'sleep');
+check('top action points at the biggest available gain', action.topAction?.key === 'steps' || action.topAction?.key === 'savings' || action.topAction?.key === 'sleep' || action.topAction?.key === 'contact');
 
 const nothingLeft = computeScore(perfect);
 check('no action suggested when nothing is left', nothingLeft.topAction === null);

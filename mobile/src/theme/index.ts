@@ -1,4 +1,4 @@
-import { Platform, useColorScheme, type TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 
 /**
  * Trinity — one identity across web and mobile.
@@ -19,7 +19,7 @@ const dark = {
   text: '#EDEDEF',
   textSecondary: '#B4B4BB',
   textTertiary: '#8A8A92',
-  textFaint: '#4E4E56',
+  textFaint: '#7A7A83',
 
   primary: '#C6F24E',
   primaryPressed: '#B2DE3A',
@@ -48,11 +48,9 @@ export const palette = {
 
 export type ThemeColors = typeof palette.dark;
 
-export const useTheme = () => {
-  // kept for API compatibility; the identity is dark-only
-  useColorScheme();
-  return { colors: palette.dark, dark: true };
-};
+const THEME = { colors: palette.dark, dark: true } as const;
+
+export const useTheme = () => THEME;
 
 /** 22 for the one container, 5 for data segments, 999 for anything you touch. */
 export const radius = {

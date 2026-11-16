@@ -23,6 +23,85 @@ export interface DbResult<T> {
 
 type FilterOp = '_eq' | '_gte' | '_lte';
 
+type BatchBody = {
+  data?: unknown;
+  errors?: Array<{ message?: string }>;
+};
+
+type PendingRead = {
+  query: string;
+  variables: Record<string, unknown>;
+  resolve: (body: BatchBody) => void;
+  reject: (error: unknown) => void;
+};
+
+const pendingReads: PendingRead[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+const graphQlUrl = () =>
+  `https://${process.env.EXPO_PUBLIC_NHOST_SUBDOMAIN}.graphql.${process.env.EXPO_PUBLIC_NHOST_REGION}.nhost.run/v1`;
+
+/**
+ * Hasura accepts an array of operations at one endpoint. The dashboard and
+ * health screens issue their reads in a single tick, so collect them and send
+ * one HTTP request instead of 8–14. Mutations stay individual.
+ */
+const flushReads = async () => {
+  flushTimer = null;
+  const batch = pendingReads.splice(0, pendingReads.length);
+  if (batch.length === 0) return;
+
+  const fallback = async () => {
+    const nhost = getNhost();
+    await Promise.all(
+      batch.map(async (item) => {
+        try {
+          const response = await nhost.graphql.request({ query: item.query, variables: item.variables });
+          item.resolve(response.body as BatchBody);
+        } catch (error) {
+          item.reject(error);
+        }
+      }),
+    );
+  };
+
+  try {
+    const token = getNhost().sessionStorage.get()?.accessToken;
+    if (!token) {
+      await fallback();
+      return;
+    }
+    const response = await fetch(graphQlUrl(), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(
+        batch.map((item) => ({ query: item.query, variables: item.variables })),
+      ),
+    });
+    if (!response.ok) {
+      await fallback();
+      return;
+    }
+    const body = (await response.json()) as unknown;
+    if (!Array.isArray(body) || body.length !== batch.length) {
+      await fallback();
+      return;
+    }
+    body.forEach((item, index) => batch[index].resolve(item as BatchBody));
+  } catch {
+    await fallback();
+  }
+};
+
+const queueRead = (query: string, variables: Record<string, unknown>) =>
+  new Promise<BatchBody>((resolve, reject) => {
+    pendingReads.push({ query, variables, resolve, reject });
+    if (!flushTimer) flushTimer = setTimeout(() => void flushReads(), 0);
+  });
+
 const COLUMNS = schemaMap as Record<string, Record<string, string>>;
 // Hasura serialises numeric columns as strings to preserve precision.
 const NUMERIC = new Set([
@@ -215,8 +294,10 @@ class Query implements PromiseLike<DbResult<Row | Row[] | null>> {
     }
 
     try {
-      const response = await nhost.graphql.request({ query, variables });
-      const body = response.body;
+      const body =
+        this.action === 'select'
+          ? await queueRead(query, variables)
+          : ((await nhost.graphql.request({ query, variables })).body as BatchBody);
       if (body.errors?.length) {
         return { data: null, error: { message: body.errors.map((e) => e.message).join('; ') } };
       }

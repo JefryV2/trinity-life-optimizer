@@ -101,6 +101,23 @@ for (const name of tables) {
   secured.push(name);
 }
 
+// Account deletion is an owner-scoped mutation, not a table. Track it for the
+// user role after the table permissions.
+args.push(
+  {
+    type: 'pg_track_function',
+    args: { source: 'default', function: { schema: 'public', name: 'delete_my_account' } },
+  },
+  {
+    type: 'pg_create_function_permission',
+    args: {
+      source: 'default',
+      function: { schema: 'public', name: 'delete_my_account' },
+      role: 'user',
+    },
+  },
+);
+
 writeFileSync(
   join(root, 'db', 'hasura-metadata.json'),
   `${JSON.stringify({ type: 'bulk_keep_going', args }, null, 2)}\n`,

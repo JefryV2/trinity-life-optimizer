@@ -1,11 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import type { Session, User } from '@supabase/supabase-js';
 import type { StoredSession } from '@nhost/nhost-js';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { clearSession, WALK_TASK } from '@/features/health/walk-session';
 import { getDemoSession, resetDemoDatabase } from '@/lib/demo/demo-client';
 import { isDemoMode, loadDemoMode, setDemoMode } from '@/lib/demo/demo-mode';
 import { getStoredSession, initNhost } from '@/lib/nhost';
+import { signInWithOAuth, type OAuthProvider } from '@/lib/oauth';
 
 interface AuthValue {
   session: Session | null;
@@ -16,9 +19,13 @@ interface AuthValue {
   /** Whether this account has finished onboarding (per-device cache). */
   onboarded: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithProvider: (provider: OAuthProvider) => Promise<void>;
   signUp: (email: string, password: string, firstName: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  resetWithTicket: (ticket: string, newPassword: string) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   /** Enter the offline demo with seeded sample data. */
   enterDemo: () => Promise<void>;
   /** Restore the demo dataset to its original seeded state. */
@@ -28,6 +35,11 @@ interface AuthValue {
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
+
+const stopWalkTracking = async () => {
+  await Location.stopLocationUpdatesAsync(WALK_TASK).catch(() => {});
+  await clearSession();
+};
 
 const onboardedKey = (userId: string) => `trinity.onboarded.${userId}`;
 
@@ -67,6 +79,13 @@ const errorMessage = (body: unknown, fallback: string) => {
     if (typeof message === 'string' && message) return message;
   }
   return fallback;
+};
+
+/** Nhost throws FetchError, which keeps the parsed auth response on `.body`. */
+const thrownMessage = (caught: unknown, fallback: string) => {
+  const body = (caught as { body?: unknown })?.body;
+  if (body) return errorMessage(body, fallback);
+  return caught instanceof Error ? caught.message : fallback;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -154,6 +173,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setOnboarded(flag);
         setSession(next);
       },
+      signInWithProvider: async (provider) => {
+        const client = await initNhost();
+        const completed = await signInWithOAuth(client, provider);
+        if (!completed) return;
+        const stored = client.sessionStorage.get();
+        const next = toSession(stored);
+        if (!next) throw new Error('Sign-in succeeded but no session was returned.');
+        setOnboarded(await readOnboarded(stored?.user?.id ?? next.user.id));
+        setSession(next);
+      },
       signUp: async (email, password, firstName) => {
         const client = await initNhost();
         const response = await client.auth.signUpEmailPassword({
@@ -177,15 +206,115 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
       resetPassword: async (email) => {
         const client = await initNhost();
-        const response = await client.auth.sendPasswordResetEmail({
-          email: email.trim(),
-          options: { redirectTo: 'trinity://reset' },
-        });
-        if (response.status >= 400) {
-          throw new Error(errorMessage(response.body, 'Could not send the reset email.'));
+        const address = email.trim();
+        const send = (redirect: boolean) =>
+          client.auth.sendPasswordResetEmail({
+            email: address,
+            ...(redirect ? { options: { redirectTo: 'trinity://reset' } } : {}),
+          });
+
+        try {
+          await send(true);
+          return;
+        } catch (caught) {
+          const code = (caught as { body?: { error?: string } })?.body?.error;
+          const message = caught instanceof Error ? caught.message : '';
+          if (code !== 'redirectTo-not-allowed' && !message.toLowerCase().includes('redirect')) {
+            throw new Error(thrownMessage(caught, 'Could not send the reset email.'));
+          }
+        }
+
+        // The app deep link is not in Nhost's allowed redirect list yet. Still
+        // send the email; the link falls back to Nhost's default page.
+        try {
+          await send(false);
+        } catch (caught) {
+          throw new Error(thrownMessage(caught, 'Could not send the reset email.'));
         }
       },
+      resetWithTicket: async (ticket, newPassword) => {
+        const client = await initNhost();
+        try {
+          await client.auth.changeUserPassword({ newPassword, ticket });
+        } catch (caught) {
+          throw new Error(thrownMessage(caught, 'Could not reset the password.'));
+        }
+        client.sessionStorage.remove();
+        setOnboarded(false);
+        setSession(null);
+      },
+      changePassword: async (newPassword) => {
+        const client = await initNhost();
+        const email = session?.user?.email;
+
+        try {
+          await client.auth.changeUserPassword({ newPassword });
+        } catch (caught) {
+          throw new Error(thrownMessage(caught, 'Could not change the password.'));
+        }
+
+        if (!email) {
+          client.sessionStorage.remove();
+          setSession(null);
+          throw new Error('Password changed. Sign in again with your new password.');
+        }
+
+        try {
+          const response = await client.auth.signInEmailPassword({ email, password: newPassword });
+          if (response.status >= 400) {
+            throw new Error(errorMessage(response.body, 'Password changed. Sign in again.'));
+          }
+          const stored = client.sessionStorage.get();
+          const next = toSession(stored);
+          if (!next) throw new Error('Password changed. Sign in again.');
+          setOnboarded(await readOnboarded(stored?.user?.id ?? next.user.id));
+          setSession(next);
+        } catch (caught) {
+          client.sessionStorage.remove();
+          setOnboarded(false);
+          setSession(null);
+          throw new Error(thrownMessage(caught, 'Password changed. Sign in again.'));
+        }
+      },
+      deleteAccount: async () => {
+        if (isDemoMode()) {
+          throw new Error('Account deletion is not available in the demo.');
+        }
+        const client = await initNhost();
+
+        try {
+          const response = await client.graphql.request({
+            query: 'mutation DeleteMyAccount { delete_my_account { id } }',
+          });
+          if (response.body.errors?.length) {
+            throw new Error(response.body.errors.map((error) => error.message).join('; '));
+          }
+        } catch (caught) {
+          throw new Error(thrownMessage(caught, 'Could not delete the account.'));
+        }
+
+        await stopWalkTracking();
+        try {
+          await client.auth.signOut(
+            session?.refresh_token ? { refreshToken: session.refresh_token } : {},
+          );
+        } catch {
+          // The auth identity is already gone.
+        }
+        client.sessionStorage.remove();
+        const userId = session?.user?.id;
+        if (userId) {
+          try {
+            await AsyncStorage.removeItem(onboardedKey(userId));
+          } catch {
+            // Best-effort local cleanup.
+          }
+        }
+        setOnboarded(false);
+        setSession(null);
+      },
       signOut: async () => {
+        await stopWalkTracking();
         if (isDemoMode()) {
           await setDemoMode(false);
           setDemo(false);

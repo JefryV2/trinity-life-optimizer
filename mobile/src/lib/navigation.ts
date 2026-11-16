@@ -44,3 +44,6 @@ export const openInsight = (href: string) => {
 
 export const openAdd = (form: string) =>
   router.push({ pathname: '/add/[form]', params: { form } });
+
+export const openEdit = (form: string, id: string) =>
+  router.push({ pathname: '/add/[form]', params: { form, id } });

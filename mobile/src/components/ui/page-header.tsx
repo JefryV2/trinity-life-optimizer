@@ -30,7 +30,7 @@ export const PageHeader = ({
         ) : null}
       </View>
       {subtitle ? (
-        <AppText variant="footnote" tone="secondary">
+        <AppText variant="footnote" tone="secondary" style={{ maxWidth: 420 }}>
           {subtitle}
         </AppText>
       ) : null}

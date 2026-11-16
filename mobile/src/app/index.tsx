@@ -1,34 +1,9 @@
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
 
-import { AppText } from '@/components/ui/app-text';
-import { useAuth } from '@/providers/auth-provider';
-import { space, useTheme } from '@/theme';
-
+/**
+ * The landing owns the boot animation. Redirecting straight to it means the
+ * first thing rendered is the moving wordmark, not a still splash or spinner.
+ */
 export default function Index() {
-  const { session, loading, onboarded } = useAuth();
-  const { colors } = useTheme();
-
-  if (loading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: space.lg,
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator color={colors.primary} />
-        <AppText variant="footnote" tone="secondary">
-          Opening Trinity…
-        </AppText>
-      </View>
-    );
-  }
-
-  if (!session) return <Redirect href="/sign-in" />;
-
-  return <Redirect href={onboarded ? '/(tabs)' : '/onboarding'} />;
+  return <Redirect href={'/welcome' as never} />;
 }

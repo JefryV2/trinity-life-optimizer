@@ -1,6 +1,10 @@
-import * as Location from 'expo-location';
 import { useQueryClient } from '@tanstack/react-query';
+import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
+import { Pedometer } from 'expo-sensors';
+import * as TaskManager from 'expo-task-manager';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
 import { useHealth } from '@/features/health/use-health';
 import { useProfile } from '@/features/profile/use-profile';
@@ -8,32 +12,44 @@ import { isoDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
-export type WalkStatus = 'idle' | 'tracking' | 'paused' | 'finished';
+import {
+  clearSession,
+  compactRoute,
+  createSession,
+  loadSession,
+  saveSession,
+  sessionDurationMs,
+  WALK_TASK,
+  type WalkSession,
+  type WalkSessionStatus,
+} from './walk-session';
 
-const MAX_ACCURACY_M = 35;
-const MIN_SEGMENT_M = 1.5;
-// Anything faster than a sprint is a GPS jump, not a step.
-const MAX_SPEED_MPS = 7;
-const MIN_SAVE_M = 20;
+export type WalkStatus = 'idle' | WalkSessionStatus;
+
 const DEFAULT_STRIDE_M = 0.72;
+const MIN_SAVE_M = 20;
+const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const STEP_SAVE_INTERVAL_MS = 10_000;
 
-const toRad = (value: number) => (value * Math.PI) / 180;
-
-const haversine = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-  const earth = 6_371_000;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * earth * Math.asin(Math.min(1, Math.sqrt(h)));
+const START_OPTIONS: Location.LocationTaskOptions = {
+  accuracy: Location.Accuracy.High,
+  distanceInterval: 3,
+  timeInterval: 2000,
+  activityType: Location.ActivityType.Fitness,
+  pausesUpdatesAutomatically: false,
+  showsBackgroundLocationIndicator: true,
+  foregroundService: {
+    notificationTitle: 'Walk in progress',
+    notificationBody: 'Auxo is recording your route.',
+    notificationColor: '#C6F24E',
+    killServiceOnDestroy: false,
+  },
 };
 
 /**
- * Steps from GPS. The phone cannot count steps from location, so this measures
- * distance and converts it with the user's stride (≈0.415 × height), which is
- * the same estimate most walking apps use. Keep the app open while walking.
+ * A walk is a persisted session, not component state. The background task
+ * appends fixes even when this screen is gone; the hook restores it, polls the
+ * persisted copy while the app is open, and owns the pedometer subscription.
  */
 export const useGpsWalk = () => {
   const { data: health, saveSteps } = useHealth();
@@ -41,143 +57,361 @@ export const useGpsWalk = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [status, setStatus] = useState<WalkStatus>('idle');
-  const [distanceM, setDistanceM] = useState(0);
-  const [durationS, setDurationS] = useState(0);
-  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [session, setSession] = useState<WalkSession | null>(null);
+  const [sensorSteps, setSensorSteps] = useState(0);
+  const [backgroundGranted, setBackgroundGranted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
-  const watchRef = useRef<Location.LocationSubscription | null>(null);
-  const lastRef = useRef<{ lat: number; lng: number; t: number } | null>(null);
-  const startedAtRef = useRef(0);
-  const pausedAtRef = useRef<number | null>(null);
-  const pausedMsRef = useRef(0);
-  const distanceRef = useRef(0);
+  const sessionRef = useRef<WalkSession | null>(null);
+  const pedometerRef = useRef<{ remove: () => void } | null>(null);
+  const carryStepsRef = useRef(0);
+  const liveStepsRef = useRef(0);
+  const stepsRef = useRef(0);
 
   const heightCm = profile?.health?.height_cm ?? null;
   const strideM = heightCm ? (heightCm * 0.415) / 100 : DEFAULT_STRIDE_M;
-  const steps = Math.round(distanceM / strideM);
-  const todaySteps = health?.steps.find((row) => row.date === isoDate())?.steps ?? 0;
-  const paceSPerKm = distanceM > 30 && durationS > 0 ? durationS / (distanceM / 1000) : 0;
-  const weightKg = profile?.health?.weight_kg ?? 70;
-  const calories = Math.round(0.53 * weightKg * (distanceM / 1000));
 
-  const stopWatch = useCallback(() => {
-    watchRef.current?.remove();
-    watchRef.current = null;
+  const applySession = useCallback((next: WalkSession | null) => {
+    sessionRef.current = next;
+    setSession(next);
   }, []);
 
-  const handlePosition = useCallback((position: Location.LocationObject) => {
-    const { latitude, longitude, accuracy: reading } = position.coords;
-    setAccuracy(reading ?? null);
-    if (!reading || reading > MAX_ACCURACY_M) return;
+  const persist = useCallback(async (next: WalkSession) => {
+    sessionRef.current = next;
+    setSession(next);
+    await saveSession(next);
+  }, []);
 
-    const now = position.timestamp ?? Date.now();
-    const previous = lastRef.current;
-    if (!previous) {
-      lastRef.current = { lat: latitude, lng: longitude, t: now };
-      return;
+  const startPedometer = useCallback((carry: number) => {
+    pedometerRef.current?.remove();
+    pedometerRef.current = null;
+    carryStepsRef.current = carry;
+    liveStepsRef.current = 0;
+    setSensorSteps(carry);
+    try {
+      pedometerRef.current = Pedometer.watchStepCount(({ steps }) => {
+        liveStepsRef.current = steps;
+        setSensorSteps(carryStepsRef.current + steps);
+      });
+    } catch {
+      // No step sensor: the GPS distance / stride estimate is the fallback.
     }
-
-    const segment = haversine(previous, { lat: latitude, lng: longitude });
-    const seconds = Math.max(0.5, (now - previous.t) / 1000);
-    if (segment < MIN_SEGMENT_M) return;
-    if (segment / seconds > MAX_SPEED_MPS) return;
-
-    distanceRef.current += segment;
-    lastRef.current = { lat: latitude, lng: longitude, t: now };
-    setDistanceM(distanceRef.current);
   }, []);
 
-  const beginWatch = useCallback(async () => {
-    watchRef.current = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.High,
-        distanceInterval: 3,
-        timeInterval: 2000,
-      },
-      handlePosition,
-    );
-  }, [handlePosition]);
+  const stopPedometer = useCallback(() => {
+    pedometerRef.current?.remove();
+    pedometerRef.current = null;
+    carryStepsRef.current += liveStepsRef.current;
+    liveStepsRef.current = 0;
+    setSensorSteps(carryStepsRef.current);
+  }, []);
+
+  const startUpdates = useCallback(async () => {
+    const already = await Location.hasStartedLocationUpdatesAsync(WALK_TASK).catch(() => false);
+    if (already) return;
+    await Location.startLocationUpdatesAsync(WALK_TASK, START_OPTIONS);
+  }, []);
+
+  const stopUpdates = useCallback(async () => {
+    const already = await Location.hasStartedLocationUpdatesAsync(WALK_TASK).catch(() => false);
+    if (already) await Location.stopLocationUpdatesAsync(WALK_TASK).catch(() => {});
+  }, []);
+
+  // Restore a session after a backgrounded/killed app.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const stored = await loadSession();
+      if (cancelled || !stored) return;
+      if (Date.now() - stored.startedAt > SESSION_MAX_AGE_MS) {
+        await clearSession();
+        return;
+      }
+      if (stored.userId && user?.id && stored.userId !== user.id) {
+        await stopUpdates();
+        await clearSession();
+        applySession(null);
+        setSensorSteps(0);
+        return;
+      }
+
+      sessionRef.current = stored;
+      setSession(stored);
+      setBackgroundGranted(stored.background);
+      setSensorSteps(stored.steps);
+      carryStepsRef.current = stored.steps;
+      setNow(Date.now());
+
+      if (stored.status !== 'tracking') return;
+
+      const already = await Location.hasStartedLocationUpdatesAsync(WALK_TASK).catch(() => false);
+      if (!already) await startUpdates().catch(() => {});
+
+      const available = await Pedometer.isAvailableAsync().catch(() => false);
+      if (available) startPedometer(stored.steps);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [startPedometer, startUpdates, stopUpdates, user?.id]);
+
+  useEffect(() => {
+    if (!session || session.status === 'finished') return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [session?.status]);
+
+  // The task writes the route; this keeps the screen in step with it.
+  useEffect(() => {
+    if (!session || session.status !== 'tracking') return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      const stored = await loadSession();
+      if (cancelled || !stored) return;
+      if (stored.status !== 'tracking' || stored.updatedAt !== sessionRef.current?.updatedAt) {
+        sessionRef.current = stored;
+        setSession(stored);
+      }
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [session?.status]);
+
+  // Persist the sensor count periodically so a killed app can restore it.
+  useEffect(() => {
+    if (!session || session.status !== 'tracking') return;
+    const timer = setInterval(async () => {
+      const stored = await loadSession();
+      if (!stored || stored.status !== 'tracking') return;
+      await saveSession({ ...stored, steps: stepsRef.current, updatedAt: Date.now() });
+    }, STEP_SAVE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [session?.status]);
+
+  useEffect(
+    () => () => {
+      pedometerRef.current?.remove();
+      pedometerRef.current = null;
+    },
+    [],
+  );
 
   const start = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
     setError(null);
-    setSaved(false);
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (!permission.granted) {
-      setError('Location permission is needed to count steps from GPS.');
-      return;
+    try {
+      if (!TaskManager.isTaskDefined(WALK_TASK)) {
+        throw new Error('The walk tracker is not ready. Restart Auxo and try again.');
+      }
+
+      const foreground = await Location.requestForegroundPermissionsAsync();
+      if (!foreground.granted) {
+        throw new Error('Location permission is needed to record a walk.');
+      }
+
+      let background = await Location.getBackgroundPermissionsAsync();
+      if (!background.granted) background = await Location.requestBackgroundPermissionsAsync();
+      setBackgroundGranted(background.granted);
+
+      try {
+        const notification = await Notifications.getPermissionsAsync();
+        if (!notification.granted) await Notifications.requestPermissionsAsync();
+      } catch {
+        // The foreground service can still run without the notification banner.
+      }
+
+      const available = await Pedometer.isAvailableAsync().catch(() => false);
+      if (available) {
+        const permission = await Pedometer.getPermissionsAsync().catch(() => null);
+        if (permission && !permission.granted) {
+          await Pedometer.requestPermissionsAsync().catch(() => {});
+        }
+      }
+
+      const startedAt = Date.now();
+      const next = createSession(startedAt, background.granted, user?.id ?? null);
+      await persist(next);
+      setNow(startedAt);
+      carryStepsRef.current = 0;
+      liveStepsRef.current = 0;
+      setSensorSteps(0);
+      if (available) startPedometer(0);
+
+      await startUpdates();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not start the walk.');
+      pedometerRef.current?.remove();
+      pedometerRef.current = null;
+      await clearSession();
+      applySession(null);
+    } finally {
+      setBusy(false);
     }
+  }, [applySession, busy, persist, startPedometer, startUpdates, user?.id]);
 
-    stopWatch();
-    distanceRef.current = 0;
-    lastRef.current = null;
-    pausedMsRef.current = 0;
-    pausedAtRef.current = null;
-    startedAtRef.current = Date.now();
-    setDistanceM(0);
-    setDurationS(0);
-    setStatus('tracking');
-    await beginWatch();
-  }, [beginWatch, stopWatch]);
+  const pause = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!current || current.status !== 'tracking') return;
+    setBusy(true);
+    try {
+      await stopUpdates();
+      const at = Date.now();
+      const steps = stepsRef.current;
+      stopPedometer();
+      carryStepsRef.current = steps;
+      setSensorSteps(steps);
 
-  const pause = useCallback(() => {
-    if (status !== 'tracking') return;
-    stopWatch();
-    pausedAtRef.current = Date.now();
-    setStatus('paused');
-  }, [status, stopWatch]);
+      await persist({
+        ...current,
+        status: 'paused',
+        pausedAt: at,
+        pauses: [...current.pauses, { start: at, end: null }],
+        lastPoint: null,
+        steps,
+        updatedAt: at,
+      });
+      setNow(at);
+    } finally {
+      setBusy(false);
+    }
+  }, [persist, stopPedometer, stopUpdates]);
 
   const resume = useCallback(async () => {
-    if (status !== 'paused') return;
-    if (pausedAtRef.current) {
-      pausedMsRef.current += Date.now() - pausedAtRef.current;
-      pausedAtRef.current = null;
-    }
-    lastRef.current = null;
-    setStatus('tracking');
-    await beginWatch();
-  }, [beginWatch, status]);
+    const current = sessionRef.current;
+    if (!current || current.status !== 'paused') return;
+    setBusy(true);
+    try {
+      const at = Date.now();
+      const pausedAt = current.pausedAt ?? at;
+      const pauses = current.pauses.map((entry, index) =>
+        index === current.pauses.length - 1 && entry.end === null
+          ? { ...entry, end: at }
+          : entry,
+      );
 
-  const finish = useCallback(() => {
-    stopWatch();
-    if (pausedAtRef.current) {
-      pausedMsRef.current += Date.now() - pausedAtRef.current;
-      pausedAtRef.current = null;
+      await persist({
+        ...current,
+        status: 'tracking',
+        pausedAt: null,
+        pausedMs: current.pausedMs + Math.max(0, at - pausedAt),
+        pauses,
+        lastPoint: null,
+        updatedAt: at,
+      });
+      setNow(at);
+      await startUpdates();
+      startPedometer(stepsRef.current);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not resume the walk.');
+    } finally {
+      setBusy(false);
     }
-    setDurationS(
-      Math.max(0, Math.round((Date.now() - startedAtRef.current - pausedMsRef.current) / 1000)),
-    );
-    setStatus('finished');
-  }, [stopWatch]);
+  }, [persist, startPedometer, startUpdates]);
 
-  const reset = useCallback(() => {
-    stopWatch();
-    distanceRef.current = 0;
-    lastRef.current = null;
-    pausedMsRef.current = 0;
-    pausedAtRef.current = null;
-    setDistanceM(0);
-    setDurationS(0);
-    setAccuracy(null);
+  const finish = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!current || current.status === 'finished') return;
+    setBusy(true);
+    try {
+      await stopUpdates();
+      const at = Date.now();
+      const finalPauseMs =
+        current.status === 'paused' && current.pausedAt
+          ? Math.max(0, at - current.pausedAt)
+          : 0;
+      const pauses = current.pauses.map((entry) =>
+        entry.end === null ? { ...entry, end: at } : entry,
+      );
+
+      const gpsFallback = Math.round(current.distanceM / strideM);
+      let steps = stepsRef.current < gpsFallback * 0.5 ? gpsFallback : stepsRef.current;
+      stopPedometer();
+
+      // iOS can query the pedometer for the whole period, including the time
+      // the JS was suspended. Android has no range query; use the live count.
+      if (Platform.OS === 'ios') {
+        try {
+          const total = await Pedometer.getStepCountAsync(
+            new Date(current.startedAt),
+            new Date(at),
+          );
+          let pausedSteps = 0;
+          for (const entry of pauses) {
+            const paused = await Pedometer.getStepCountAsync(
+              new Date(entry.start),
+              new Date(entry.end ?? at),
+            );
+            pausedSteps += paused.steps;
+          }
+          steps = Math.max(0, total.steps - pausedSteps);
+        } catch {
+          // Keep the live count.
+        }
+      }
+
+      await persist({
+        ...current,
+        status: 'finished',
+        finishedAt: at,
+        pausedAt: null,
+        pausedMs: current.pausedMs + finalPauseMs,
+        pauses,
+        steps,
+        lastPoint: null,
+        updatedAt: at,
+      });
+      setSensorSteps(steps);
+      setNow(at);
+    } finally {
+      setBusy(false);
+    }
+  }, [persist, stopPedometer, stopUpdates, strideM]);
+
+  const reset = useCallback(async () => {
+    await stopUpdates();
+    pedometerRef.current?.remove();
+    pedometerRef.current = null;
+    carryStepsRef.current = 0;
+    liveStepsRef.current = 0;
+    setSensorSteps(0);
+    await clearSession();
+    applySession(null);
+    setBackgroundGranted(false);
     setError(null);
-    setSaved(false);
-    setStatus('idle');
-  }, [stopWatch]);
+    setNow(Date.now());
+  }, [applySession, stopUpdates]);
+
+  const todaySteps = health?.steps.find((row) => row.date === isoDate())?.steps ?? 0;
+  const weightKg = profile?.health?.weight_kg ?? 70;
+  const distanceM = session?.distanceM ?? 0;
+  const durationS = session ? Math.round(sessionDurationMs(session, now) / 1000) : 0;
+  const gpsSteps = distanceM > 0 ? Math.round(distanceM / strideM) : 0;
+  const steps = sensorSteps >= Math.max(1, gpsSteps * 0.5) ? sensorSteps : gpsSteps;
+  stepsRef.current = steps;
+  const paceSPerKm = distanceM > 30 && durationS > 0 ? durationS / (distanceM / 1000) : 0;
+  const calories = Math.round(0.53 * weightKg * (distanceM / 1000));
 
   const save = useCallback(async () => {
-    if (distanceRef.current < MIN_SAVE_M) {
+    const current = sessionRef.current;
+    if (!current || current.status !== 'finished') return;
+    if (current.distanceM < MIN_SAVE_M) {
       setError(`Walk at least ${MIN_SAVE_M} m before saving.`);
       return;
     }
+
     setError(null);
-    const walkSteps = Math.round(distanceRef.current / strideM);
-    const minutes = Math.max(1, Math.round(durationS / 60));
-    const km = distanceRef.current / 1000;
+    const finalSteps = current.steps || Math.round(current.distanceM / strideM);
+    const durationSeconds = Math.max(1, Math.round(sessionDurationMs(current) / 1000));
+    const minutes = Math.max(1, Math.round(durationSeconds / 60));
+    const km = current.distanceM / 1000;
 
     try {
-      await saveSteps.mutateAsync(todaySteps + walkSteps);
+      await saveSteps.mutateAsync(todaySteps + finalSteps);
       if (user?.id) {
         const { error: insertError } = await supabase.from('exercise_records').insert({
           user_id: user.id,
@@ -186,53 +420,35 @@ export const useGpsWalk = () => {
           duration_minutes: minutes,
           calories_burned: calories,
           intensity: 'moderate',
-          notes: `${km.toFixed(2)} km · ${walkSteps} steps`,
+          notes: `${km.toFixed(2)} km · ${finalSteps} steps`,
+          route: compactRoute(current.segments),
           completed_at: new Date().toISOString(),
         });
         if (insertError) throw new Error(insertError.message);
       }
       await queryClient.invalidateQueries({ queryKey: ['health'] });
-      setSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await persist({ ...current, saved: true, steps: finalSteps, updatedAt: Date.now() });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save the walk.');
     }
-  }, [
-    calories,
-    durationS,
-    queryClient,
-    saveSteps,
-    strideM,
-    todaySteps,
-    user?.id,
-  ]);
-
-  useEffect(() => {
-    if (status !== 'tracking') return;
-    const tick = setInterval(() => {
-      setDurationS(
-        Math.max(
-          0,
-          Math.round((Date.now() - startedAtRef.current - pausedMsRef.current) / 1000),
-        ),
-      );
-    }, 1000);
-    return () => clearInterval(tick);
-  }, [status]);
-
-  useEffect(() => stopWatch, [stopWatch]);
+  }, [calories, persist, queryClient, saveSteps, strideM, todaySteps, user?.id]);
 
   return {
-    status,
+    status: (session?.status ?? 'idle') as WalkStatus,
     steps,
     todaySteps,
     distanceM,
     durationS,
     paceSPerKm,
     calories,
-    accuracy,
+    accuracy: session?.accuracy ?? null,
     strideM,
+    route: session?.segments ?? [],
+    backgroundGranted,
+    busy,
     error,
-    saved,
+    saved: session?.saved ?? false,
     saving: saveSteps.isPending,
     start,
     pause,

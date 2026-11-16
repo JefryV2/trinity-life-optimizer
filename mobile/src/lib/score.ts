@@ -24,6 +24,8 @@ export interface Contribution {
   display: string;
   /** 0..1, how close to the input's target. */
   ratio: number;
+  /** False when this input is absent, not failed. */
+  tracked: boolean;
 }
 
 export interface PillarScore {
@@ -33,6 +35,8 @@ export interface PillarScore {
   value: number;
   /** Share of the total (0..1). Weights sum to 1 across pillars. */
   weight: number;
+  /** False when the pillar has no logged input to score. */
+  tracked: boolean;
   contributions: Contribution[];
 }
 
@@ -75,10 +79,11 @@ const contribution = (
   max: number,
   ratio: number,
   display: string,
+  tracked = true,
 ): Contribution => {
-  const safe = clamp01(ratio);
+  const safe = tracked ? clamp01(ratio) : 0;
   const points = round(safe * max);
-  return { key, label, max, points, lost: max - points, display, ratio: safe };
+  return { key, label, max, points, lost: max - points, display, ratio: safe, tracked };
 };
 
 /** A day's movement target; below it the step input scales linearly. */
@@ -143,6 +148,7 @@ export function scoreWealth(input: ScoreInput['wealth']): Contribution[] {
       60,
       input.income > 0 ? input.savingsRate / 100 : 0,
       input.income > 0 ? `${Math.round(input.savingsRate)}%` : 'not tracked',
+      input.income > 0,
     ),
     contribution(
       'spend',
@@ -151,6 +157,7 @@ export function scoreWealth(input: ScoreInput['wealth']): Contribution[] {
       // no income logged means nothing is known about spending — no free points
       input.income > 0 ? 1 - spendRatio : 0,
       input.income > 0 ? `${Math.round(spendRatio * 100)}% of income` : 'no income logged',
+      input.income > 0,
     ),
   ];
 }
@@ -165,7 +172,7 @@ export function scoreBonds(input: ScoreInput['bonds']): Contribution[] {
 const PILLARS: Array<{ key: PillarKey; label: string; score: (input: ScoreInput) => Contribution[] }> = [
   { key: 'health', label: 'HEALTH', score: (input) => scoreHealth(input.health) },
   { key: 'wealth', label: 'WEALTH', score: (input) => scoreWealth(input.wealth) },
-  { key: 'bonds', label: 'BONDS', score: (input) => scoreBonds(input.bonds) },
+  { key: 'bonds', label: 'PEOPLE', score: (input) => scoreBonds(input.bonds) },
 ];
 
 export interface ScoreReport {
@@ -180,24 +187,33 @@ export interface ScoreReport {
 export function computeScore(input: ScoreInput): ScoreReport {
   const pillars: PillarScore[] = PILLARS.map(({ key, label, score }) => {
     const contributions = score(input);
-    const earned = contributions.reduce((sum, item) => sum + item.points, 0);
+    const earned = contributions.reduce((sum, item) => sum + (item.tracked ? item.points : 0), 0);
     return {
       key,
       label,
       value: Math.min(100, Math.max(0, round(earned))),
       weight: PILLAR_WEIGHTS[key],
+      tracked: contributions.some((item) => item.tracked),
       contributions,
     };
   });
 
-  const total = Math.round(pillars.reduce((sum, pillar) => sum + pillar.value * pillar.weight, 0));
+  // Missing pillars do not get a zero; they leave the reading and the
+  // remaining weights are renormalised. "No income logged" is not a bad day.
+  const trackedPillars = pillars.filter((pillar) => pillar.tracked);
+  const trackedWeight = trackedPillars.reduce((sum, pillar) => sum + pillar.weight, 0);
+  const total = trackedWeight > 0
+    ? Math.round(trackedPillars.reduce((sum, pillar) => sum + pillar.value * pillar.weight, 0) / trackedWeight)
+    : 0;
 
-  const sorted = [...pillars].sort((a, b) => a.value - b.value);
-  const weakest = sorted[0].key;
-  const strongest = sorted[sorted.length - 1].key;
+  const ranked = [...(trackedPillars.length > 0 ? trackedPillars : pillars)].sort(
+    (a, b) => a.value - b.value,
+  );
+  const weakest = ranked[0].key;
+  const strongest = ranked[ranked.length - 1].key;
 
   const candidates = pillars.flatMap((pillar) =>
-    pillar.contributions.map((item) => ({
+    pillar.contributions.filter((item) => item.tracked).map((item) => ({
       pillar: pillar.key,
       key: item.key,
       label: item.label,
@@ -243,7 +259,7 @@ export interface StressReport {
 export function computeStress(input: ScoreInput): StressReport {
   const sleepDebt = Math.max(0, 7.5 - input.health.sleepHours) * 8;
   const mental = input.health.stress !== null ? input.health.stress * 6 : 0;
-  const money = Math.max(0, 40 - input.wealth.savingsRate) * 0.8;
+  const money = input.wealth.income > 0 ? Math.max(0, 40 - input.wealth.savingsRate) * 0.8 : 0;
   const isolation = Math.max(0, 3 - input.bonds.interactions7d) * 8;
 
   const drivers: StressDriver[] = [

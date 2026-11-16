@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
 import { RingMeter } from '@/components/charts/ring-meter';
@@ -13,9 +14,10 @@ import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
+import { TextField } from '@/components/ui/text-field';
 import { useRelations } from '@/features/relations/use-relations';
 import { daysBetween, formatDate, formatNumber, formatStamp, relativeDay } from '@/lib/format';
-import { openAdd } from '@/lib/navigation';
+import { openAdd, openEdit } from '@/lib/navigation';
 import { space, useTheme } from '@/theme';
 
 const channelIcon = (channel: string | null): IconName => {
@@ -25,9 +27,10 @@ const channelIcon = (channel: string | null): IconName => {
   return 'people';
 };
 
-export default function RelationsScreen() {
+export default function PeopleScreen() {
   const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, isRefetching, addQualityTime } = useRelations();
+  const [query, setQuery] = useState('');
 
   const people = data?.relationships ?? [];
   const interactions = data?.interactions ?? [];
@@ -85,11 +88,7 @@ export default function RelationsScreen() {
         />
       }
     >
-      <PageHeader
-        title="Relations"
-        date={formatStamp()}
-        subtitle="People, contact and gratitude"
-      />
+      <PageHeader title="People" date={formatStamp()} />
 
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
@@ -176,7 +175,11 @@ export default function RelationsScreen() {
             />
           ) : (
             <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              {people.map((person, index) => {
+              {people
+                .filter((person) =>
+                  `${person.name} ${person.relation_type ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()),
+                )
+                .map((person, index) => {
                 const cadence = cadenceFor(person.id);
                 const days = person.last_contact_at ? daysBetween(person.last_contact_at) : null;
                 const overdue = days !== null && days > cadence;
@@ -185,9 +188,7 @@ export default function RelationsScreen() {
                   <Pressable
                     key={person.id}
                     accessibilityRole="button"
-                    onPress={() =>
-                      router.push({ pathname: '/add/[form]', params: { form: 'interaction', person: person.id } })
-                    }
+                    onPress={() => router.push(`/person/${person.id}` as never)}
                     style={({ pressed }) => ({
                       gap: 7,
                       paddingVertical: space.md,
@@ -237,6 +238,7 @@ export default function RelationsScreen() {
                   title={personName.get(interaction.relationship_id) ?? 'Someone'}
                   subtitle={`${interaction.channel ?? 'Contact'} · ${formatDate(interaction.occurred_at)}${interaction.notes ? ` · ${interaction.notes}` : ''}`}
                   value={`${formatNumber(Number(interaction.duration_minutes ?? 0))} min`}
+                  onPress={() => openEdit('interaction', interaction.id)}
                   last={index === Math.min(interactions.length, 12) - 1}
                 />
               ))}
@@ -252,7 +254,7 @@ export default function RelationsScreen() {
             <EmptyState
               icon="gift"
               title="No gratitude entries"
-              message="Write one good thing from today to strengthen the relations pillar."
+              message="Write one good thing from today to strengthen the People pillar."
               actionLabel="Add gratitude"
               onAction={() => openAdd('gratitude')}
             />

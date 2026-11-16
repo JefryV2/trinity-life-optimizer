@@ -1,10 +1,10 @@
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { CalendarSheet } from '@/components/ui/calendar-sheet';
 import { AppText } from '@/components/ui/app-text';
 import { Icon } from '@/components/ui/icon';
+import { TimeSheet } from '@/components/ui/time-sheet';
 import { fonts, space, useTheme } from '@/theme';
 
 interface DateTimeFieldProps {
@@ -17,28 +17,9 @@ interface DateTimeFieldProps {
 /** A boxless date/time row — label above, value on a rule, chevron at the end. */
 export const DateTimeField = ({ label, value, mode = 'date', onChange }: DateTimeFieldProps) => {
   const { colors } = useTheme();
-  const [iosPickerVisible, setIosPickerVisible] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
 
-  const open = () => {
-    // Dates use the app's own calendar; times use the native picker, which is
-    // the one place the OS handles a control better than we can.
-    if (mode === 'date') {
-      setSheetVisible(true);
-      return;
-    }
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value,
-        mode,
-        onChange: (event, date) => {
-          if (event.type !== 'dismissed' && date) onChange(date);
-        },
-      });
-    } else {
-      setIosPickerVisible((visible) => !visible);
-    }
-  };
+  const open = () => setSheetVisible(true);
 
   const formatted =
     mode === 'time'
@@ -68,7 +49,7 @@ export const DateTimeField = ({ label, value, mode = 'date', onChange }: DateTim
           variant="body"
           style={{
             fontFamily: fonts.medium,
-            fontSize: 19,
+            fontSize: 21,
             letterSpacing: -0.3,
             fontVariant: ['tabular-nums'],
           }}
@@ -77,22 +58,21 @@ export const DateTimeField = ({ label, value, mode = 'date', onChange }: DateTim
         </AppText>
         <Icon name={mode === 'time' ? 'clock' : 'calendar'} size={18} color={colors.textTertiary} />
       </Pressable>
-      {iosPickerVisible && Platform.OS === 'ios' ? (
-        <DateTimePicker
+      {mode === 'date' ? (
+        <CalendarSheet
+          visible={sheetVisible}
           value={value}
-          mode={mode}
-          display="spinner"
-          onChange={(_event, date) => {
-            if (date) onChange(date);
-          }}
+          onClose={() => setSheetVisible(false)}
+          onSelect={onChange}
         />
-      ) : null}
-      <CalendarSheet
-        visible={sheetVisible}
-        value={value}
-        onClose={() => setSheetVisible(false)}
-        onSelect={onChange}
-      />
+      ) : (
+        <TimeSheet
+          visible={sheetVisible}
+          value={value}
+          onClose={() => setSheetVisible(false)}
+          onSelect={onChange}
+        />
+      )}
     </View>
   );
 };

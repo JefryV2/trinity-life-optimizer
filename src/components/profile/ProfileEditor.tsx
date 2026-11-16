@@ -1,12 +1,33 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Save, Camera, Mail, Calendar, MapPin, Calculator, Activity } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  User,
+  Save,
+  Camera,
+  Mail,
+  Calendar,
+  MapPin,
+  Calculator,
+  Activity,
+} from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,21 +55,21 @@ export function ProfileEditor() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<ProfileData>({
-    first_name: '',
-    last_name: '',
-    email: '',
-    bio: '',
-    location: '',
-    birth_date: '',
-    timezone: 'UTC'
+    first_name: "",
+    last_name: "",
+    email: "",
+    bio: "",
+    location: "",
+    birth_date: "",
+    timezone: "UTC",
   });
   const [healthProfile, setHealthProfile] = useState<HealthProfileData>({
     height_cm: 0,
     weight_kg: 0,
-    gender: '',
-    birth_date: '',
-    activity_level: 'moderate',
-    goal_type: 'maintain'
+    gender: "",
+    birth_date: "",
+    activity_level: "moderate",
+    goal_type: "maintain",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -64,39 +85,37 @@ export function ProfileEditor() {
   const fetchProfile = async () => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('user_id', user?.id)
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("user_id", user?.id)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching profile:", error);
         return;
       }
 
-      setProfile(prev => ({
+      setProfile((prev) => ({
         ...prev,
-        first_name: data?.first_name || '',
-        last_name: data?.last_name || '',
-        email: user?.email || ''
+        first_name: data?.first_name || "",
+        last_name: data?.last_name || "",
+        email: user?.email || "",
       }));
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error("Error fetching profile:", error);
     }
   };
-
-
 
   const fetchHealthProfile = async () => {
     try {
       const { data, error } = await supabase
-        .from('user_profiles_health')
-        .select('*')
-        .eq('user_id', user?.id)
+        .from("user_profiles_health")
+        .select("*")
+        .eq("user_id", user?.id)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching health profile:', error);
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching health profile:", error);
         return;
       }
 
@@ -104,56 +123,55 @@ export function ProfileEditor() {
         setHealthProfile({
           height_cm: data.height_cm || 0,
           weight_kg: data.weight_kg || 0,
-          gender: data.gender || '',
-          birth_date: data.birth_date || '',
-          activity_level: data.activity_level || 'moderate',
-          goal_type: data.goal_type || 'maintain'
+          gender: data.gender || "",
+          birth_date: data.birth_date || "",
+          activity_level: data.activity_level || "moderate",
+          goal_type: data.goal_type || "maintain",
         });
       }
     } catch (error) {
-      console.error('Error fetching health profile:', error);
+      console.error("Error fetching health profile:", error);
     }
   };
 
   const updateProfile = (field: keyof ProfileData, value: string) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
+    setProfile((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
-  const updateHealthProfile = (field: keyof HealthProfileData, value: string | number) => {
-    setHealthProfile(prev => ({ ...prev, [field]: value }));
+  const updateHealthProfile = (
+    field: keyof HealthProfileData,
+    value: string | number,
+  ) => {
+    setHealthProfile((prev) => ({ ...prev, [field]: value }));
     setHasHealthChanges(true);
   };
-
-
 
   const saveProfile = async () => {
     if (!user) return;
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: user.id,
-          first_name: profile.first_name,
-          last_name: profile.last_name
-        });
+      const { error } = await supabase.from("profiles").upsert({
+        user_id: user.id,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+      });
 
       if (error) throw error;
 
       toast({
         title: "Profile updated",
-        description: "Your profile has been saved successfully"
+        description: "Your profile has been saved successfully",
       });
 
       setHasChanges(false);
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error("Error saving profile:", error);
       toast({
         title: "Error saving profile",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -168,32 +186,51 @@ export function ProfileEditor() {
       // Calculate BMR and adjust for goals (only if we have required data)
       const calculateBMR = () => {
         // Only calculate if we have all required data
-        if (healthProfile.height_cm && healthProfile.weight_kg && healthProfile.birth_date && healthProfile.gender) {
-          const age = new Date().getFullYear() - new Date(healthProfile.birth_date).getFullYear();
-          
+        if (
+          healthProfile.height_cm &&
+          healthProfile.weight_kg &&
+          healthProfile.birth_date &&
+          healthProfile.gender
+        ) {
+          const age =
+            new Date().getFullYear() -
+            new Date(healthProfile.birth_date).getFullYear();
+
           // Harris-Benedict Equation
           let bmr;
-          if (healthProfile.gender === 'male') {
-            bmr = 88.362 + (13.397 * healthProfile.weight_kg) + (4.799 * healthProfile.height_cm) - (5.677 * age);
+          if (healthProfile.gender === "male") {
+            bmr =
+              88.362 +
+              13.397 * healthProfile.weight_kg +
+              4.799 * healthProfile.height_cm -
+              5.677 * age;
           } else {
-            bmr = 447.593 + (9.247 * healthProfile.weight_kg) + (3.098 * healthProfile.height_cm) - (4.330 * age);
+            bmr =
+              447.593 +
+              9.247 * healthProfile.weight_kg +
+              3.098 * healthProfile.height_cm -
+              4.33 * age;
           }
-          
+
           // Activity level multiplier
           const multipliers = {
             sedentary: 1.2,
             light: 1.375,
             moderate: 1.55,
             active: 1.725,
-            very_active: 1.9
+            very_active: 1.9,
           };
-          
-          const tdee = bmr * multipliers[healthProfile.activity_level as keyof typeof multipliers];
-          
+
+          const tdee =
+            bmr *
+            multipliers[
+              healthProfile.activity_level as keyof typeof multipliers
+            ];
+
           // Adjust for goal
-          if (healthProfile.goal_type === 'lose') {
+          if (healthProfile.goal_type === "lose") {
             return Math.round(tdee - 500); // 500 calorie deficit
-          } else if (healthProfile.goal_type === 'gain') {
+          } else if (healthProfile.goal_type === "gain") {
             return Math.round(tdee + 500); // 500 calorie surplus
           }
           return Math.round(tdee);
@@ -206,9 +243,8 @@ export function ProfileEditor() {
       // Calculate calories based on available data
       const calculatedCalories = calculateBMR();
 
-      const { error } = await supabase
-        .from('user_profiles_health')
-        .upsert({
+      const { error } = await supabase.from("user_profiles_health").upsert(
+        {
           user_id: user.id,
           height_cm: healthProfile.height_cm || null,
           weight_kg: healthProfile.weight_kg || null,
@@ -216,28 +252,30 @@ export function ProfileEditor() {
           birth_date: healthProfile.birth_date || null,
           activity_level: healthProfile.activity_level,
           goal_type: healthProfile.goal_type,
-          daily_caloric_target: calculatedCalories
-        }, {
-          onConflict: 'user_id'
-        });
+          daily_caloric_target: calculatedCalories,
+        },
+        {
+          onConflict: "user_id",
+        },
+      );
 
       if (error) throw error;
 
       toast({
         title: "Health profile updated",
-        description: `Health profile updated successfully.`
+        description: `Health profile updated successfully.`,
       });
 
       setHasHealthChanges(false);
-      
+
       // Trigger a refresh of health data in other components
-      window.dispatchEvent(new CustomEvent('healthProfileUpdated'));
+      window.dispatchEvent(new CustomEvent("healthProfileUpdated"));
     } catch (error) {
-      console.error('Error saving health profile:', error);
+      console.error("Error saving health profile:", error);
       toast({
         title: "Error saving health profile",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -247,14 +285,16 @@ export function ProfileEditor() {
   const calculateBMI = () => {
     if (!healthProfile.height_cm || !healthProfile.weight_kg) return 0;
     const heightM = healthProfile.height_cm / 100;
-    return Math.round((healthProfile.weight_kg / (heightM * heightM)) * 10) / 10;
+    return (
+      Math.round((healthProfile.weight_kg / (heightM * heightM)) * 10) / 10
+    );
   };
 
   const getBMICategory = (bmi: number) => {
-    if (bmi < 18.5) return { category: 'Underweight', color: 'text-blue-600' };
-    if (bmi < 25) return { category: 'Normal weight', color: 'text-green-600' };
-    if (bmi < 30) return { category: 'Overweight', color: 'text-orange-600' };
-    return { category: 'Obese', color: 'text-red-600' };
+    if (bmi < 18.5) return { category: "Underweight", color: "text-blue-600" };
+    if (bmi < 25) return { category: "Normal weight", color: "text-green-600" };
+    if (bmi < 30) return { category: "Overweight", color: "text-orange-600" };
+    return { category: "Obese", color: "text-red-600" };
   };
 
   const calculateAge = () => {
@@ -263,24 +303,27 @@ export function ProfileEditor() {
     const birthDate = new Date(healthProfile.birth_date);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
       age--;
     }
     return age;
   };
 
   const timezones = [
-    'UTC',
-    'America/New_York',
-    'America/Chicago',
-    'America/Denver',
-    'America/Los_Angeles',
-    'Europe/London',
-    'Europe/Paris',
-    'Europe/Berlin',
-    'Asia/Tokyo',
-    'Asia/Shanghai',
-    'Australia/Sydney'
+    "UTC",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Asia/Tokyo",
+    "Asia/Shanghai",
+    "Australia/Sydney",
   ];
 
   const bmi = calculateBMI();
@@ -301,14 +344,21 @@ export function ProfileEditor() {
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
               <AvatarFallback className="text-2xl bg-primary/20">
-                {profile.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
+                {profile.first_name?.[0] ||
+                  user?.email?.[0]?.toUpperCase() ||
+                  "U"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
-                onClick={() => toast({ title: "Photo upload", description: "Photo upload feature coming soon!" })}
+                onClick={() =>
+                  toast({
+                    title: "Photo upload",
+                    description: "Photo upload feature coming soon!",
+                  })
+                }
               >
                 <Camera className="h-4 w-4 mr-2" />
                 Change Photo
@@ -325,9 +375,7 @@ export function ProfileEditor() {
       <Card className="ios-card">
         <CardHeader>
           <CardTitle>Basic Information</CardTitle>
-          <CardDescription>
-            Update your personal details
-          </CardDescription>
+          <CardDescription>Update your personal details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -337,7 +385,7 @@ export function ProfileEditor() {
                 id="first-name"
                 value={profile.first_name}
                 onChange={(e) => {
-                  updateProfile('first_name', e.target.value);
+                  updateProfile("first_name", e.target.value);
                   setHasChanges(true);
                 }}
                 placeholder=""
@@ -349,7 +397,7 @@ export function ProfileEditor() {
                 id="last-name"
                 value={profile.last_name}
                 onChange={(e) => {
-                  updateProfile('last_name', e.target.value);
+                  updateProfile("last_name", e.target.value);
                   setHasChanges(true);
                 }}
                 placeholder=""
@@ -380,7 +428,7 @@ export function ProfileEditor() {
               id="bio"
               value={profile.bio}
               onChange={(e) => {
-                updateProfile('bio', e.target.value);
+                updateProfile("bio", e.target.value);
                 setHasChanges(true);
               }}
               placeholder=""
@@ -404,10 +452,13 @@ export function ProfileEditor() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="gender">Gender Identity</Label>
-            <Select value={healthProfile.gender} onValueChange={(value) => {
-              updateHealthProfile('gender', value);
-              setHasHealthChanges(true);
-            }}>
+            <Select
+              value={healthProfile.gender}
+              onValueChange={(value) => {
+                updateHealthProfile("gender", value);
+                setHasHealthChanges(true);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select your gender identity" />
               </SelectTrigger>
@@ -415,7 +466,9 @@ export function ProfileEditor() {
                 <SelectItem value="male">👨 Male</SelectItem>
                 <SelectItem value="female">👩 Female</SelectItem>
                 <SelectItem value="other">🏳️‍🌈 Non-binary/Other</SelectItem>
-                <SelectItem value="prefer-not-to-say">🤫 Prefer not to say</SelectItem>
+                <SelectItem value="prefer-not-to-say">
+                  🤫 Prefer not to say
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -441,7 +494,7 @@ export function ProfileEditor() {
               type="date"
               value={healthProfile.birth_date}
               onChange={(e) => {
-                updateHealthProfile('birth_date', e.target.value);
+                updateHealthProfile("birth_date", e.target.value);
                 setHasHealthChanges(true);
               }}
             />
@@ -454,9 +507,9 @@ export function ProfileEditor() {
                 id="height"
                 type="number"
                 placeholder=""
-                value={healthProfile.height_cm || ''}
+                value={healthProfile.height_cm || ""}
                 onChange={(e) => {
-                  updateHealthProfile('height_cm', Number(e.target.value));
+                  updateHealthProfile("height_cm", Number(e.target.value));
                   setHasHealthChanges(true);
                 }}
                 className="text-center"
@@ -469,9 +522,9 @@ export function ProfileEditor() {
                 type="number"
                 step="0.1"
                 placeholder=""
-                value={healthProfile.weight_kg || ''}
+                value={healthProfile.weight_kg || ""}
                 onChange={(e) => {
-                  updateHealthProfile('weight_kg', Number(e.target.value));
+                  updateHealthProfile("weight_kg", Number(e.target.value));
                   setHasHealthChanges(true);
                 }}
                 className="text-center"
@@ -482,10 +535,13 @@ export function ProfileEditor() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="activity-level">Activity Level</Label>
-              <Select value={healthProfile.activity_level} onValueChange={(value) => {
-                updateHealthProfile('activity_level', value);
-                setHasHealthChanges(true);
-              }}>
+              <Select
+                value={healthProfile.activity_level}
+                onValueChange={(value) => {
+                  updateHealthProfile("activity_level", value);
+                  setHasHealthChanges(true);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -494,16 +550,21 @@ export function ProfileEditor() {
                   <SelectItem value="light">🚶 Light Activity</SelectItem>
                   <SelectItem value="moderate">🏃 Moderate Activity</SelectItem>
                   <SelectItem value="active">💪 Very Active</SelectItem>
-                  <SelectItem value="very_active">🔥 Extremely Active</SelectItem>
+                  <SelectItem value="very_active">
+                    🔥 Extremely Active
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="goal-type">Health Goal</Label>
-              <Select value={healthProfile.goal_type} onValueChange={(value) => {
-                updateHealthProfile('goal_type', value);
-                setHasHealthChanges(true);
-              }}>
+              <Select
+                value={healthProfile.goal_type}
+                onValueChange={(value) => {
+                  updateHealthProfile("goal_type", value);
+                  setHasHealthChanges(true);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -525,22 +586,35 @@ export function ProfileEditor() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-3 bg-card rounded-lg">
-                  <div className="text-lg font-bold text-primary">BMI: {bmi}</div>
-                  <div className={`text-xs ${bmiInfo.color} mt-1`}>{bmiInfo.category}</div>
+                  <div className="text-lg font-bold text-primary">
+                    BMI: {bmi}
+                  </div>
+                  <div className={`text-xs ${bmiInfo.color} mt-1`}>
+                    {bmiInfo.category}
+                  </div>
                 </div>
                 <div className="text-center p-3 bg-card rounded-lg">
                   <div className="text-lg font-bold text-primary">{age}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Years Old</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Years Old
+                  </div>
                 </div>
                 <div className="text-center p-3 bg-card rounded-lg">
                   <div className="text-lg font-bold text-primary">
-                    {healthProfile.gender === 'female' ? '♀️' : 
-                     healthProfile.gender === 'male' ? '♂️' : 
-                     healthProfile.gender === 'other' ? '🏳️‍🌈' : 
-                     healthProfile.gender === 'prefer-not-to-say' ? '🤫' : '👤'}
+                    {healthProfile.gender === "female"
+                      ? "♀️"
+                      : healthProfile.gender === "male"
+                        ? "♂️"
+                        : healthProfile.gender === "other"
+                          ? "🏳️‍🌈"
+                          : healthProfile.gender === "prefer-not-to-say"
+                            ? "🤫"
+                            : "👤"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 capitalize">
-                    {healthProfile.gender === 'prefer-not-to-say' ? 'Not specified' : healthProfile.gender}
+                    {healthProfile.gender === "prefer-not-to-say"
+                      ? "Not specified"
+                      : healthProfile.gender}
                   </div>
                 </div>
               </div>
@@ -548,13 +622,13 @@ export function ProfileEditor() {
           )}
 
           {/* Save Health Profile Button */}
-          <Button 
+          <Button
             onClick={saveHealthProfile}
             disabled={!hasHealthChanges || isLoading}
             className="w-full ios-button-primary"
           >
             <Save className="h-4 w-4 mr-2" />
-            {isLoading ? 'Saving...' : 'Save Health Profile'}
+            {isLoading ? "Saving..." : "Save Health Profile"}
           </Button>
         </CardContent>
       </Card>
@@ -577,7 +651,7 @@ export function ProfileEditor() {
               id="location"
               value={profile.location}
               onChange={(e) => {
-                updateProfile('location', e.target.value);
+                updateProfile("location", e.target.value);
                 setHasChanges(true);
               }}
               placeholder=""
@@ -594,7 +668,7 @@ export function ProfileEditor() {
               type="date"
               value={profile.birth_date}
               onChange={(e) => {
-                updateProfile('birth_date', e.target.value);
+                updateProfile("birth_date", e.target.value);
                 setHasChanges(true);
               }}
             />
@@ -602,17 +676,20 @@ export function ProfileEditor() {
 
           <div className="space-y-2">
             <Label htmlFor="timezone">Timezone</Label>
-            <Select value={profile.timezone} onValueChange={(value) => {
-              updateProfile('timezone', value);
-              setHasChanges(true);
-            }}>
+            <Select
+              value={profile.timezone}
+              onValueChange={(value) => {
+                updateProfile("timezone", value);
+                setHasChanges(true);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {timezones.map((tz) => (
                   <SelectItem key={tz} value={tz}>
-                    {tz.replace('_', ' ')}
+                    {tz.replace("_", " ")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -622,13 +699,13 @@ export function ProfileEditor() {
       </Card>
 
       {/* Save Button */}
-      <Button 
+      <Button
         onClick={saveProfile}
         disabled={!hasChanges || isLoading}
         className="w-full ios-button-primary"
       >
         <Save className="h-4 w-4 mr-2" />
-        {isLoading ? 'Saving...' : 'Save Changes'}
+        {isLoading ? "Saving..." : "Save Changes"}
       </Button>
     </div>
   );

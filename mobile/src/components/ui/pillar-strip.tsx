@@ -10,7 +10,7 @@ export interface PillarItem {
 }
 
 /**
- * Health / Wealth / Bonds as three measured bars. Same encoding as the web
+ * Health / Wealth / People as three measured bars. Same encoding as the web
  * dashboard, so the colour means the same thing on every screen.
  */
 export const PillarStrip = ({ items }: { items: PillarItem[] }) => {
@@ -68,9 +68,6 @@ export const Nudge = ({
   const { colors } = useTheme();
   return (
     <View style={{ gap: space.sm }}>
-      <AppText variant="caption" tone="tertiary">
-        ONE THING
-      </AppText>
       <AppText variant="headline">{title}</AppText>
       <AppText variant="footnote" tone="secondary">
         {body}

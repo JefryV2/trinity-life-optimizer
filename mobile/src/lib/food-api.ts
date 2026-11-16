@@ -1,3 +1,5 @@
+import type { Micronutrients, NutrientKey } from '@/lib/nutrition';
+
 /**
  * Food search with no API key.
  *
@@ -17,8 +19,13 @@ export interface FoodResult {
   protein: number;
   carbs: number;
   fat: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
   serving: string;
   barcode?: string;
+  /** Per 100 g, only the values Open Food Facts actually provides. */
+  micros?: Micronutrients;
 }
 
 const SEARCH_BASE = 'https://search.openfoodfacts.org/search';
@@ -32,7 +39,7 @@ const FIELDS = [
   'nutriments',
   'serving_size',
 ].join(',');
-const USER_AGENT = 'Trinity/1.0 (health tracker; +https://trinity.app)';
+const USER_AGENT = 'Auxo/1.0 (health tracker)';
 const MAX_RESULTS = 8;
 const CONCURRENCY = 4;
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -67,6 +74,32 @@ const fromProduct = (product: Record<string, unknown> | null | undefined): FoodR
   const brand = String(product.brands ?? '').split(',')[0]?.trim() || undefined;
   const servingSize = String(product.serving_size ?? '').trim();
 
+  const micros: Micronutrients = {};
+  const read = (key: NutrientKey, ...offKeys: string[]) => {
+    for (const offKey of offKeys) {
+      const value = toNumber(nutrients[`${offKey}_100g`]) || toNumber(nutrients[offKey]);
+      if (value > 0) {
+        micros[key] = Math.round(value * 100) / 100;
+        return;
+      }
+    }
+  };
+  read('vitaminA', 'vitamin-a');
+  read('vitaminC', 'vitamin-c');
+  read('vitaminD', 'vitamin-d');
+  read('vitaminE', 'vitamin-e');
+  read('vitaminK', 'vitamin-k');
+  read('vitaminB1', 'vitamin-b1', 'thiamin');
+  read('vitaminB2', 'vitamin-b2', 'riboflavin');
+  read('vitaminB6', 'vitamin-b6');
+  read('vitaminB12', 'vitamin-b12');
+  read('folate', 'folates', 'vitamin-b9');
+  read('calcium', 'calcium');
+  read('iron', 'iron');
+  read('magnesium', 'magnesium');
+  read('potassium', 'potassium');
+  read('zinc', 'zinc');
+
   return {
     name,
     brand,
@@ -74,8 +107,16 @@ const fromProduct = (product: Record<string, unknown> | null | undefined): FoodR
     protein: round1(toNumber(nutrients.proteins_100g)),
     carbs: round1(toNumber(nutrients.carbohydrates_100g)),
     fat: round1(toNumber(nutrients.fat_100g)),
+    fiber: round1(toNumber(nutrients.fiber_100g)),
+    sugar: round1(
+      toNumber(nutrients.sugars_100g) || toNumber(nutrients['sugars-added_100g']),
+    ),
+    sodium: Math.round(
+      (toNumber(nutrients.sodium_100g) || toNumber(nutrients.salt_100g) / 2.5) * 1000,
+    ),
     serving: servingSize ? `per 100 g · serving ${servingSize}` : 'per 100 g',
     barcode: product.code ? String(product.code) : undefined,
+    micros: Object.keys(micros).length > 0 ? micros : undefined,
   };
 };
 

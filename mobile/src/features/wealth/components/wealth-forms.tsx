@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { FormFrame } from '@/components/form-frame';
 import { Chips } from '@/components/ui/chips';
 import { DateTimeField } from '@/components/ui/date-time-field';
+import { RecentChips } from '@/components/ui/recent-chips';
 import { TextField } from '@/components/ui/text-field';
+import { useSettings } from '@/features/settings/use-settings';
 import { useWealth } from '@/features/wealth/use-wealth';
 import { useFormSubmit } from '@/lib/use-form-submit';
 import { space } from '@/theme';
@@ -21,11 +23,12 @@ const ACCOUNT_TYPES = [
 
 export const AccountForm = () => {
   const { addAccount } = useWealth();
+  const { currency: preferredCurrency } = useSettings();
   const { saving, error, setError, submit } = useFormSubmit();
   const [name, setName] = useState('');
   const [type, setType] = useState('checking');
   const [balance, setBalance] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState(preferredCurrency);
 
   const save = () => {
     const amount = parseNumber(balance);
@@ -102,8 +105,8 @@ const CATEGORIES = [
   { value: 'Other', label: 'Other' },
 ];
 
-export const TransactionForm = () => {
-  const { data, addTransaction } = useWealth();
+export const TransactionForm = ({ recordId }: { recordId?: string }) => {
+  const { data, addTransaction, updateTransaction } = useWealth();
   const { saving, error, setError, submit } = useFormSubmit();
   const [amount, setAmount] = useState('');
   const [direction, setDirection] = useState<'in' | 'out'>('out');
@@ -113,6 +116,26 @@ export const TransactionForm = () => {
   const [date, setDate] = useState(new Date());
 
   const accounts = data?.accounts ?? [];
+  const existing = data?.transactions.find((record) => record.id === recordId);
+
+  useEffect(() => {
+    if (!existing) return;
+    setAmount(String(existing.amount));
+    setDirection(existing.direction === 'in' ? 'in' : 'out');
+    setCategory(existing.category ?? 'Other');
+    setAccountId(existing.account_id);
+    setNote(existing.note ?? '');
+    setDate(new Date(existing.occurred_at));
+  }, [existing?.id]);
+
+  const recent = Array.from(
+    new Map(
+      (data?.transactions ?? []).map((entry) => [
+        `${entry.category ?? 'Other'}|${entry.amount}|${entry.note ?? ''}`,
+        entry,
+      ]),
+    ).values(),
+  ).slice(0, 4);
 
   const save = () => {
     const value = parseNumber(amount);
@@ -120,27 +143,44 @@ export const TransactionForm = () => {
       setError('Enter an amount greater than zero.');
       return;
     }
+    const input = {
+      accountId,
+      amount: value,
+      direction,
+      category,
+      note,
+      occurredAt: date.toISOString(),
+    };
     void submit(() =>
-      addTransaction.mutateAsync({
-        accountId,
-        amount: value,
-        direction,
-        category,
-        note,
-        occurredAt: date.toISOString(),
-      }),
+      existing
+        ? updateTransaction.mutateAsync({ id: existing.id, ...input })
+        : addTransaction.mutateAsync(input),
     );
   };
 
   return (
     <FormFrame
-      title="Add transaction"
-      submitLabel="Save transaction"
+      title={existing ? 'Edit transaction' : 'Add transaction'}
+      submitLabel={existing ? 'Save changes' : 'Save transaction'}
       loading={saving}
       error={error}
       onSubmit={save}
     >
       <View style={{ gap: space.xl }}>
+        <RecentChips
+          options={recent.map((entry) => ({
+            key: `${entry.category ?? 'Other'}|${entry.amount}|${entry.note ?? ''}`,
+            label: `${entry.note || entry.category || 'Expense'} · ${entry.amount}`,
+            onPress: () => {
+              setAmount(String(entry.amount));
+              setDirection(entry.direction === 'in' ? 'in' : 'out');
+              setCategory(entry.category ?? 'Other');
+              setAccountId(entry.account_id);
+              setNote(entry.note ?? '');
+              setDate(new Date());
+            },
+          }))}
+        />
         <Chips
           label="Direction"
           options={[

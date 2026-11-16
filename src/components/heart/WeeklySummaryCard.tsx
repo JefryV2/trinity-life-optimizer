@@ -1,5 +1,4 @@
 import { Brain, TrendingUp } from "lucide-react";
-
 interface WeeklySummaryCardProps {
   bpm: number;
   max: number;
@@ -8,7 +7,6 @@ interface WeeklySummaryCardProps {
   stressLevel?: "Low" | "Medium" | "High";
   avgVariability: number;
 }
-
 export const WeeklySummaryCard = ({
   bpm,
   max,
@@ -36,7 +34,6 @@ export const WeeklySummaryCard = ({
           </p>
         </div>
       </header>
-
       <div>
         <div className="flex items-center gap-2 mb-2">
           <p className="font-semibold text-sm text-muted-foreground uppercase">
@@ -48,7 +45,7 @@ export const WeeklySummaryCard = ({
           {hrvData.map((value, idx) => (
             <div
               key={idx}
-              className="flex-1 rounded-full bg-gradient-to-t from-orange-200 to-orange-500"
+              className="flex-1 rounded-full bg-primary from-orange-200 to-orange-500"
               style={{
                 height: `${Math.max(15, (value / 140) * 100)}%`,
                 opacity: idx === 5 ? 1 : 0.85,
@@ -62,9 +59,8 @@ export const WeeklySummaryCard = ({
           ))}
         </div>
       </div>
-
       <div className="grid grid-cols-2 gap-3">
-        <div className="glass-panel bg-white/60 border border-white/80 p-4 rounded-2xl shadow-sm">
+        <div className="glass-panel bg-[#0a0a0c] border border-white/80 p-4 rounded-2xl shadow-sm">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Stress Level
           </p>
@@ -76,7 +72,7 @@ export const WeeklySummaryCard = ({
             Balanced nervous system
           </p>
         </div>
-        <div className="glass-panel bg-white/60 border border-white/80 p-4 rounded-2xl shadow-sm">
+        <div className="glass-panel bg-[#0a0a0c] border border-white/80 p-4 rounded-2xl shadow-sm">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Ave. Variability
           </p>
@@ -87,9 +83,8 @@ export const WeeklySummaryCard = ({
           <p className="text-xs text-muted-foreground mt-1">Great recovery</p>
         </div>
       </div>
-
       <div className="glass-panel bg-orange-50/70 border border-orange-200/60 p-4 rounded-2xl flex items-start gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-inner">
+        <div className="w-10 h-10 rounded-2xl bg-[#0a0a0c] flex items-center justify-center shadow-inner">
           <span className="text-2xl">⚡️</span>
         </div>
         <div className="text-sm text-orange-900">
@@ -100,4 +95,3 @@ export const WeeklySummaryCard = ({
     </section>
   );
 };
-

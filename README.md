@@ -101,3 +101,7 @@ If you want, you can keep the app in **demo mode** and rely on the mock data gen
 - Ready to extend with real wearable integrations (Apple Health, Google Fit, etc.) and more advanced models if you want to push the analytics further.
 
 Use it as both a personal life dashboard and a live example of how you think about **data, design, and user experience** together. 
+
+## Web status
+
+The Vite web app still points at the legacy Supabase project and is intentionally frozen while the mobile app is the product. Do not deploy it as a second live client. The next web step is either a full Nhost port or replacing it with a download/landing page.

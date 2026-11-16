@@ -1,4 +1,6 @@
 import { useRouter } from 'expo-router';
+
+import { toast } from '@/components/ui/toast';
 import { useCallback, useState } from 'react';
 
 /** Shared save flow for every add/edit sheet: busy state, inline error, haptic + dismiss on success. */
@@ -13,6 +15,7 @@ export const useFormSubmit = () => {
       setError(null);
       try {
         await action();
+        toast.show('Saved');
         router.back();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'Could not save. Try again.');

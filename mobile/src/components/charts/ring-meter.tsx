@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedProps,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -48,13 +49,14 @@ export const RingMeter = ({
   const ratio = Math.max(0, Math.min(1, value / max));
   const ringColor = color ?? colors.primary;
 
+  const reduced = useReducedMotion();
   const progress = useSharedValue(0);
   useEffect(() => {
-    progress.value = withTiming(ratio, {
+    progress.value = reduced ? ratio : withTiming(ratio, {
       duration: 900,
       easing: Easing.out(Easing.cubic),
     });
-  }, [progress, ratio]);
+  }, [progress, ratio, reduced]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference - progress.value * circumference,

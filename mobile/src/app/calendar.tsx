@@ -177,7 +177,7 @@ export default function CalendarScreen() {
             size={96}
             stroke={7}
             center={trinity(selectedDay) === null ? '—' : String(trinity(selectedDay))}
-            label="Trinity"
+            label="Auxo"
           />
           <View style={{ flex: 1, gap: 4 }}>
             <AppText variant="headline">
@@ -191,7 +191,7 @@ export default function CalendarScreen() {
         <StatRow>
           <Stat value={selectedDay?.health === null || !selectedDay ? '—' : String(selectedDay.health)} label="Health" />
           <Stat value={selectedDay?.wealth === null || !selectedDay ? '—' : String(selectedDay.wealth)} label="Wealth" />
-          <Stat value={selectedDay?.relations === null || !selectedDay ? '—' : String(selectedDay.relations)} label="Relations" />
+          <Stat value={selectedDay?.relations === null || !selectedDay ? '—' : String(selectedDay.relations)} label="People" />
         </StatRow>
         <View style={{ gap: space.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

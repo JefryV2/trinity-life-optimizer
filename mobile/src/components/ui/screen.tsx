@@ -1,7 +1,11 @@
-import { ScrollView, type ScrollViewProps } from 'react-native';
+import { BlurTargetView } from 'expo-blur';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, type ComponentRef } from 'react';
+import { ScrollView, type ScrollViewProps, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SwipeTabs, useIsTabRoute } from '@/components/ui/swipe';
+import { getBlurTarget, setBlurTarget } from '@/lib/blur-target';
 import { space, useTheme } from '@/theme';
 
 interface ScreenProps extends ScrollViewProps {
@@ -13,8 +17,21 @@ export const Screen = ({ children, contentContainerStyle, safeAreaTop = true, ..
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const isTab = useIsTabRoute();
+  const targetRef = useRef<ComponentRef<typeof View>>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isTab) return;
+      setBlurTarget(targetRef.current);
+      return () => {
+        if (getBlurTarget() === targetRef.current) setBlurTarget(null);
+      };
+    }, [isTab]),
+  );
+
   return (
     <SwipeTabs>
+      <BlurTargetView ref={targetRef} style={{ flex: 1 }}>
       <ScrollView
       {...rest}
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -24,7 +41,7 @@ export const Screen = ({ children, contentContainerStyle, safeAreaTop = true, ..
         {
           paddingHorizontal: space.xl,
           paddingTop: (safeAreaTop ? insets.top : 0) + space.lg,
-          paddingBottom: isTab ? space.section + 84 : space.section,
+          paddingBottom: isTab ? space.section + 104 : space.section,
           gap: space.lg,
           width: '100%',
           maxWidth: 720,
@@ -35,6 +52,7 @@ export const Screen = ({ children, contentContainerStyle, safeAreaTop = true, ..
       >
         {children}
       </ScrollView>
+      </BlurTargetView>
     </SwipeTabs>
   );
 };

@@ -18,10 +18,12 @@ import { SwipeSteps } from '@/components/ui/swipe';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
+import { TextField } from '@/components/ui/text-field';
+import { useSettings } from '@/features/settings/use-settings';
 import { useWealth, type Budget, type Investment, type Transaction } from '@/features/wealth/use-wealth';
 import { useNetWorthHistory } from '@/features/wealth/use-net-worth-history';
 import { formatDate, formatMoney, formatNumber, formatStamp } from '@/lib/format';
-import { openAdd, type WealthTab } from '@/lib/navigation';
+import { openAdd, openEdit, type WealthTab } from '@/lib/navigation';
 import { buildSmartSpendingGroups } from '@/lib/spending-smart-groups';
 import { space, useTheme } from '@/theme';
 
@@ -29,7 +31,7 @@ const OPTIONS: Array<{ value: WealthTab; label: string }> = [
   { value: 'overview', label: 'Overview' },
   { value: 'investments', label: 'Invest' },
   { value: 'expenses', label: 'Expenses' },
-  { value: 'goals', label: 'Goals' },
+  { value: 'goals', label: 'Budgets' },
 ];
 
 const isWealthTab = (value: string): value is WealthTab =>
@@ -46,6 +48,8 @@ const accountName = (transactions: Transaction[], accounts: ReturnType<typeof us
 export default function WealthHub() {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
+  useSettings(); // subscribe: formatMoney follows the selected currency
+
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<WealthTab>('overview');
   const { data, isPending, isError, error, refetch, isRefetching, removeTransaction, removeInvestment, removeBudget } =
@@ -109,11 +113,7 @@ export default function WealthHub() {
         />
       }
     >
-      <PageHeader
-        title="Wealth"
-        date={formatStamp()}
-        subtitle="Accounts, spending, investments and goals"
-      />
+      <PageHeader title="Wealth" date={formatStamp()} />
 
       <ScrollTabs options={OPTIONS} value={tab} onChange={setTab} />
 
@@ -307,6 +307,7 @@ const ExpensesSegment = ({
   onDelete: (transaction: Transaction) => void;
 }) => {
   const { colors } = useTheme();
+  const [query, setQuery] = useState('');
   const expenseRows = transactions.filter((row) => row.direction === 'out');
   const groups = buildSmartSpendingGroups(expenseRows);
   const donutColors = [colors.primary, colors.amber, colors.bonds, colors.success, colors.danger];
@@ -376,7 +377,18 @@ const ExpensesSegment = ({
         actionLabel="Add"
         onAction={() => openAdd('transaction')}
       />
-      {transactions.length === 0 ? (
+      <TextField
+        label="Search"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Note, category, account…"
+        autoCapitalize="none"
+      />
+      {transactions.filter((transaction) =>
+        `${transaction.note ?? ''} ${transaction.category ?? ''} ${accountLabel(transaction)}`
+          .toLowerCase()
+          .includes(query.trim().toLowerCase()),
+      ).length === 0 ? (
         <EmptyState
           icon="wallet"
           title="No transactions this month"
@@ -386,16 +398,23 @@ const ExpensesSegment = ({
         />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-          {transactions.map((transaction, index) => (
-            <DeletableRow
-              key={transaction.id}
-              title={transaction.note?.trim() || transaction.category || 'Transaction'}
-              subtitle={`${transaction.category || 'Uncategorized'} · ${accountLabel(transaction)} · ${formatDate(transaction.occurred_at)}`}
-              value={`${transaction.direction === 'in' ? '+' : '-'}${formatMoney(transaction.amount)}`}
-              last={index === transactions.length - 1}
-              onDelete={() => onDelete(transaction)}
-            />
-          ))}
+          {transactions
+            .filter((transaction) =>
+              `${transaction.note ?? ''} ${transaction.category ?? ''} ${accountLabel(transaction)}`
+                .toLowerCase()
+                .includes(query.trim().toLowerCase()),
+            )
+            .map((transaction, index, rows) => (
+              <DeletableRow
+                key={transaction.id}
+                title={transaction.note?.trim() || transaction.category || 'Transaction'}
+                subtitle={`${transaction.category || 'Uncategorized'} · ${accountLabel(transaction)} · ${formatDate(transaction.occurred_at)}`}
+                value={`${transaction.direction === 'in' ? '+' : '-'}${formatMoney(transaction.amount)}`}
+                last={index === rows.length - 1}
+                onPress={() => openEdit('transaction', transaction.id)}
+                onDelete={() => onDelete(transaction)}
+              />
+            ))}
         </Card>
       )}
     </>

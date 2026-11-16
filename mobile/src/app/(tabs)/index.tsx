@@ -1,6 +1,7 @@
-import { router } from 'expo-router';
-import { useCallback } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { TrinityRings } from '@/components/charts/trinity-rings';
 import { RingMeter } from '@/components/charts/ring-meter';
@@ -14,13 +15,13 @@ import { Reveal } from '@/components/ui/reveal';
 import { SectionHeader } from '@/components/ui/section-header';
 import { LoadingState, ErrorState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
+import { FirstSignal } from '@/features/dashboard/first-signal';
 import { useDashboard } from '@/features/dashboard/use-dashboard';
-import { useEnvironment } from '@/features/dashboard/use-environment';
 import { useHealth } from '@/features/health/use-health';
 import { formatLongDate, formatNumber, greeting, scoreLabel } from '@/lib/format';
-import { aqiColor, pm25Color, uvColor, uvLabel } from '@/lib/health-colors';
+import { trackOnce } from '@/lib/analytics';
 import { openAdd, openHealth, openInsight, openRelations, openWealth } from '@/lib/navigation';
-import { ACTION_HINT, PILLAR_ROUTE } from '@/lib/score-labels';
+import { ACTION_HINT, ACTION_LABEL, PILLAR_COLOR, PILLAR_ROUTE } from '@/lib/score-labels';
 import { radius, space, useTheme } from '@/theme';
 
 const PILLAR_ICON: Record<string, IconName> = {
@@ -31,19 +32,53 @@ const PILLAR_ICON: Record<string, IconName> = {
 
 export default function Dashboard() {
   const { colors } = useTheme();
-  const { data, isPending, isError, error, refetch, isRefetching } = useDashboard();
-  const { addWater } = useHealth();
-  const environment = useEnvironment();
+  const { data, isPending, isError, error, refetch, isRefetching, isStale } = useDashboard();
+  const { addWater } = useHealth({ fetch: false });
 
   const pillarColor = {
-    health: colors.primary,
-    wealth: colors.amber,
-    relations: colors.success,
+    health: PILLAR_COLOR.health,
+    wealth: PILLAR_COLOR.wealth,
+    relations: PILLAR_COLOR.bonds,
   };
+
+  const firstSignal = data
+    ? data.focus === 'health'
+      ? data.health.steps === 0 && data.health.sleepHours === 0 && data.health.water === 0
+      : data.focus === 'wealth'
+        ? data.wealth.income === 0 && data.wealth.expenses === 0
+        : data.relations.interactions === 0
+    : false;
+
+  const [justLogged, setJustLogged] = useState(false);
+  const loggedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (data && !firstSignal) {
+      void trackOnce('first_signal_logged', { focus: data.focus });
+    }
+  }, [data, firstSignal]);
+
+  useEffect(
+    () => () => {
+      if (loggedTimer.current) clearTimeout(loggedTimer.current);
+    },
+    [],
+  );
+
+  // Other tabs mark the dashboard stale instead of refetching 14 tables in the
+  // save path. Catch up when Today becomes visible again.
+  useFocusEffect(
+    useCallback(() => {
+      if (data && isStale) void refetch();
+    }, [data, isStale, refetch]),
+  );
 
   const drinkWater = useCallback(() => {
     addWater.mutate(250, {
       onSuccess: () => {
+        setJustLogged(true);
+        if (loggedTimer.current) clearTimeout(loggedTimer.current);
+        loggedTimer.current = setTimeout(() => setJustLogged(false), 1600);
       },
     });
   }, [addWater]);
@@ -74,17 +109,19 @@ export default function Dashboard() {
 
       {data ? (
         <>
+          {firstSignal ? <FirstSignal focus={data.focus} people={data.relations.people} /> : null}
+
           <Reveal index={0}>
           <View style={{ alignItems: 'center', gap: space.md }}>
             <TrinityRings
               size={220}
               rings={[
                 { key: 'health', label: 'Health', value: data.health.score, color: colors.primary },
-                { key: 'wealth', label: 'Wealth', value: data.wealth.score, color: colors.amber },
-                { key: 'relations', label: 'Bonds', value: data.relations.score, color: colors.success },
+                { key: 'wealth', label: 'Wealth', value: data.wealth.score, color: data.wealth.tracked ? colors.amber : colors.textFaint },
+                { key: 'relations', label: 'People', value: data.relations.score, color: PILLAR_COLOR.bonds },
               ]}
               center={Math.round(data.trinity)}
-              centerLabel="TRINITY"
+              centerLabel="AUXO"
             />
 
             <AppText variant="headline" tone="secondary">
@@ -104,13 +141,13 @@ export default function Dashboard() {
                   {
                     key: 'wealth' as const,
                     label: 'Wealth',
-                    caption: `${Math.round(data.wealth.rate)}% saved`,
+                    caption: data.wealth.tracked ? `${Math.round(data.wealth.rate)}% saved` : 'No income logged',
                     value: data.wealth.score,
                     open: () => openWealth(),
                   },
                   {
                     key: 'relations' as const,
-                    label: 'Bonds',
+                    label: 'People',
                     caption: `${data.relations.people} people`,
                     value: data.relations.score,
                     open: openRelations,
@@ -143,9 +180,14 @@ export default function Dashboard() {
                   </View>
                   <AppText
                     variant="headline"
-                    style={{ fontSize: 30, lineHeight: 34, color: pillarColor[pillar.key] }}
+                    style={{
+                      fontSize: 30,
+                      lineHeight: 34,
+                      fontVariant: ['tabular-nums'],
+                      color: pillarColor[pillar.key],
+                    }}
                   >
-                    {Math.round(pillar.value)}
+                    {pillar.key === 'wealth' && !data.wealth.tracked ? '—' : Math.round(pillar.value)}
                   </AppText>
                   <AppText variant="caption" tone="tertiary">
                     {pillar.caption}
@@ -153,24 +195,71 @@ export default function Dashboard() {
                 </Pressable>
               ))}
             </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
+              <AppText
+                variant="footnote"
+                tone="primary"
+                onPress={() => router.push('/why' as never)}
+                style={{ paddingVertical: 4 }}
+              >
+                {data.score.total > 0 ? `Why ${data.score.total}?` : 'How the score works'}
+              </AppText>
+              <AppText
+                variant="footnote"
+                tone="tertiary"
+                onPress={() => router.push('/experiments' as never)}
+                style={{ paddingVertical: 4 }}
+              >
+                Run a 7-day experiment
+              </AppText>
+            </View>
           </View>
           </Reveal>
 
-          {data.score?.topAction ? (
+          {data.score?.topAction && !firstSignal ? (
             <View style={{ gap: space.sm }}>
               <SectionHeader index="01" title="One thing" />
               <Nudge
                 title={data.score.topAction.label}
                 body={ACTION_HINT[data.score.topAction.key] ?? 'Log this and the reading gets sharper.'}
-                actionLabel={`${data.score.topAction.points} points available`}
-                onPress={() => router.push(PILLAR_ROUTE[data.score.topAction!.pillar] as never)}
+                actionLabel={ACTION_LABEL[data.score.topAction.key] ?? 'Open'}
+                onPress={() => {
+                  const action = data.score.topAction!;
+                  switch (action.key) {
+                    case 'sleep':
+                      openAdd('sleep');
+                      break;
+                    case 'steps':
+                    case 'water':
+                      openHealth('fitness');
+                      break;
+                    case 'exercise':
+                      openAdd('exercise');
+                      break;
+                    case 'mental':
+                    case 'mood':
+                      openAdd('mental');
+                      break;
+                    case 'savings':
+                    case 'spend':
+                      openAdd('transaction');
+                      break;
+                    case 'contact':
+                      if (data.relations.people === 0) openAdd('person');
+                      else openAdd('interaction');
+                      break;
+                    default:
+                      router.push(PILLAR_ROUTE[action.pillar] as never);
+                  }
+                }}
               />
             </View>
           ) : null}
 
           <Reveal index={1}>
           <View style={{ gap: space.md }}>
-            <SectionHeader index="02" title="Today's vitals" caption="From your latest records" />
+            <SectionHeader index="02" title="Today's vitals" />
             <Card style={{ gap: space.lg }}>
               <StatRow>
                 <Stat value={formatNumber(data.health.steps)} label="Steps" />
@@ -197,7 +286,7 @@ export default function Dashboard() {
 
           <Reveal index={2}>
           <View style={{ gap: space.md }}>
-            <SectionHeader index="03" title="Stress" caption="What is loading you today" />
+            <SectionHeader index="03" title="Stress" />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
               <RingMeter
                 value={data.stress.score}
@@ -216,57 +305,39 @@ export default function Dashboard() {
               />
               <View style={{ flex: 1, gap: 4 }}>
                 <AppText variant="headline">{data.stress.level}</AppText>
-                <AppText variant="footnote" tone="secondary">
-                  {data.stress.drivers[0]
-                    ? `${data.stress.drivers[0].label} is the main driver.`
-                    : 'Nothing is loading you right now.'}
-                </AppText>
-                {data.stress.drivers.slice(1).map((driver) => (
-                  <AppText key={driver.key} variant="caption" tone="tertiary">
-                    {driver.label}
+                {data.stress.drivers.length > 0 ? (
+                  data.stress.drivers.map((driver) => (
+                    <AppText key={driver.key} variant="footnote" tone="secondary">
+                      {driver.label}
+                    </AppText>
+                  ))
+                ) : (
+                  <AppText variant="footnote" tone="secondary">
+                    All clear.
                   </AppText>
-                ))}
+                )}
               </View>
             </View>
           </View>
           </Reveal>
 
-          {environment.data ? (
-            <Reveal index={3}>
-            <View style={{ gap: space.md }}>
-              <SectionHeader index="03" title="Around you" caption="UV and air quality near your location" />
-              <Card>
-                <StatRow>
-                  <Stat
-                    value={environment.data.uv !== null ? environment.data.uv.toFixed(1) : '—'}
-                    label={`UV · ${uvLabel(environment.data.uv)}`}
-                    color={uvColor(environment.data.uv)}
-                  />
-                  <Stat
-                    value={environment.data.aqi !== null ? String(environment.data.aqi) : '—'}
-                    label={`Air · ${environment.data.label}`}
-                    color={aqiColor(environment.data.aqi)}
-                  />
-                  <Stat
-                    value={environment.data.pm25 !== null ? environment.data.pm25.toFixed(1) : '—'}
-                    label="PM2.5 µg/m³"
-                    color={pm25Color(environment.data.pm25)}
-                  />
-                </StatRow>
-              </Card>
-            </View>
-            </Reveal>
-          ) : null}
-
-          <Reveal index={4}>
+          <Reveal index={3}>
           <View style={{ gap: space.md }}>
-            <SectionHeader index="05" title="Quick log" caption="One tap, real records" />
+            <SectionHeader index="04" title="Quick log" />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
               <Button
                 label="+250 ml water"
                 variant="soft"
                 size="small"
-                icon={<Icon name="water" size={15} color={colors.primary} />}
+                icon={
+                  justLogged ? (
+                    <Animated.View key="logged" entering={FadeIn.duration(160)}>
+                      <Icon name="check" size={15} color={colors.primary} />
+                    </Animated.View>
+                  ) : (
+                    <Icon name="water" size={15} color={colors.primary} />
+                  )
+                }
                 loading={addWater.isPending}
                 onPress={drinkWater}
               />
@@ -277,66 +348,16 @@ export default function Dashboard() {
                 size="small"
                 onPress={() => openAdd('transaction')}
               />
+              <Button label="Food" variant="secondary" size="small" onPress={() => router.push('/meal-builder' as never)} />
               <Button label="Mood" variant="secondary" size="small" onPress={() => openAdd('mental')} />
             </View>
           </View>
           </Reveal>
 
-          <Reveal index={5}>
-          <View style={{ gap: space.md }}>
-            <SectionHeader index="06" title="Reading" />
-            <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/why' as never)}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: space.md,
-                  paddingVertical: space.md,
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="callout">
-                    {data.score && data.score.total > 0
-                      ? `Why is it ${data.score.total}?`
-                      : 'How the score works'}
-                  </AppText>
-                  <AppText variant="footnote" tone="tertiary">
-                    Every point traced to something you logged
-                  </AppText>
-                </View>
-                <Icon name="chevron" size={16} color={colors.textTertiary} />
-              </Pressable>
-              <View style={{ height: 1, backgroundColor: colors.separator }} />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/experiments' as never)}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: space.md,
-                  paddingVertical: space.md,
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <AppText variant="callout">Run a 7-day experiment</AppText>
-                  <AppText variant="footnote" tone="tertiary">
-                    Hold one rule, then see what it actually changed
-                  </AppText>
-                </View>
-                <Icon name="chevron" size={16} color={colors.textTertiary} />
-              </Pressable>
-            </Card>
-          </View>
-          </Reveal>
-
           {data.insights.length > 0 ? (
-            <Reveal index={6}>
+            <Reveal index={4}>
             <View style={{ gap: space.md }}>
-              <SectionHeader title="Coach notes" caption="Based on what you actually logged" />
+              <SectionHeader title="Coach notes" />
               {data.insights.map((insight) => (
                 <Pressable
                   key={insight.title}

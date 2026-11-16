@@ -19,6 +19,7 @@ import { useAuth } from '@/providers/auth-provider';
 
 export interface DashboardData {
   name: string;
+  focus: 'health' | 'wealth' | 'relations';
   health: {
     score: number;
     sleepHours: number;
@@ -33,6 +34,7 @@ export interface DashboardData {
   };
   wealth: {
     score: number;
+    tracked: boolean;
     netWorth: number;
     income: number;
     expenses: number;
@@ -90,7 +92,7 @@ export const useDashboard = () => {
       ] = await Promise.all([
         supabase
           .from('profiles')
-          .select('first_name,last_name')
+          .select('first_name,last_name,data_preferences')
           .eq('user_id', userId)
           .maybeSingle(),
         supabase
@@ -254,6 +256,8 @@ export const useDashboard = () => {
       const health = pillarValue('health');
       const wealth = pillarValue('wealth');
       const relations = pillarValue('bonds');
+      const wealthTracked =
+        score.pillars.find((pillar) => pillar.key === 'wealth')?.tracked ?? false;
 
       const insights: DashboardData['insights'] = [];
 
@@ -321,8 +325,15 @@ export const useDashboard = () => {
         });
       }
 
+      const preferences = (profile.data?.data_preferences ?? {}) as Record<string, unknown>;
+      const focus =
+        preferences.focus === 'wealth' || preferences.focus === 'relations'
+          ? preferences.focus
+          : 'health';
+
       return {
         name: profile.data?.first_name?.trim() || 'there',
+        focus,
         health: {
           score: health,
           sleepHours,
@@ -337,6 +348,7 @@ export const useDashboard = () => {
         },
         wealth: {
           score: wealth,
+          tracked: wealthTracked,
           netWorth: (accounts.data ?? []).reduce(
             (sum, row) => sum + Number(row.balance ?? 0),
             0,

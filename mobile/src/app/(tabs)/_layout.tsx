@@ -1,64 +1,167 @@
+import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
-import { Platform, type ColorValue } from 'react-native';
+import { useMemo, useSyncExternalStore } from 'react';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { enableFreeze } from 'react-native-screens';
 
 import { Icon, type IconName } from '@/components/ui/icon';
-import { useTheme } from '@/theme';
+import { getBlurTarget, subscribeBlurTarget } from '@/lib/blur-target';
+import { useTheme, type ThemeColors } from '@/theme';
 
-const tabIcon =
-  (name: IconName) =>
-  ({ color, size }: { color: ColorValue; size: number }) => (
-    <Icon name={name} size={size - 2} color={typeof color === 'string' ? color : '#8A8A92'} />
-  );
+enableFreeze(true);
 
-/** A floating pill: inset from the edges, one soft highlight for the active tab. */
-export default function TabsLayout() {
+type TabMeta = {
+  label: string;
+  icon: IconName;
+  activeIcon: IconName;
+  color: string;
+};
+
+type TabBarProps = {
+  state: {
+    index: number;
+    routes: ReadonlyArray<{ key: string; name: string; params?: object }>;
+  };
+  emitter: {
+    emit: (event: {
+      type: 'tabPress' | 'tabLongPress';
+      target: string;
+      canPreventDefault?: boolean;
+    }) => object;
+  };
+  navigateToTab: (routeKey: string) => void;
+};
+
+const metaFor = (route: string, colors: ThemeColors): TabMeta => {
+  switch (route.split('/')[0]) {
+    case 'index':
+      return { label: 'Today', icon: 'home', activeIcon: 'homeFilled', color: colors.primary };
+    case 'health':
+      return { label: 'Health', icon: 'heart', activeIcon: 'heartFilled', color: colors.health };
+    case 'wealth':
+      return { label: 'Wealth', icon: 'wallet', activeIcon: 'walletFilled', color: colors.wealth };
+    case 'relations':
+      return { label: 'People', icon: 'people', activeIcon: 'peopleFilled', color: colors.bonds };
+    default:
+      return { label: 'You', icon: 'user', activeIcon: 'userFilled', color: colors.text };
+  }
+};
+
+/**
+ * A floating frosted dock. The bar samples the page underneath it with a native
+ * blur, while the active tab is communicated only by its icon: filled, brighter
+ * and in its pillar colour. No filled pill, no square.
+ */
+const AuxoTabBar = ({ state, emitter, navigateToTab }: TabBarProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const barWidth = Math.min(Math.max(width - 56, 256), 336);
+  const target = useSyncExternalStore(
+    subscribeBlurTarget,
+    getBlurTarget,
+    getBlurTarget,
+  );
+  const blurTarget = useMemo(() => ({ current: target }), [target]);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textFaint,
-        tabBarStyle: {
-          position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: Math.max(14, insets.bottom + 6),
-          height: 64,
-          borderRadius: 999,
-          backgroundColor: 'rgba(10, 10, 12, 0.94)',
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderTopWidth: 0,
-          paddingHorizontal: 6,
-          paddingTop: 4,
-          paddingBottom: 4,
-          elevation: 0,
-        },
-        tabBarLabelStyle: {
-          fontSize: 9,
-          fontWeight: '700',
-          letterSpacing: 0.7,
-          textTransform: 'uppercase',
-          fontFamily: 'Baloo2_600SemiBold',
-          marginTop: 2,
-        },
-        tabBarIconStyle: { marginTop: 1 },
-        tabBarItemStyle: {
-          borderRadius: 999,
-          marginHorizontal: 2,
-          paddingVertical: Platform.OS === 'android' ? 5 : 6,
-        },
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: Math.max(10, insets.bottom + 2),
+        alignItems: 'center',
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'TODAY', tabBarIcon: tabIcon('home') }} />
-      <Tabs.Screen name="health" options={{ title: 'HEALTH', tabBarIcon: tabIcon('heart') }} />
-      <Tabs.Screen name="wealth" options={{ title: 'WEALTH', tabBarIcon: tabIcon('wallet') }} />
-      <Tabs.Screen name="relations" options={{ title: 'BONDS', tabBarIcon: tabIcon('people') }} />
-      <Tabs.Screen name="more" options={{ title: 'MORE', tabBarIcon: tabIcon('more') }} />
+      <View
+        style={{
+          width: barWidth,
+          height: 64,
+          borderRadius: 999,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.10)',
+          backgroundColor: 'rgba(8, 8, 10, 0.22)',
+        }}
+      >
+        <BlurView
+          tint="systemThickMaterialDark"
+          intensity={60}
+          blurMethod="dimezisBlurViewSdk31Plus"
+          blurTarget={blurTarget}
+          style={StyleSheet.absoluteFill}
+        />
+        <View
+          style={{
+            flex: 1,
+            paddingHorizontal: 7,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+        {state.routes.map((route, index) => {
+          const focused = state.index === index;
+          const meta = metaFor(route.name, colors);
+          const onPress = () => {
+            const event = emitter.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            }) as { defaultPrevented?: boolean };
+            if (!focused && !event.defaultPrevented) navigateToTab(route.key);
+          };
+
+          return (
+            <Pressable
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityLabel={meta.label}
+              accessibilityState={{ selected: focused }}
+              onPress={onPress}
+              onLongPress={() =>
+                emitter.emit({ type: 'tabLongPress', target: route.key })
+              }
+              style={({ pressed }) => ({
+                flex: 1,
+                height: 56,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.72 : 1,
+                transform: [{ scale: pressed ? 0.94 : 1 }],
+              })}
+            >
+              <Icon
+                name={focused ? meta.activeIcon : meta.icon}
+                size={focused ? 23 : 21}
+                color={focused ? meta.color : colors.textTertiary}
+              />
+            </Pressable>
+          );
+        })}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+export default function TabsLayout() {
+  return (
+    <Tabs
+      tabBar={(props) => <AuxoTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        lazy: true,
+        freezeOnBlur: true,
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: 'Today' }} />
+      <Tabs.Screen name="health" options={{ title: 'Health' }} />
+      <Tabs.Screen name="wealth" options={{ title: 'Wealth' }} />
+      <Tabs.Screen name="relations" options={{ title: 'People' }} />
+      <Tabs.Screen name="more" options={{ title: 'You' }} />
     </Tabs>
   );
 }

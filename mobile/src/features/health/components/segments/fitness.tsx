@@ -9,10 +9,11 @@ import { DeletableRow } from '@/components/ui/deletable-row';
 import { Progress } from '@/components/ui/progress';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { RouteThumb } from '@/features/health/components/route-thumb';
 import { useHealth } from '@/features/health/use-health';
 import { usePedometer } from '@/features/health/use-pedometer';
 import { formatDate, formatNumber, isoDate } from '@/lib/format';
-import { openAdd } from '@/lib/navigation';
+import { openAdd, openEdit } from '@/lib/navigation';
 import { space } from '@/theme';
 
 export const FitnessSegment = () => {
@@ -91,10 +92,16 @@ export const FitnessSegment = () => {
               <DeletableRow
                 key={record.id}
                 icon="run"
+                leading={
+                  record.route && record.route.length > 0 ? (
+                    <RouteThumb segments={record.route} />
+                  ) : undefined
+                }
                 title={record.exercise_name}
                 subtitle={`${record.completed_at ? formatDate(record.completed_at) : 'Recent'} · ${record.intensity ?? 'moderate'}${record.calories_burned ? ` · ${record.calories_burned} kcal` : ''}`}
                 value={`${record.duration_minutes ?? 0} min`}
                 last={index === data.exercise.length - 1}
+                onPress={() => openEdit('exercise', record.id)}
                 onDelete={() => deleteRecord.mutate({ table: 'exercise_records', id: record.id })}
               />
             ))}

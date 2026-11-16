@@ -1,41 +1,46 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 interface CircularProgressProps {
-  value: number // 0-100
-  size?: number
-  strokeWidth?: number
-  className?: string
-  trackClassName?: string
-  indicatorClassName?: string
-  children?: React.ReactNode
+  value: number; // 0-100
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+  trackClassName?: string;
+  indicatorClassName?: string;
+  children?: React.ReactNode;
 }
 
-export const CircularProgress = React.forwardRef<HTMLDivElement, CircularProgressProps>(
-  ({ 
-    value, 
-    size = 120, 
-    strokeWidth = 8,
-    className,
-    trackClassName,
-    indicatorClassName,
-    children 
-  }, ref) => {
-    const radius = (size - strokeWidth) / 2
-    const circumference = 2 * Math.PI * radius
-    const offset = circumference - (value / 100) * circumference
+export const CircularProgress = React.forwardRef<
+  HTMLDivElement,
+  CircularProgressProps
+>(
+  (
+    {
+      value,
+      size = 120,
+      strokeWidth = 8,
+      className,
+      trackClassName,
+      indicatorClassName,
+      children,
+    },
+    ref,
+  ) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (value / 100) * circumference;
 
     return (
-      <div 
+      <div
         ref={ref}
-        className={cn("relative inline-flex items-center justify-center", className)}
+        className={cn(
+          "relative inline-flex items-center justify-center",
+          className,
+        )}
         style={{ width: size, height: size }}
       >
-        <svg
-          width={size}
-          height={size}
-          className="transform -rotate-90"
-        >
+        <svg width={size} height={size} className="transform -rotate-90">
           {/* Track */}
           <circle
             cx={size / 2}
@@ -59,7 +64,7 @@ export const CircularProgress = React.forwardRef<HTMLDivElement, CircularProgres
             strokeDashoffset={offset}
             className={cn(
               "text-primary transition-all duration-500 ease-out",
-              indicatorClassName
+              indicatorClassName,
             )}
           />
         </svg>
@@ -70,9 +75,8 @@ export const CircularProgress = React.forwardRef<HTMLDivElement, CircularProgres
           </div>
         )}
       </div>
-    )
-  }
-)
+    );
+  },
+);
 
-CircularProgress.displayName = "CircularProgress"
-
+CircularProgress.displayName = "CircularProgress";

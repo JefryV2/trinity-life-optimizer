@@ -1,17 +1,42 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useMemo } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Moon, Clock, Plus, Bell, Lightbulb, Thermometer, Volume2, Brain, Calendar, Flame, Check, Edit, Sun, ArrowRight, Wind, Activity, ArrowLeft, Heart } from 'lucide-react';
+import {
+  Moon,
+  Clock,
+  Plus,
+  Bell,
+  Lightbulb,
+  Thermometer,
+  Volume2,
+  Brain,
+  Calendar,
+  Flame,
+  Check,
+  Edit,
+  Sun,
+  ArrowRight,
+  Wind,
+  Activity,
+  ArrowLeft,
+  Heart,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from 'date-fns';
+import { format } from "date-fns";
 import { getHeartRateStats } from "@/lib/health-utils";
 
 interface SleepRecord {
@@ -29,91 +54,97 @@ export function SleepTracker() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [sleepRecords, setSleepRecords] = useState<SleepRecord[]>([]);
-  const [bedtime, setBedtime] = useState('');
-  const [wakeTime, setWakeTime] = useState('');
+  const [bedtime, setBedtime] = useState("");
+  const [wakeTime, setWakeTime] = useState("");
   const [sleepQuality, setSleepQuality] = useState(5);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sleepStreak, setSleepStreak] = useState(0);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [timeView, setTimeView] = useState<'day' | 'week' | 'month' | 'year'>('day');
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [timeView, setTimeView] = useState<"day" | "week" | "month" | "year">(
+    "day",
+  );
   const [restingHeartRate, setRestingHeartRate] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
       fetchSleepRecords();
       calculateSleepStreak();
-      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
+      window.dispatchEvent(new CustomEvent("healthOverviewDataUpdated"));
       fetchRestingHeartRate();
     }
   }, [user]);
-  
+
   const fetchRestingHeartRate = async () => {
     try {
       const stats = await getHeartRateStats();
       setRestingHeartRate(stats.restingHeartRate);
     } catch (error) {
-      console.error('Error fetching resting heart rate:', error);
+      console.error("Error fetching resting heart rate:", error);
     }
   };
 
   const fetchSleepRecords = async () => {
     try {
       const { data, error } = await supabase
-        .from('sleep_records')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
+        .from("sleep_records")
+        .select("*")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false })
         .limit(30);
 
       if (error) throw error;
       setSleepRecords(data || []);
     } catch (error) {
-      console.error('Error fetching sleep records:', error);
+      console.error("Error fetching sleep records:", error);
     }
   };
 
   const calculateSleepStreak = async () => {
     try {
       const { data, error } = await supabase
-        .from('sleep_records')
-        .select('created_at, sleep_duration_hours')
-        .eq('user_id', user?.id)
-        .gte('sleep_duration_hours', 6) // Minimum 6 hours for streak
-        .order('created_at', { ascending: false });
+        .from("sleep_records")
+        .select("created_at, sleep_duration_hours")
+        .eq("user_id", user?.id)
+        .gte("sleep_duration_hours", 6) // Minimum 6 hours for streak
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       let streak = 0;
       const today = new Date();
-      
+
       for (let i = 0; i < (data?.length || 0); i++) {
         const recordDate = new Date(data![i].created_at);
-        const daysDiff = Math.floor((today.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+        const daysDiff = Math.floor(
+          (today.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+
         if (daysDiff === streak) {
           streak++;
         } else {
           break;
         }
       }
-      
+
       setSleepStreak(streak);
     } catch (error) {
-      console.error('Error calculating sleep streak:', error);
+      console.error("Error calculating sleep streak:", error);
     }
   };
   const calculateSleepDuration = (bedtime: string, wakeTime: string) => {
     if (!bedtime || !wakeTime) return 0;
-    
+
     const bedDate = new Date(`2000-01-01 ${bedtime}`);
     let wakeDate = new Date(`2000-01-01 ${wakeTime}`);
-    
+
     // If wake time is earlier than bedtime, assume it's the next day
     if (wakeDate < bedDate) {
       wakeDate = new Date(`2000-01-02 ${wakeTime}`);
     }
-    
+
     const diffMs = wakeDate.getTime() - bedDate.getTime();
     return Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
   };
@@ -126,50 +157,48 @@ export function SleepTracker() {
       const duration = calculateSleepDuration(bedtime, wakeTime);
       const bedtimeDate = new Date(selectedDate);
       const wakeTimeDate = new Date(selectedDate);
-      
+
       // Set bedtime to yesterday if wake time suggests next day
-      const [bedHour, bedMin] = bedtime.split(':').map(Number);
-      const [wakeHour, wakeMin] = wakeTime.split(':').map(Number);
-      
+      const [bedHour, bedMin] = bedtime.split(":").map(Number);
+      const [wakeHour, wakeMin] = wakeTime.split(":").map(Number);
+
       if (wakeHour < bedHour) {
         bedtimeDate.setDate(bedtimeDate.getDate() - 1);
       }
-      
+
       bedtimeDate.setHours(bedHour, bedMin, 0, 0);
       wakeTimeDate.setHours(wakeHour, wakeMin, 0, 0);
 
-      const { error } = await supabase
-        .from('sleep_records')
-        .insert({
-          user_id: user.id,
-          bedtime: bedtimeDate.toISOString(),
-          wake_time: wakeTimeDate.toISOString(),
-          sleep_duration_hours: duration,
-          sleep_quality: sleepQuality,
-          notes
-        });
+      const { error } = await supabase.from("sleep_records").insert({
+        user_id: user.id,
+        bedtime: bedtimeDate.toISOString(),
+        wake_time: wakeTimeDate.toISOString(),
+        sleep_duration_hours: duration,
+        sleep_quality: sleepQuality,
+        notes,
+      });
 
       if (error) throw error;
 
       toast({
         title: "Sleep logged successfully",
-        description: `${duration} hours of sleep recorded`
+        description: `${duration} hours of sleep recorded`,
       });
 
       // Reset form
-      setBedtime('');
-      setWakeTime('');
+      setBedtime("");
+      setWakeTime("");
       setSleepQuality(5);
-      setNotes('');
-      
+      setNotes("");
+
       fetchSleepRecords();
       calculateSleepStreak();
     } catch (error) {
-      console.error('Error logging sleep:', error);
+      console.error("Error logging sleep:", error);
       toast({
         title: "Error logging sleep",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -178,19 +207,19 @@ export function SleepTracker() {
 
   const getSuggestedBedtime = () => {
     if (!wakeTime) return null;
-    
-    const [hours, minutes] = wakeTime.split(':').map(Number);
+
+    const [hours, minutes] = wakeTime.split(":").map(Number);
     const wakeDate = new Date();
     wakeDate.setHours(hours, minutes, 0, 0);
-    
+
     // Subtract 8 hours for optimal sleep
     const suggestedBedtime = new Date(wakeDate.getTime() - 8 * 60 * 60 * 1000);
-    
+
     // If bedtime would be the previous day, adjust
     if (suggestedBedtime.getDate() !== wakeDate.getDate()) {
       suggestedBedtime.setDate(suggestedBedtime.getDate() + 1);
     }
-    
+
     return suggestedBedtime.toTimeString().slice(0, 5);
   };
 
@@ -201,62 +230,71 @@ export function SleepTracker() {
       tip: "Keep your bedroom between 60-67°F (15-19°C) for the best sleep quality.",
       science: "Core body temperature naturally drops to initiate sleep.",
       action: "Adjust thermostat now",
-      category: "environment"
+      category: "environment",
     },
     {
       icon: Volume2,
-      title: "Quiet Space", 
+      title: "Quiet Space",
       tip: "Aim for under 30 decibels. Use white noise or earplugs if needed.",
-      science: "Noise above 35dB can fragment sleep and reduce deep sleep stages.",
+      science:
+        "Noise above 35dB can fragment sleep and reduce deep sleep stages.",
       action: "Play white noise",
-      category: "environment"
+      category: "environment",
     },
     {
       icon: Moon,
       title: "Dark Room",
       tip: "Complete darkness or use blackout curtains and eye masks.",
-      science: "Light exposure suppresses melatonin production, delaying sleep onset.",
+      science:
+        "Light exposure suppresses melatonin production, delaying sleep onset.",
       action: "Dim lights now",
-      category: "environment"
+      category: "environment",
     },
     {
       icon: Brain,
       title: "Screen Timeout",
       tip: "No screens 1 hour before bed. Blue light disrupts circadian rhythm.",
-      science: "Blue light wavelengths (480nm) most strongly suppress melatonin.",
+      science:
+        "Blue light wavelengths (480nm) most strongly suppress melatonin.",
       action: "Set screen timer",
-      category: "routine"
-    }
+      category: "routine",
+    },
   ];
-  
+
   const [engagedTips, setEngagedTips] = useState<Record<string, boolean>>({});
-  
+
   const handleTipAction = (tip: any) => {
     // Mark the tip as engaged
-    setEngagedTips(prev => ({
+    setEngagedTips((prev) => ({
       ...prev,
-      [tip.title]: true
+      [tip.title]: true,
     }));
-    
+
     // Show a toast notification
     toast({
       title: `Action taken: ${tip.action}`,
-      description: `You've committed to: ${tip.tip}`
+      description: `You've committed to: ${tip.tip}`,
     });
-    
+
     // In a real app, this would connect to specific functionality
     // For example, integrating with smart home devices, setting timers, etc.
   };
 
   const getAverageSleep = () => {
     if (sleepRecords.length === 0) return 0;
-    const total = sleepRecords.reduce((sum, record) => sum + record.sleep_duration_hours, 0);
+    const total = sleepRecords.reduce(
+      (sum, record) => sum + record.sleep_duration_hours,
+      0,
+    );
     return Math.round((total / sleepRecords.length) * 100) / 100;
   };
 
   const getAverageQuality = () => {
     if (sleepRecords.length === 0) return 0;
-    const total = sleepRecords.reduce((sum, record) => sum + record.sleep_quality, 0);
+    const total = sleepRecords.reduce(
+      (sum, record) => sum + record.sleep_quality,
+      0,
+    );
     return Math.round((total / sleepRecords.length) * 10) / 10;
   };
 
@@ -270,9 +308,9 @@ export function SleepTracker() {
     const duration = lastRecord.sleep_duration_hours;
     const hours = Math.floor(duration);
     const minutes = Math.round((duration - hours) * 60);
-    
+
     // Compare with previous night
-    let comparison = '';
+    let comparison = "";
     if (sleepRecords.length > 1) {
       const prevDuration = sleepRecords[1].sleep_duration_hours;
       const diff = duration - prevDuration;
@@ -282,10 +320,10 @@ export function SleepTracker() {
       } else if (diff < 0) {
         comparison = `~ ${diffMinutes}min less than yesterday`;
       } else {
-        comparison = 'Same as yesterday';
+        comparison = "Same as yesterday";
       }
     }
-    
+
     return {
       hours,
       minutes,
@@ -293,7 +331,7 @@ export function SleepTracker() {
       comparison,
       quality: lastRecord.sleep_quality,
       bedtime: lastRecord.bedtime,
-      wakeTime: lastRecord.wake_time
+      wakeTime: lastRecord.wake_time,
     };
   }, [sleepRecords]);
 
@@ -306,8 +344,10 @@ export function SleepTracker() {
       // Simulate sleep stages: light sleep (higher), deep sleep (lower), REM (medium)
       const stage = i % 3;
       let value = 0;
-      if (stage === 0) value = 0.3; // Light sleep
-      else if (stage === 1) value = 0.1; // Deep sleep
+      if (stage === 0)
+        value = 0.3; // Light sleep
+      else if (stage === 1)
+        value = 0.1; // Deep sleep
       else value = 0.5; // REM
       data.push(value);
     }
@@ -315,50 +355,68 @@ export function SleepTracker() {
   };
 
   const sleepGraphData = generateSleepGraph();
-  
+
   // Generate sleep stages for bar chart (matching inspiration)
   const generateSleepStages = () => {
-    if (!lastNightSleep || !lastNightSleep.bedtime || !lastNightSleep.wakeTime) {
+    if (
+      !lastNightSleep ||
+      !lastNightSleep.bedtime ||
+      !lastNightSleep.wakeTime
+    ) {
       // Return mock data if no sleep data
       return [
-        { time: '10:00pm', stage: 'awake', duration: 30 },
-        { time: '10:30pm', stage: 'light', duration: 120 },
-        { time: '12:30am', stage: 'deep', duration: 90 },
-        { time: '2:00am', stage: 'rem', duration: 60 },
-        { time: '3:00am', stage: 'light', duration: 90 },
-        { time: '4:30am', stage: 'deep', duration: 60 },
-        { time: '5:30am', stage: 'rem', duration: 45 },
-        { time: '6:15am', stage: 'light', duration: 15 },
-        { time: '6:30am', stage: 'awake', duration: 0 }
+        { time: "10:00pm", stage: "awake", duration: 30 },
+        { time: "10:30pm", stage: "light", duration: 120 },
+        { time: "12:30am", stage: "deep", duration: 90 },
+        { time: "2:00am", stage: "rem", duration: 60 },
+        { time: "3:00am", stage: "light", duration: 90 },
+        { time: "4:30am", stage: "deep", duration: 60 },
+        { time: "5:30am", stage: "rem", duration: 45 },
+        { time: "6:15am", stage: "light", duration: 15 },
+        { time: "6:30am", stage: "awake", duration: 0 },
       ];
     }
-    
+
     const bedTime = new Date(lastNightSleep.bedtime);
     const wakeTime = new Date(lastNightSleep.wakeTime);
-    const totalMinutes = Math.round((wakeTime.getTime() - bedTime.getTime()) / (1000 * 60));
-    
+    const totalMinutes = Math.round(
+      (wakeTime.getTime() - bedTime.getTime()) / (1000 * 60),
+    );
+
     // Generate stages (simplified - in real app would use actual sleep stage data)
     const stages = [];
     let currentTime = bedTime;
-    const stageTypes = ['awake', 'light', 'deep', 'rem', 'light', 'deep', 'rem', 'light', 'awake'];
+    const stageTypes = [
+      "awake",
+      "light",
+      "deep",
+      "rem",
+      "light",
+      "deep",
+      "rem",
+      "light",
+      "awake",
+    ];
     const stageDurations = [30, 120, 90, 60, 90, 60, 45, 15, 0]; // minutes
-    
+
     stageTypes.forEach((stage, i) => {
       if (i < stageTypes.length - 1) {
         stages.push({
-          time: format(currentTime, 'h:mma').toLowerCase(),
+          time: format(currentTime, "h:mma").toLowerCase(),
           stage,
-          duration: stageDurations[i] || 60
+          duration: stageDurations[i] || 60,
         });
-        currentTime = new Date(currentTime.getTime() + (stageDurations[i] || 60) * 60 * 1000);
+        currentTime = new Date(
+          currentTime.getTime() + (stageDurations[i] || 60) * 60 * 1000,
+        );
       }
     });
-    
+
     return stages;
   };
-  
+
   const sleepStages = generateSleepStages();
-  
+
   // Get today's sleep metrics
   const getTodaySleepMetrics = () => {
     if (!lastNightSleep) {
@@ -366,85 +424,100 @@ export function SleepTracker() {
         totalHours: 0,
         timeInBed: 0,
         restfulness: 0,
-        restingHeartRate: restingHeartRate
+        restingHeartRate: restingHeartRate,
       };
     }
-    
-    const bedTime = lastNightSleep.bedtime ? new Date(lastNightSleep.bedtime) : null;
-    const wakeTime = lastNightSleep.wakeTime ? new Date(lastNightSleep.wakeTime) : null;
-    
+
+    const bedTime = lastNightSleep.bedtime
+      ? new Date(lastNightSleep.bedtime)
+      : null;
+    const wakeTime = lastNightSleep.wakeTime
+      ? new Date(lastNightSleep.wakeTime)
+      : null;
+
     let timeInBed = 0;
     if (bedTime && wakeTime) {
       const diffMs = wakeTime.getTime() - bedTime.getTime();
       timeInBed = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10;
     }
-    
+
     return {
       totalHours: lastNightSleep.duration || 0,
       timeInBed: timeInBed || lastNightSleep.duration || 0,
       restfulness: (lastNightSleep.quality || 0) * 10,
-      restingHeartRate: restingHeartRate
+      restingHeartRate: restingHeartRate,
     };
   };
-  
+
   const todayMetrics = getTodaySleepMetrics();
-  
+
   // Get daily sleep indicators for the week
   const getWeeklySleepIndicators = () => {
     const indicators = [];
     const today = new Date();
-    
+
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateStr = format(date, 'EEE').charAt(0); // S, M, T, W, T, F, S
-      
+      const dateStr = format(date, "EEE").charAt(0); // S, M, T, W, T, F, S
+
       // Find sleep record for this date
-      const record = sleepRecords.find(r => {
+      const record = sleepRecords.find((r) => {
         const recordDate = new Date(r.created_at);
-        return format(recordDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+        return format(recordDate, "yyyy-MM-dd") === format(date, "yyyy-MM-dd");
       });
-      
+
       // Determine color based on sleep quality
-      let color = 'bg-gray-200';
+      let color = "bg-gray-200";
       if (record) {
-        if (record.sleep_quality >= 8) color = 'bg-green-400';
-        else if (record.sleep_quality >= 6) color = 'bg-yellow-400';
-        else if (record.sleep_quality >= 4) color = 'bg-orange-400';
-        else color = 'bg-red-400';
+        if (record.sleep_quality >= 8) color = "bg-green-400";
+        else if (record.sleep_quality >= 6) color = "bg-yellow-400";
+        else if (record.sleep_quality >= 4) color = "bg-orange-400";
+        else color = "bg-red-400";
       }
-      
+
       indicators.push({ day: dateStr, color, hasData: !!record });
     }
-    
+
     return indicators;
   };
-  
+
   const weeklyIndicators = getWeeklySleepIndicators();
 
   // Get routine times (from last record or defaults)
-  const routineBedtime = lastNightSleep 
-    ? new Date(lastNightSleep.bedtime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '10:00 PM';
+  const routineBedtime = lastNightSleep
+    ? new Date(lastNightSleep.bedtime).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "10:00 PM";
   const routineWakeTime = lastNightSleep
-    ? new Date(lastNightSleep.wakeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '06:30 AM';
+    ? new Date(lastNightSleep.wakeTime).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "06:30 AM";
 
   const quickAccessItems = [
-    { icon: Brain, label: 'Meditation', color: 'bg-purple-500' },
-    { icon: Volume2, label: 'Sounds', color: 'bg-blue-500' },
-    { icon: Wind, label: 'Breathing', color: 'bg-green-500' },
-    { icon: Activity, label: 'Yoga', color: 'bg-orange-500' }
+    { icon: Brain, label: "Meditation", color: "bg-purple-500" },
+    { icon: Volume2, label: "Sounds", color: "bg-blue-500" },
+    { icon: Wind, label: "Breathing", color: "bg-green-500" },
+    { icon: Activity, label: "Yoga", color: "bg-orange-500" },
   ];
 
   // Stage colors
   const getStageColor = (stage: string) => {
     switch (stage) {
-      case 'awake': return 'bg-gray-300';
-      case 'light': return 'bg-blue-400';
-      case 'rem': return 'bg-purple-400';
-      case 'deep': return 'bg-indigo-600';
-      default: return 'bg-gray-300';
+      case "awake":
+        return "bg-gray-300";
+      case "light":
+        return "bg-blue-400";
+      case "rem":
+        return "bg-purple-400";
+      case "deep":
+        return "bg-indigo-600";
+      default:
+        return "bg-gray-300";
     }
   };
 
@@ -464,7 +537,10 @@ export function SleepTracker() {
       </div>
 
       {/* Tabs for Day/Week/Month/Year */}
-      <Tabs value={timeView} onValueChange={(v) => setTimeView(v as typeof timeView)}>
+      <Tabs
+        value={timeView}
+        onValueChange={(v) => setTimeView(v as typeof timeView)}
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="day">Day</TabsTrigger>
           <TabsTrigger value="week">Week</TabsTrigger>
@@ -482,21 +558,21 @@ export function SleepTracker() {
               <span>10:00pm</span>
               <span>6:30am</span>
             </div>
-            
+
             {/* Sleep stages bar */}
             <div className="flex items-center gap-0.5 h-12 rounded-lg overflow-hidden">
               {sleepStages.map((stage, index) => (
                 <div
                   key={index}
                   className={`${getStageColor(stage.stage)} flex-1 h-full transition-all`}
-                  style={{ 
-                    minWidth: `${(stage.duration / 510) * 100}%` // 510 = total minutes from 10pm to 6:30am
+                  style={{
+                    minWidth: `${(stage.duration / 510) * 100}%`, // 510 = total minutes from 10pm to 6:30am
                   }}
                   title={`${stage.time} - ${stage.stage}`}
                 />
               ))}
             </div>
-            
+
             {/* Legend */}
             <div className="flex items-center justify-center gap-4 text-xs">
               <div className="flex items-center gap-1">
@@ -530,7 +606,10 @@ export function SleepTracker() {
               <span className="text-lg">🌙</span>
             </div>
             <p className="text-lg font-semibold">
-              {todayMetrics.totalHours > 0 ? todayMetrics.totalHours.toFixed(1) : '0'} hours
+              {todayMetrics.totalHours > 0
+                ? todayMetrics.totalHours.toFixed(1)
+                : "0"}
+              hours
             </p>
           </CardContent>
         </Card>
@@ -543,7 +622,10 @@ export function SleepTracker() {
               <span className="text-lg">🛏️</span>
             </div>
             <p className="text-lg font-semibold">
-              {todayMetrics.timeInBed > 0 ? todayMetrics.timeInBed.toFixed(1) : '0'} hours
+              {todayMetrics.timeInBed > 0
+                ? todayMetrics.timeInBed.toFixed(1)
+                : "0"}
+              hours
             </p>
           </CardContent>
         </Card>
@@ -563,11 +645,15 @@ export function SleepTracker() {
         <Card className="ios-card p-4">
           <CardContent className="p-0">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Resting Heart Rate</span>
+              <span className="text-xs text-muted-foreground">
+                Resting Heart Rate
+              </span>
               <span className="text-lg">❤️</span>
             </div>
             <p className="text-lg font-semibold">
-              {todayMetrics.restingHeartRate ? `${todayMetrics.restingHeartRate} BPM` : '--'}
+              {todayMetrics.restingHeartRate
+                ? `${todayMetrics.restingHeartRate} BPM`
+                : "--"}
             </p>
           </CardContent>
         </Card>
@@ -580,10 +666,10 @@ export function SleepTracker() {
             <div>
               <h3 className="text-sm font-semibold mb-1">Sleep Overview</h3>
               <p className="text-xs text-muted-foreground">
-                Today, {format(new Date(), 'EEEE d MMM yyyy')}
+                Today, {format(new Date(), "EEEE d MMM yyyy")}
               </p>
             </div>
-            
+
             {/* Weekly indicators */}
             <div className="flex items-center justify-between">
               {weeklyIndicators.map((indicator, index) => (
@@ -602,7 +688,7 @@ export function SleepTracker() {
 
       {/* Original content - keeping the log form and other features */}
       {lastNightSleep ? (
-        <Card className="ios-card overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800">
+        <Card className="ios-card overflow-hidden bg-primary from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800">
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -627,7 +713,7 @@ export function SleepTracker() {
                 see stats <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
-            
+
             {/* Sleep Graph */}
             {sleepGraphData.length > 0 && (
               <div className="mt-4">
@@ -649,7 +735,7 @@ export function SleepTracker() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="ios-card overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800">
+        <Card className="ios-card overflow-hidden bg-primary from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800">
           <CardContent className="p-6 text-center">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center mx-auto mb-4">
               <Moon className="h-8 w-8 text-white" />
@@ -680,7 +766,9 @@ export function SleepTracker() {
               <h3 className="font-semibold">Sleep Routine</h3>
             </div>
             <span className="text-sm text-muted-foreground">
-              {lastNightSleep ? `${Math.floor(lastNightSleep.duration)}h ${Math.round((lastNightSleep.duration % 1) * 60)}m` : '08h 30m'}
+              {lastNightSleep
+                ? `${Math.floor(lastNightSleep.duration)}h ${Math.round((lastNightSleep.duration % 1) * 60)}m`
+                : "08h 30m"}
             </span>
           </div>
 
@@ -688,11 +776,20 @@ export function SleepTracker() {
           <div className="relative h-12 bg-muted/30 rounded-xl overflow-hidden">
             <div className="absolute inset-0 flex items-center">
               {/* In-bed segment */}
-              <div className="h-full bg-blue-500/30 flex-1" style={{ width: '45%' }} />
+              <div
+                className="h-full bg-blue-500/30 flex-1"
+                style={{ width: "45%" }}
+              />
               {/* Sleep segment */}
-              <div className="h-full bg-indigo-500 flex-1" style={{ width: '35%' }} />
+              <div
+                className="h-full bg-indigo-500 flex-1"
+                style={{ width: "35%" }}
+              />
               {/* Wake segment */}
-              <div className="h-full bg-orange-500/30 flex-1" style={{ width: '20%' }} />
+              <div
+                className="h-full bg-orange-500/30 flex-1"
+                style={{ width: "20%" }}
+              />
             </div>
             <div className="absolute inset-0 flex items-center justify-between px-2 text-xs text-muted-foreground">
               <span>12PM</span>
@@ -755,10 +852,14 @@ export function SleepTracker() {
                   key={index}
                   className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors haptic-light"
                 >
-                  <div className={`w-12 h-12 rounded-xl ${item.color} flex items-center justify-center`}>
+                  <div
+                    className={`w-12 h-12 rounded-xl ${item.color} flex items-center justify-center`}
+                  >
                     <Icon className="h-6 w-6 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-center">{item.label}</span>
+                  <span className="text-xs font-medium text-center">
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
@@ -773,7 +874,9 @@ export function SleepTracker() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold mb-1">Log Sleep</h3>
-                <p className="text-sm text-muted-foreground">Track your sleep patterns and quality</p>
+                <p className="text-sm text-muted-foreground">
+                  Track your sleep patterns and quality
+                </p>
               </div>
               <Button
                 variant="ghost"
@@ -783,24 +886,28 @@ export function SleepTracker() {
                 ×
               </Button>
             </div>
-            
+
             {/* Date and Time Inputs */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="sleep-date" className="text-sm font-medium">Date</Label>
+                <Label htmlFor="sleep-date" className="text-sm font-medium">
+                  Date
+                </Label>
                 <Input
                   id="sleep-date"
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="h-12"
-                  max={new Date().toISOString().split('T')[0]}
+                  max={new Date().toISOString().split("T")[0]}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="bedtime" className="text-sm font-medium">Bedtime</Label>
+                  <Label htmlFor="bedtime" className="text-sm font-medium">
+                    Bedtime
+                  </Label>
                   <Input
                     id="bedtime"
                     type="time"
@@ -809,9 +916,11 @@ export function SleepTracker() {
                     className="h-12 text-lg"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="wake-time" className="text-sm font-medium">Wake Time</Label>
+                  <Label htmlFor="wake-time" className="text-sm font-medium">
+                    Wake Time
+                  </Label>
                   <Input
                     id="wake-time"
                     type="time"
@@ -821,7 +930,7 @@ export function SleepTracker() {
                   />
                 </div>
               </div>
-              
+
               {/* Suggested Bedtime */}
               {suggestedBedtime && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800">
@@ -839,7 +948,7 @@ export function SleepTracker() {
                 </div>
               )}
             </div>
-            
+
             {/* Duration Display */}
             {bedtime && wakeTime && (
               <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
@@ -851,7 +960,7 @@ export function SleepTracker() {
                 </div>
               </div>
             )}
-            
+
             {/* Sleep Quality */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -864,7 +973,7 @@ export function SleepTracker() {
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
                   <button
                     key={rating}
-                    className={`flex-1 h-10 rounded-lg border transition-colors haptic-light ${sleepQuality >= rating ? 'bg-primary text-primary-foreground border-primary' : 'border-input hover:bg-accent'}`}
+                    className={`flex-1 h-10 rounded-lg border transition-colors haptic-light ${sleepQuality >= rating ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-accent"}`}
                     onClick={() => setSleepQuality(rating)}
                   >
                     <span className="text-xs font-medium">{rating}</span>
@@ -876,10 +985,12 @@ export function SleepTracker() {
                 <span>Excellent</span>
               </div>
             </div>
-            
+
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm font-medium">Notes (optional)</Label>
+              <Label htmlFor="notes" className="text-sm font-medium">
+                Notes (optional)
+              </Label>
               <Textarea
                 id="notes"
                 placeholder="How did you sleep? Any disturbances?"
@@ -888,9 +999,9 @@ export function SleepTracker() {
                 className="min-h-[80px] resize-none"
               />
             </div>
-            
+
             {/* Log Button */}
-            <Button 
+            <Button
               onClick={() => {
                 logSleep();
                 setShowLogForm(false);
@@ -911,18 +1022,26 @@ export function SleepTracker() {
           <CardContent className="p-6 space-y-6">
             <div>
               <h3 className="text-lg font-semibold mb-1">Sleep Insights</h3>
-              <p className="text-sm text-muted-foreground">Your sleep patterns and progress</p>
+              <p className="text-sm text-muted-foreground">
+                Your sleep patterns and progress
+              </p>
             </div>
-            
+
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-4 bg-muted/30 rounded-xl">
-                <div className="text-2xl font-bold text-primary">{getAverageSleep()}h</div>
+                <div className="text-2xl font-bold text-primary">
+                  {getAverageSleep()}h
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">Avg Sleep</p>
               </div>
               <div className="text-center p-4 bg-muted/30 rounded-xl">
-                <div className="text-2xl font-bold text-primary">{getAverageQuality()}/10</div>
-                <p className="text-xs text-muted-foreground mt-1">Avg Quality</p>
+                <div className="text-2xl font-bold text-primary">
+                  {getAverageQuality()}/10
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Avg Quality
+                </p>
               </div>
               <div className="text-center p-4 bg-muted/30 rounded-xl">
                 <div className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
@@ -932,23 +1051,35 @@ export function SleepTracker() {
                 <p className="text-xs text-muted-foreground mt-1">Day Streak</p>
               </div>
             </div>
-            
+
             {/* Recent Records */}
             <div className="space-y-3">
               <h4 className="font-semibold text-sm">Recent Sleep Records</h4>
               {sleepRecords.slice(0, 5).map((record) => (
-                <div key={record.id} className="flex justify-between items-center p-4 rounded-xl bg-muted/20">
+                <div
+                  key={record.id}
+                  className="flex justify-between items-center p-4 rounded-xl bg-muted/20"
+                >
                   <div className="flex-1">
                     <div className="text-sm font-medium">
                       {new Date(record.created_at).toLocaleDateString()}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      Quality: {record.sleep_quality}/10 • {record.sleep_duration_hours}h
+                      Quality: {record.sleep_quality}/10 •
+                      {record.sleep_duration_hours}h
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm">
-                      {new Date(record.bedtime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(record.wake_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(record.bedtime).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      -
+                      {new Date(record.wake_time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -957,15 +1088,19 @@ export function SleepTracker() {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Sleep Tips */}
       <Card className="ios-card">
         <CardContent className="p-6 space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-1">Sleep Optimization Tips</h3>
-            <p className="text-sm text-muted-foreground">Science-backed recommendations for better sleep</p>
+            <h3 className="text-lg font-semibold mb-1">
+              Sleep Optimization Tips
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Science-backed recommendations for better sleep
+            </p>
           </div>
-          
+
           {getSleepTips().map((tip, index) => {
             const Icon = tip.icon;
             const isEngaged = engagedTips[tip.title];

@@ -902,3 +902,140 @@ alter table public.score_snapshots
 
 comment on column public.score_snapshots.net_worth is
   'Cash + investments at the time the day was captured.';
+
+-- Saved GPS walks keep a compact route so the workout list can draw the trail.
+ALTER TABLE public.exercise_records ADD COLUMN IF NOT EXISTS route JSONB;
+
+COMMENT ON COLUMN public.exercise_records.route IS
+  'Array of {lat,lng} segments for GPS walks; null for manual workouts.';
+
+-- Owner-scoped account deletion. SECURITY DEFINER is required to remove the
+-- auth identity; the function only ever acts on auth.uid(), so a caller cannot
+-- delete another account. It removes every personal row first, then the auth
+-- user. If any row cannot be removed the whole transaction rolls back.
+CREATE OR REPLACE FUNCTION public.delete_my_account()
+RETURNS SETOF public.profiles
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+  account uuid := auth.uid();
+  table_row record;
+  pass_deleted integer;
+  remaining integer;
+BEGIN
+  IF account IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Tables have dependencies in places, so retry passes until nothing moves.
+  LOOP
+    pass_deleted := 0;
+    FOR table_row IN
+      SELECT c.table_name
+      FROM information_schema.columns c
+      JOIN information_schema.tables t
+        ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+      WHERE c.table_schema = 'public'
+        AND c.column_name = 'user_id'
+        AND t.table_type = 'BASE TABLE'
+    LOOP
+      BEGIN
+        EXECUTE format('DELETE FROM public.%I WHERE user_id = $1', table_row.table_name)
+          USING account;
+        GET DIAGNOSTICS remaining = ROW_COUNT;
+        pass_deleted := pass_deleted + remaining;
+      EXCEPTION WHEN foreign_key_violation THEN
+        NULL;
+      END;
+    END LOOP;
+    EXIT WHEN pass_deleted = 0;
+  END LOOP;
+
+  -- Refuse to delete the sign-in while any personal row survived.
+  FOR table_row IN
+    SELECT c.table_name
+    FROM information_schema.columns c
+    JOIN information_schema.tables t
+      ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+    WHERE c.table_schema = 'public'
+      AND c.column_name = 'user_id'
+      AND t.table_type = 'BASE TABLE'
+  LOOP
+    EXECUTE format('SELECT count(*) FROM public.%I WHERE user_id = $1', table_row.table_name)
+      INTO remaining USING account;
+    IF remaining > 0 THEN
+      RAISE EXCEPTION 'Could not delete % row(s) from %', remaining, table_row.table_name;
+    END IF;
+  END LOOP;
+
+  DELETE FROM auth.users WHERE id = account;
+  RETURN;
+END;
+$$;
+
+COMMENT ON FUNCTION public.delete_my_account() IS
+  'Deletes the calling user''s account and all personal rows. Owner-scoped only.';
+
+-- Vitamins and minerals captured from Open Food Facts, per serving (100 g).
+ALTER TABLE public.food_entries ADD COLUMN IF NOT EXISTS micronutrients JSONB;
+
+COMMENT ON COLUMN public.food_entries.micronutrients IS
+  'Per-serving micronutrients keyed by vitaminA, vitaminC, ..., calcium, iron, magnesium, potassium, zinc.';
+
+-- Indexes for the queries the app reads on every dashboard/tab load.
+-- All are idempotent so this migration is safe to re-run.
+
+create index if not exists idx_sleep_records_user_created
+  on public.sleep_records(user_id, created_at desc);
+
+create index if not exists idx_food_entries_user_consumed
+  on public.food_entries(user_id, consumed_at desc);
+
+create index if not exists idx_exercise_records_user_completed
+  on public.exercise_records(user_id, completed_at desc);
+
+create index if not exists idx_mental_health_user_logged
+  on public.mental_health_logs(user_id, logged_at desc);
+
+create index if not exists idx_menstrual_cycles_user_start
+  on public.menstrual_cycles(user_id, cycle_start_date desc);
+
+create index if not exists idx_health_goals_user_created
+  on public.health_goals(user_id, created_at desc);
+
+create index if not exists idx_health_daily_scores_user_date
+  on public.health_daily_scores(user_id, date desc);
+
+create index if not exists idx_wealth_daily_scores_user_date
+  on public.wealth_daily_scores(user_id, date desc);
+
+create index if not exists idx_relations_daily_scores_user_date
+  on public.relations_daily_scores(user_id, date desc);
+
+create index if not exists idx_finance_accounts_user_created
+  on public.finance_accounts(user_id, created_at);
+
+create index if not exists idx_investments_user_created
+  on public.investments(user_id, created_at);
+
+create index if not exists idx_gratitude_entries_user_created
+  on public.gratitude_entries(user_id, created_at desc);
+
+create index if not exists idx_quality_time_goals_user_period
+  on public.quality_time_goals(user_id, period_start desc);
+
+-- Keep the structured parts of a built meal so it can be repeated or edited
+-- without parsing the human-readable notes.
+alter table public.food_entries
+  add column if not exists components jsonb;
+
+-- GPS walks were saved with elapsed milliseconds divided by 60, making a
+-- 2.2-minute walk appear as 2,200 minutes. Correct the historical rows.
+-- A valid session is capped at 12 hours, so anything above 720 minutes is
+-- the millisecond bug, not a real walk.
+UPDATE public.exercise_records
+SET duration_minutes = GREATEST(1, ROUND(duration_minutes / 1000.0)::integer)
+WHERE exercise_name = 'Walk (GPS)'
+  AND duration_minutes > 720;

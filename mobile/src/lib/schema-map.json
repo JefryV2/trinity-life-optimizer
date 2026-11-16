@@ -21,7 +21,8 @@
     "intensity": "text",
     "notes": "text",
     "completed_at": "timestamp with time zone",
-    "created_at": "timestamp with time zone"
+    "created_at": "timestamp with time zone",
+    "route": "jsonb"
   },
   "experiments": {
     "id": "uuid",
@@ -62,7 +63,9 @@
     "consumed_at": "timestamp with time zone",
     "created_at": "timestamp with time zone",
     "notes": "text",
-    "fdc_id": "integer"
+    "fdc_id": "integer",
+    "micronutrients": "jsonb",
+    "components": "jsonb"
   },
   "gratitude_entries": {
     "id": "uuid",

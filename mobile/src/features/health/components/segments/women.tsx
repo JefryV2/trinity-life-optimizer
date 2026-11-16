@@ -151,7 +151,7 @@ export const WomenSegment = () => {
         <EmptyState
           icon="female"
           title="Track your cycle"
-          message="Log the first day of your last period and Trinity will estimate phases, fertility and the next cycle."
+          message="Log the first day of your last period and Auxo will estimate phases, fertility and the next cycle."
           actionLabel="Log cycle start"
           onAction={() => openAdd('cycle')}
         />

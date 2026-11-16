@@ -1,6 +1,8 @@
 import { Component, type ReactNode } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
+import { track } from '@/lib/analytics';
+
 /**
  * A screen that throws should not take the process down on a release build.
  * This renders the message instead, so a bug is reportable rather than a crash.
@@ -16,7 +18,8 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
-    // keep it visible for bug reports
+    // keep it visible for bug reports; the counter contains no screen data
+    void track('screen_error');
     console.error('Screen error:', error?.message, info?.componentStack);
   }
 

@@ -61,7 +61,7 @@ export default function HealthHub() {
         />
       }
     >
-      <PageHeader title="Health" date={formatStamp()} subtitle="Body and mind." />
+      <PageHeader title="Health" date={formatStamp()} />
 
       <ScrollTabs options={options} value={active} onChange={setTab} />
 

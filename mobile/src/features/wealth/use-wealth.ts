@@ -47,12 +47,10 @@ export interface WealthData {
   investments: Investment[];
 }
 
-const invalidate = async (queryClient: ReturnType<typeof useQueryClient>) => {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ['wealth'] }),
-    queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    queryClient.invalidateQueries({ queryKey: ['insights'] }),
-  ]);
+const invalidate = (queryClient: ReturnType<typeof useQueryClient>) => {
+  void queryClient.invalidateQueries({ queryKey: ['wealth'] });
+  void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+  void queryClient.invalidateQueries({ queryKey: ['insights'] });
 };
 
 export const useWealth = () => {
@@ -163,6 +161,76 @@ export const useWealth = () => {
     onSuccess: () => invalidate(queryClient),
   });
 
+  const updateTransaction = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      accountId: string | null;
+      amount: number;
+      direction: 'in' | 'out';
+      category: string;
+      note?: string;
+      occurredAt: string;
+    }) => {
+      const previous = await supabase
+        .from('transactions')
+        .select('account_id,amount,direction')
+        .eq('id', input.id)
+        .maybeSingle();
+
+      const { error } = await supabase
+        .from('transactions')
+        .update({
+          account_id: input.accountId,
+          amount: input.amount,
+          direction: input.direction,
+          category: input.category.trim() || 'Uncategorized',
+          note: input.note?.trim() || null,
+          occurred_at: input.occurredAt,
+        })
+        .eq('id', input.id);
+      if (error) throw new Error(error.message);
+
+      const oldAccountId = previous.data?.account_id as string | null | undefined;
+      const oldAmount = Number(previous.data?.amount ?? 0);
+      const oldDirection = previous.data?.direction === 'in' ? 'in' : 'out';
+      if (oldAccountId && (oldAccountId !== input.accountId || oldAmount !== input.amount || oldDirection !== input.direction)) {
+        const oldAccount = await supabase
+          .from('finance_accounts')
+          .select('balance')
+          .eq('id', oldAccountId)
+          .maybeSingle();
+        if (oldAccount.data) {
+          await supabase
+            .from('finance_accounts')
+            .update({
+              balance: Number(oldAccount.data.balance ?? 0) + (oldDirection === 'in' ? -oldAmount : oldAmount),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', oldAccountId);
+        }
+      }
+
+      if (input.accountId && (oldAccountId !== input.accountId || oldAmount !== input.amount || oldDirection !== input.direction)) {
+        const account = await supabase
+          .from('finance_accounts')
+          .select('balance')
+          .eq('id', input.accountId)
+          .maybeSingle();
+        if (account.data) {
+          const delta = input.direction === 'in' ? input.amount : -input.amount;
+          await supabase
+            .from('finance_accounts')
+            .update({
+              balance: Number(account.data.balance ?? 0) + delta,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', input.accountId);
+        }
+      }
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
   const addBudget = useMutation({
     mutationFn: async (input: { category: string; limit: number; period: string }) => {
       const { error } = await supabase.from('budgets').insert({
@@ -247,6 +315,7 @@ export const useWealth = () => {
     ...query,
     addAccount,
     addTransaction,
+    updateTransaction,
     addBudget,
     addInvestment,
     removeTransaction,

@@ -53,7 +53,7 @@ export const TextField = ({ label, error, helper, style, ...rest }: TextFieldPro
               paddingRight: isSecret ? 64 : 0,
               color: colors.text,
               fontFamily: fonts.medium,
-              fontSize: 19,
+              fontSize: 21,
               letterSpacing: -0.3,
             },
             multiline && { minHeight: 92, textAlignVertical: 'top' },

@@ -1,13 +1,25 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dumbbell, Plus, Activity, Timer, Target, Play } from 'lucide-react';
+import { Dumbbell, Plus, Activity, Timer, Target, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -34,22 +46,24 @@ export function ExerciseTracker() {
   const { toast } = useToast();
   const [exerciseRecords, setExerciseRecords] = useState<ExerciseRecord[]>([]);
   const [todaySteps, setTodaySteps] = useState<StepRecord | null>(null);
-  const [exerciseName, setExerciseName] = useState('');
-  const [exerciseType, setExerciseType] = useState<string>('');
-  const [duration, setDuration] = useState('');
-  const [calories, setCalories] = useState('');
-  const [intensity, setIntensity] = useState<string>('');
-  const [notes, setNotes] = useState('');
-  const [steps, setSteps] = useState('');
+  const [exerciseName, setExerciseName] = useState("");
+  const [exerciseType, setExerciseType] = useState<string>("");
+  const [duration, setDuration] = useState("");
+  const [calories, setCalories] = useState("");
+  const [intensity, setIntensity] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [steps, setSteps] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
 
   const weeklyExerciseGoal = 150; // WHO recommended minutes per week
 
   useEffect(() => {
     if (user) {
       fetchWeeklyExerciseRecords();
-      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
+      window.dispatchEvent(new CustomEvent("healthOverviewDataUpdated"));
       fetchTodaySteps();
     }
   }, [user]);
@@ -60,79 +74,90 @@ export function ExerciseTracker() {
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
       const { data, error } = await supabase
-        .from('exercise_records')
-        .select('*')
-        .eq('user_id', user?.id)
-        .gte('completed_at', oneWeekAgo.toISOString())
-        .order('completed_at', { ascending: false });
+        .from("exercise_records")
+        .select("*")
+        .eq("user_id", user?.id)
+        .gte("completed_at", oneWeekAgo.toISOString())
+        .order("completed_at", { ascending: false });
 
       if (error) throw error;
       setExerciseRecords(data || []);
     } catch (error) {
-      console.error('Error fetching exercise records:', error);
+      console.error("Error fetching exercise records:", error);
     }
   };
 
   const fetchTodaySteps = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
-        .from('step_records')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('date', today)
+        .from("step_records")
+        .select("*")
+        .eq("user_id", user?.id)
+        .eq("date", today)
         .maybeSingle();
 
       if (error) throw error;
       setTodaySteps(data);
     } catch (error) {
-      console.error('Error fetching step records:', error);
+      console.error("Error fetching step records:", error);
     }
   };
 
   const addExerciseRecord = async () => {
-    if (!user || !exerciseName || !exerciseType || !duration || !intensity || !selectedDate) return;
+    if (
+      !user ||
+      !exerciseName ||
+      !exerciseType ||
+      !duration ||
+      !intensity ||
+      !selectedDate
+    )
+      return;
 
     setIsLoading(true);
     try {
       const completedAt = new Date(selectedDate);
-      completedAt.setHours(new Date().getHours(), new Date().getMinutes(), 0, 0);
+      completedAt.setHours(
+        new Date().getHours(),
+        new Date().getMinutes(),
+        0,
+        0,
+      );
 
-      const { error } = await supabase
-        .from('exercise_records')
-        .insert({
-          user_id: user.id,
-          exercise_name: exerciseName,
-          exercise_type: exerciseType,
-          duration_minutes: Number(duration),
-          calories_burned: Number(calories) || 0,
-          intensity,
-          notes,
-          completed_at: completedAt.toISOString()
-        });
+      const { error } = await supabase.from("exercise_records").insert({
+        user_id: user.id,
+        exercise_name: exerciseName,
+        exercise_type: exerciseType,
+        duration_minutes: Number(duration),
+        calories_burned: Number(calories) || 0,
+        intensity,
+        notes,
+        completed_at: completedAt.toISOString(),
+      });
 
       if (error) throw error;
 
       toast({
         title: "Exercise logged successfully",
-        description: `${exerciseName} - ${duration} minutes`
+        description: `${exerciseName} - ${duration} minutes`,
       });
 
       // Reset form
-      setExerciseName('');
-      setExerciseType('');
-      setDuration('');
-      setCalories('');
-      setIntensity('');
-      setNotes('');
-      
+      setExerciseName("");
+      setExerciseType("");
+      setDuration("");
+      setCalories("");
+      setIntensity("");
+      setNotes("");
+
       fetchWeeklyExerciseRecords();
     } catch (error) {
-      console.error('Error adding exercise record:', error);
+      console.error("Error adding exercise record:", error);
       toast({
         title: "Error logging exercise",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -144,30 +169,28 @@ export function ExerciseTracker() {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('step_records')
-        .upsert({
-          user_id: user.id,
-          steps: Number(steps),
-          date: selectedDate
-        });
+      const { error } = await supabase.from("step_records").upsert({
+        user_id: user.id,
+        steps: Number(steps),
+        date: selectedDate,
+      });
 
       if (error) throw error;
 
       toast({
         title: "Steps updated successfully",
-        description: `${steps} steps recorded for today`
+        description: `${steps} steps recorded for today`,
       });
 
-      setSteps('');
+      setSteps("");
       fetchTodaySteps();
-      window.dispatchEvent(new CustomEvent('healthOverviewDataUpdated'));
+      window.dispatchEvent(new CustomEvent("healthOverviewDataUpdated"));
     } catch (error) {
-      console.error('Error updating steps:', error);
+      console.error("Error updating steps:", error);
       toast({
         title: "Error updating steps",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -175,11 +198,17 @@ export function ExerciseTracker() {
   };
 
   const getWeeklyExerciseMinutes = () => {
-    return exerciseRecords.reduce((sum, record) => sum + (record.duration_minutes || 0), 0);
+    return exerciseRecords.reduce(
+      (sum, record) => sum + (record.duration_minutes || 0),
+      0,
+    );
   };
 
   const getWeeklyCaloriesBurned = () => {
-    return exerciseRecords.reduce((sum, record) => sum + (record.calories_burned || 0), 0);
+    return exerciseRecords.reduce(
+      (sum, record) => sum + (record.calories_burned || 0),
+      0,
+    );
   };
 
   const getExerciseProgress = () => {
@@ -200,22 +229,22 @@ export function ExerciseTracker() {
       title: "Run Fast, Feel Free",
       exerciseCount: 18,
       image: "🏃",
-      gradient: "from-orange-400 to-red-500"
+      gradient: "from-orange-400 to-red-500",
     },
     {
       id: 2,
       title: "Breathe Deep, Flow Freely",
       exerciseCount: 16,
       image: "🧘",
-      gradient: "from-blue-400 to-purple-500"
+      gradient: "from-blue-400 to-purple-500",
     },
     {
       id: 3,
       title: "Push Hard, Burn Fast",
       exerciseCount: 12,
       image: "💪",
-      gradient: "from-green-400 to-teal-500"
-    }
+      gradient: "from-green-400 to-teal-500",
+    },
   ];
 
   // Coach recommendations (mock data)
@@ -224,7 +253,7 @@ export function ExerciseTracker() {
     { id: 2, name: "Sarah", avatar: "👩" },
     { id: 3, name: "Mike", avatar: "👨‍🦱" },
     { id: 4, name: "Emma", avatar: "👩‍🦰" },
-    { id: 5, name: "Alex", avatar: "🧑" }
+    { id: 5, name: "Alex", avatar: "🧑" },
   ];
 
   return (
@@ -236,21 +265,27 @@ export function ExerciseTracker() {
           {popularExercises.map((exercise) => (
             <Card key={exercise.id} className="ios-card overflow-hidden">
               <CardContent className="p-0">
-                <div className={`bg-gradient-to-r ${exercise.gradient} p-6 text-white relative`}>
+                <div
+                  className={`bg-primary ${exercise.gradient} p-6 text-primary-foreground relative`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold mb-1">{exercise.title}</h3>
-                      <p className="text-sm text-white/80">{exercise.exerciseCount} Exercise</p>
+                      <h3 className="text-lg font-bold mb-1">
+                        {exercise.title}
+                      </h3>
+                      <p className="text-sm text-white/80">
+                        {exercise.exerciseCount} Exercise
+                      </p>
                     </div>
                     <div className="text-6xl opacity-20">{exercise.image}</div>
                   </div>
                   <Button
-                    className="mt-4 bg-white text-gray-900 hover:bg-white/90"
+                    className="mt-4 bg-[#0a0a0c] text-gray-900 hover:bg-[#0a0a0c]"
                     onClick={() => {
                       // Navigate to exercise or start workout
                       toast({
                         title: "Starting workout",
-                        description: `${exercise.title} - ${exercise.exerciseCount} exercises`
+                        description: `${exercise.title} - ${exercise.exerciseCount} exercises`,
                       });
                     }}
                   >
@@ -273,7 +308,7 @@ export function ExerciseTracker() {
               key={coach.id}
               className="flex flex-col items-center gap-2 flex-shrink-0"
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-3xl shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-primary from-purple-400 to-pink-500 flex items-center justify-center text-3xl shadow-lg">
                 {coach.avatar}
               </div>
               <span className="text-xs font-medium">{coach.name}</span>
@@ -291,24 +326,30 @@ export function ExerciseTracker() {
             </div>
             Log Exercise
           </CardTitle>
-          <CardDescription className="text-sm">Record your workout sessions</CardDescription>
+          <CardDescription className="text-sm">
+            Record your workout sessions
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Exercise Name */}
           <div className="space-y-2">
-            <Label htmlFor="exercise-date" className="text-sm font-medium">Exercise Date</Label>
+            <Label htmlFor="exercise-date" className="text-sm font-medium">
+              Exercise Date
+            </Label>
             <Input
               id="exercise-date"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="h-12"
-              max={new Date().toISOString().split('T')[0]}
+              max={new Date().toISOString().split("T")[0]}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="exercise-name" className="text-sm font-medium">Exercise Name</Label>
+            <Label htmlFor="exercise-name" className="text-sm font-medium">
+              Exercise Name
+            </Label>
             <Input
               id="exercise-name"
               placeholder="Push-ups, Running, Yoga"
@@ -321,7 +362,9 @@ export function ExerciseTracker() {
           {/* Type and Intensity */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="exercise-type" className="text-sm font-medium">Type</Label>
+              <Label htmlFor="exercise-type" className="text-sm font-medium">
+                Type
+              </Label>
               <Select value={exerciseType} onValueChange={setExerciseType}>
                 <SelectTrigger className="h-12">
                   <SelectValue placeholder="Select type" />
@@ -335,7 +378,9 @@ export function ExerciseTracker() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="intensity" className="text-sm font-medium">Intensity</Label>
+              <Label htmlFor="intensity" className="text-sm font-medium">
+                Intensity
+              </Label>
               <Select value={intensity} onValueChange={setIntensity}>
                 <SelectTrigger className="h-12">
                   <SelectValue placeholder="Select intensity" />
@@ -352,7 +397,9 @@ export function ExerciseTracker() {
           {/* Duration and Calories */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="duration" className="text-sm font-medium">Duration (min)</Label>
+              <Label htmlFor="duration" className="text-sm font-medium">
+                Duration (min)
+              </Label>
               <Input
                 id="duration"
                 type="number"
@@ -363,7 +410,9 @@ export function ExerciseTracker() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="calories" className="text-sm font-medium">Calories (optional)</Label>
+              <Label htmlFor="calories" className="text-sm font-medium">
+                Calories (optional)
+              </Label>
               <Input
                 id="calories"
                 type="number"
@@ -377,7 +426,9 @@ export function ExerciseTracker() {
 
           {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-medium">Notes (optional)</Label>
+            <Label htmlFor="notes" className="text-sm font-medium">
+              Notes (optional)
+            </Label>
             <Textarea
               id="notes"
               placeholder="How did the workout feel?"
@@ -388,9 +439,16 @@ export function ExerciseTracker() {
           </div>
 
           {/* Log Button */}
-          <Button 
-            onClick={addExerciseRecord} 
-            disabled={!exerciseName || !exerciseType || !duration || !intensity || !selectedDate || isLoading}
+          <Button
+            onClick={addExerciseRecord}
+            disabled={
+              !exerciseName ||
+              !exerciseType ||
+              !duration ||
+              !intensity ||
+              !selectedDate ||
+              isLoading
+            }
             className="w-full h-12 text-base font-medium"
             size="lg"
           >
@@ -409,7 +467,9 @@ export function ExerciseTracker() {
             </div>
             Daily Steps
           </CardTitle>
-          <CardDescription className="text-sm">Track your daily step count</CardDescription>
+          <CardDescription className="text-sm">
+            Track your daily step count
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Current Steps Display */}
@@ -424,7 +484,9 @@ export function ExerciseTracker() {
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span>Daily Goal Progress</span>
-              <span className="font-medium">{todaySteps?.steps || 0}/10,000</span>
+              <span className="font-medium">
+                {todaySteps?.steps || 0}/10,000
+              </span>
             </div>
             <Progress value={getStepProgress()} className="h-3" />
           </div>
@@ -432,7 +494,9 @@ export function ExerciseTracker() {
           {/* Update Steps */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="steps" className="text-sm font-medium">Update Steps</Label>
+              <Label htmlFor="steps" className="text-sm font-medium">
+                Update Steps
+              </Label>
               <Input
                 id="steps"
                 type="number"
@@ -443,8 +507,8 @@ export function ExerciseTracker() {
               />
             </div>
 
-            <Button 
-              onClick={updateSteps} 
+            <Button
+              onClick={updateSteps}
               disabled={!steps || !selectedDate || isLoading}
               className="w-full h-12 text-base font-medium"
               size="lg"
@@ -471,7 +535,9 @@ export function ExerciseTracker() {
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span>Weekly Exercise Goal</span>
-              <span className="font-medium">{getWeeklyExerciseMinutes()}/{weeklyExerciseGoal} min</span>
+              <span className="font-medium">
+                {getWeeklyExerciseMinutes()}/{weeklyExerciseGoal} min
+              </span>
             </div>
             <Progress value={getExerciseProgress()} className="h-3" />
           </div>
@@ -479,15 +545,21 @@ export function ExerciseTracker() {
           {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold text-primary">{getWeeklyExerciseMinutes()}</div>
+              <div className="text-2xl font-bold text-primary">
+                {getWeeklyExerciseMinutes()}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">Minutes</p>
             </div>
             <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold text-primary">{exerciseRecords.length}</div>
+              <div className="text-2xl font-bold text-primary">
+                {exerciseRecords.length}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">Workouts</p>
             </div>
             <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold text-primary">{Math.round(getWeeklyCaloriesBurned())}</div>
+              <div className="text-2xl font-bold text-primary">
+                {Math.round(getWeeklyCaloriesBurned())}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">Calories</p>
             </div>
           </div>
@@ -497,15 +569,23 @@ export function ExerciseTracker() {
             <div className="space-y-3">
               <h4 className="font-semibold text-sm">Recent Workouts</h4>
               {exerciseRecords.slice(0, 3).map((record) => (
-                <div key={record.id} className="flex justify-between items-center p-3 bg-card border rounded-lg">
+                <div
+                  key={record.id}
+                  className="flex justify-between items-center p-3 bg-card border rounded-lg"
+                >
                   <div className="flex-1">
-                    <div className="font-medium text-sm">{record.exercise_name}</div>
+                    <div className="font-medium text-sm">
+                      {record.exercise_name}
+                    </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {record.exercise_type} • {record.intensity} intensity
                     </div>
                   </div>
                   <div className="text-right">
-                    <Badge variant="secondary" className="px-3 py-1 font-medium">
+                    <Badge
+                      variant="secondary"
+                      className="px-3 py-1 font-medium"
+                    >
                       {record.duration_minutes} min
                     </Badge>
                     {record.calories_burned > 0 && (

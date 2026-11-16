@@ -71,7 +71,7 @@ export default function Experiments() {
             ? running
               ? `Day ${dayIndex} of ${WINDOW_DAYS} · ${lever?.rule ?? ''}`
               : `${experiment.started_on} → ${experiment.ends_on}`
-            : 'One rule, held for a week.'
+            : undefined
         }
       />
 

@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
+import { EnvironmentCard } from '@/features/dashboard/environment-card';
 import { useHealth } from '@/features/health/use-health';
 import { useProfile } from '@/features/profile/use-profile';
 import { formatNumber, isoDate, startOfDay } from '@/lib/format';
@@ -150,6 +151,8 @@ export const OverviewSegment = () => {
           <Progress value={(water / waterTarget) * 100} />
         </View>
       </Card>
+
+      <EnvironmentCard />
 
       <SectionHeader title="Goals" actionLabel="New goal" onAction={() => openAdd('goal')} />
       {data.goals.length === 0 ? (

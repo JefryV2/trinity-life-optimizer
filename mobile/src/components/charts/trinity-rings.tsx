@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedProps,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -37,14 +38,15 @@ const Ring = ({
 }) => {
   const circumference = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, value));
+  const reduced = useReducedMotion();
   const progress = useSharedValue(0);
 
   useEffect(() => {
-    progress.value = withTiming(clamped, {
+    progress.value = reduced ? clamped : withTiming(clamped, {
       duration: 900,
       easing: Easing.out(Easing.cubic),
     });
-  }, [clamped, progress]);
+  }, [clamped, progress, reduced]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference - (progress.value / 100) * circumference,
@@ -71,7 +73,7 @@ const Ring = ({
 };
 
 /**
- * Three concentric activity rings — Health outer, Wealth middle, Bonds inner —
+ * Three concentric activity rings — Health outer, Wealth middle, People inner —
  * with the Trinity average sitting in the middle. Each ring draws to its
  * pillar's score once, so the day arrives as one circular object.
  */

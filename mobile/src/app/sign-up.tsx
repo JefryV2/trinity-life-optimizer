@@ -3,13 +3,15 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandMark } from '@/components/brand-mark';
+import { Wordmark } from '@/components/wordmark';
+import { BackLink } from '@/components/ui/back-link';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { TextField } from '@/components/ui/text-field';
+import { SocialSignIn } from '@/features/auth/social-sign-in';
 import { useAuth } from '@/providers/auth-provider';
-import { space, useTheme } from '@/theme';
+import { radius, space, useTheme } from '@/theme';
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
@@ -20,6 +22,7 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [socialError, setSocialError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
 
@@ -67,7 +70,7 @@ export default function SignUpScreen() {
             alignSelf: 'center',
           }}
         >
-          <BrandMark size={40} />
+          <Wordmark height={28} />
           <PageHeader
             title="Check your email"
             subtitle={`We sent a confirmation link to ${email.trim()}. Open it on this device, then sign in.`}
@@ -96,12 +99,54 @@ export default function SignUpScreen() {
             alignSelf: 'center',
           }}
         >
+          <BackLink />
           <View style={{ gap: space.xl }}>
-            <BrandMark size={44} />
-            <PageHeader
-              title="Create account"
-              subtitle="One place for the three things that compound: your body, your money, your people."
+            <Wordmark height={30} />
+            <PageHeader title="Create your account" />
+          </View>
+
+          <View style={{ gap: space.lg }}>
+            {error ? (
+              <View
+                style={{
+                  borderRadius: radius.inner,
+                  borderWidth: 1,
+                  borderColor: colors.danger,
+                  backgroundColor: colors.surface,
+                  padding: space.md,
+                }}
+              >
+                <AppText variant="footnote" tone="danger" selectable>
+                  {error}
+                </AppText>
+              </View>
+            ) : null}
+            {socialError ? (
+              <View
+                style={{
+                  borderRadius: radius.inner,
+                  borderWidth: 1,
+                  borderColor: colors.danger,
+                  backgroundColor: colors.surface,
+                  padding: space.md,
+                }}
+              >
+                <AppText variant="footnote" tone="danger" selectable>
+                  {socialError}
+                </AppText>
+              </View>
+            ) : null}
+            <SocialSignIn
+              onError={setSocialError}
+              disabled={submitting}
             />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
+              <AppText variant="mono" tone="tertiary">
+                or sign up with email
+              </AppText>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
+            </View>
           </View>
 
           <View style={{ gap: space.lg }}>
@@ -109,7 +154,7 @@ export default function SignUpScreen() {
               label="First name"
               value={firstName}
               onChangeText={setFirstName}
-              placeholder="Yomna"
+              placeholder="Your first name"
               autoCapitalize="words"
               autoComplete="given-name"
               textContentType="givenName"
@@ -138,7 +183,6 @@ export default function SignUpScreen() {
               textContentType="newPassword"
               returnKeyType="go"
               onSubmitEditing={submit}
-              error={error}
             />
             <Button
               label="Create account"
@@ -146,6 +190,17 @@ export default function SignUpScreen() {
               loading={submitting}
               disabled={submitting}
             />
+            <AppText variant="footnote" tone="tertiary" style={{ textAlign: 'center' }}>
+              By creating an account you agree to the{' '}
+              <AppText variant="footnote" tone="primary" onPress={() => router.push('/legal?tab=terms' as never)}>
+                Terms
+              </AppText>{' '}
+              and{' '}
+              <AppText variant="footnote" tone="primary" onPress={() => router.push('/legal?tab=privacy' as never)}>
+                Privacy Notice
+              </AppText>
+              .
+            </AppText>
           </View>
 
           <Pressable

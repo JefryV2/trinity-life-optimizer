@@ -61,11 +61,9 @@ export const useProfile = () => {
     },
   });
 
-  const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['profile'] }),
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    ]);
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['profile'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
   };
 
   const saveProfile = useMutation({

@@ -66,7 +66,7 @@ export default function InsightsScreen() {
           <Card raised style={{ gap: space.lg }}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
               <AppText variant="headline" style={{ flex: 1 }}>
-                Trinity score
+                Auxo score
               </AppText>
               <AppText variant="mono" tone="tertiary">
                 last 14 days
@@ -89,7 +89,7 @@ export default function InsightsScreen() {
             <StatRow>
               <Stat value={String(data.healthAvg)} label="Health" />
               <Stat value={String(data.wealthAvg)} label="Wealth" />
-              <Stat value={String(data.relationsAvg)} label="Relations" />
+              <Stat value={String(data.relationsAvg)} label="People" />
             </StatRow>
           </View>
 
@@ -106,7 +106,7 @@ export default function InsightsScreen() {
               data={[
                 { label: 'Health', value: data.healthAvg },
                 { label: 'Wealth', value: data.wealthAvg },
-                { label: 'Relations', value: data.relationsAvg },
+                { label: 'People', value: data.relationsAvg },
               ]}
               size={220}
             />

@@ -13,6 +13,18 @@ export const PILLAR_ROUTE: Record<string, string> = {
 };
 
 /** What to actually do about each input. */
+export const ACTION_LABEL: Record<string, string> = {
+  steps: 'Go for a walk',
+  sleep: 'Log sleep',
+  exercise: 'Log a workout',
+  water: 'Log water',
+  mental: 'Log mood',
+  savings: 'Log income',
+  spend: 'Log spending',
+  contact: 'Log contact',
+  mood: 'Log how it felt',
+};
+
 export const ACTION_HINT: Record<string, string> = {
   steps: 'Walk 2,000 more steps',
   sleep: 'Get to bed 30 minutes earlier',

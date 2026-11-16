@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { FormFrame } from '@/components/form-frame';
 import { AppText } from '@/components/ui/app-text';
+import { RecentChips } from '@/components/ui/recent-chips';
 import { Chips } from '@/components/ui/chips';
+import { DateTimeField } from '@/components/ui/date-time-field';
 import { Slider } from '@/components/ui/slider';
 import { TextField } from '@/components/ui/text-field';
 import { useRelations } from '@/features/relations/use-relations';
@@ -18,26 +20,38 @@ const RELATION_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-export const PersonForm = () => {
-  const { addRelationship } = useRelations();
+export const PersonForm = ({ recordId }: { recordId?: string }) => {
+  const { data, addRelationship, updatePerson } = useRelations();
   const { saving, error, setError, submit } = useFormSubmit();
   const [name, setName] = useState('');
   const [type, setType] = useState('friend');
   const [importance, setImportance] = useState(3);
   const [notes, setNotes] = useState('');
+  const existing = data?.relationships.find((record) => record.id === recordId);
+
+  useEffect(() => {
+    if (!existing) return;
+    setName(existing.name);
+    setType(existing.relation_type ?? 'friend');
+    setImportance(existing.importance ?? 3);
+    setNotes(existing.notes ?? '');
+  }, [existing?.id]);
 
   const save = () => {
     if (!name.trim()) {
       setError('Who is this person?');
       return;
     }
-    void submit(() => addRelationship.mutateAsync({ name, type, importance, notes }));
+    const input = { name, type, importance, notes };
+    void submit(() =>
+      existing ? updatePerson.mutateAsync({ id: existing.id, ...input }) : addRelationship.mutateAsync(input),
+    );
   };
 
   return (
     <FormFrame
-      title="Add a person"
-      submitLabel="Add person"
+      title={existing ? 'Edit person' : 'Add a person'}
+      submitLabel={existing ? 'Save changes' : 'Add person'}
       loading={saving}
       error={error}
       onSubmit={save}
@@ -79,8 +93,8 @@ const CHANNELS = [
   { value: 'text', label: 'Text' },
 ];
 
-export const InteractionForm = ({ personId }: { personId?: string }) => {
-  const { data, logInteraction } = useRelations();
+export const InteractionForm = ({ personId, recordId }: { personId?: string; recordId?: string }) => {
+  const { data, logInteraction, updateInteraction } = useRelations();
   const { saving, error, setError, submit } = useFormSubmit();
   const people = data?.relationships ?? [];
   const [relationshipId, setRelationshipId] = useState<string | null>(personId ?? null);
@@ -88,6 +102,20 @@ export const InteractionForm = ({ personId }: { personId?: string }) => {
   const [duration, setDuration] = useState('');
   const [mood, setMood] = useState(7);
   const [notes, setNotes] = useState('');
+  const [date, setDate] = useState(new Date());
+  const existing = data?.interactions.find((record) => record.id === recordId);
+
+  useEffect(() => {
+    if (!existing) return;
+    setRelationshipId(existing.relationship_id);
+    setChannel(existing.channel ?? 'in_person');
+    setDuration(existing.duration_minutes ? String(existing.duration_minutes) : '');
+    setMood(existing.mood_rating ?? 7);
+    setNotes(existing.notes ?? '');
+    setDate(new Date(existing.occurred_at));
+  }, [existing?.id]);
+
+  const recent = (data?.interactions ?? []).slice(0, 4);
 
   const save = () => {
     const minutes = Number(duration);
@@ -99,20 +127,46 @@ export const InteractionForm = ({ personId }: { personId?: string }) => {
       setError('How many minutes did it last?');
       return;
     }
+    const input = {
+      relationshipId,
+      channel,
+      duration: minutes,
+      mood,
+      notes,
+      occurredAt: date.toISOString(),
+    };
     void submit(() =>
-      logInteraction.mutateAsync({ relationshipId, channel, duration: minutes, mood, notes }),
+      existing
+        ? updateInteraction.mutateAsync({ id: existing.id, ...input })
+        : logInteraction.mutateAsync(input),
     );
   };
 
   return (
     <FormFrame
-      title="Log contact"
-      submitLabel="Save contact"
+      title={existing ? 'Edit contact' : 'Log contact'}
+      submitLabel={existing ? 'Save changes' : 'Save contact'}
       loading={saving}
       error={error}
       onSubmit={save}
     >
       <View style={{ gap: space.xl }}>
+        <RecentChips
+          options={recent.map((entry) => {
+            const name = people.find((person) => person.id === entry.relationship_id)?.name ?? 'Someone';
+            return {
+              key: entry.id,
+              label: `${name} · ${entry.channel ?? 'contact'} · ${entry.duration_minutes ?? 0} min`,
+              onPress: () => {
+                setRelationshipId(entry.relationship_id);
+                setChannel(entry.channel ?? 'in_person');
+                setDuration(entry.duration_minutes ? String(entry.duration_minutes) : '');
+                setMood(entry.mood_rating ?? 7);
+                setNotes(entry.notes ?? '');
+              },
+            };
+          })}
+        />
         {people.length > 0 ? (
           <Chips
             label="Person"
@@ -135,6 +189,7 @@ export const InteractionForm = ({ personId }: { personId?: string }) => {
           maxLength={4}
         />
         <Slider label="Feeling" value={mood} onChange={setMood} min={1} max={10} />
+        <DateTimeField label="When" value={date} onChange={setDate} />
         <TextField
           label="Notes (optional)"
           value={notes}

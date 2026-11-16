@@ -51,7 +51,7 @@ export const usePedometer = () => {
       saveSteps.mutate(next);
     });
     setTracking(true);
-    setMessage('Counting steps while Trinity is open.');
+    setMessage('Counting steps while Auxo is open.');
   }, [saveSteps, stop, todaySteps]);
 
   useEffect(() => stop, [stop]);

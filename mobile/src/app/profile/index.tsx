@@ -11,6 +11,13 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { TextField } from '@/components/ui/text-field';
 import { useProfile } from '@/features/profile/use-profile';
+import {
+  cmToDisplay,
+  displayToCm,
+  displayToKg,
+  kgToDisplay,
+  useSettings,
+} from '@/features/settings/use-settings';
 import { daysBetween, formatNumber, isoDate } from '@/lib/format';
 import { ACTIVITY_OPTIONS, calculateCalorieTarget, GOAL_OPTIONS } from '@/lib/health-utils';
 import { space } from '@/theme';
@@ -29,6 +36,7 @@ const GENDERS = [
 
 export default function ProfileScreen() {
   const { data, isPending, isError, error, refetch, saveProfile, saveHealthProfile } = useProfile();
+  const { weightUnit, heightUnit } = useSettings();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState<Date | null>(null);
@@ -47,27 +55,40 @@ export default function ProfileScreen() {
     setLastName(data.profile?.last_name ?? '');
     setBirthDate(data.health?.birth_date ? new Date(data.health.birth_date) : null);
     setGender(data.health?.gender ?? null);
-    setHeight(data.health?.height_cm ? String(data.health.height_cm) : '');
-    setWeight(data.health?.weight_kg ? String(data.health.weight_kg) : '');
-    setTargetWeight(data.health?.target_weight_kg ? String(data.health.target_weight_kg) : '');
+    setHeight(
+      data.health?.height_cm ? String(cmToDisplay(data.health.height_cm, heightUnit)) : '',
+    );
+    setWeight(
+      data.health?.weight_kg ? String(kgToDisplay(data.health.weight_kg, weightUnit)) : '',
+    );
+    setTargetWeight(
+      data.health?.target_weight_kg
+        ? String(kgToDisplay(data.health.target_weight_kg, weightUnit))
+        : '',
+    );
     setActivity(data.health?.activity_level ?? 'moderate');
     setGoal(data.health?.goal_type ?? 'maintain');
     setCalories(data.health?.daily_caloric_target ? String(data.health.daily_caloric_target) : '');
-  }, [data]);
+  }, [data, heightUnit, weightUnit]);
 
   const estimatedCalories = useMemo(() => {
-    const heightCm = parseNumber(height);
-    const weightKg = parseNumber(weight);
-    if (!birthDate || !heightCm || !weightKg) return null;
+    const heightValue = parseNumber(height);
+    const weightValue = parseNumber(weight);
+    if (!birthDate || !heightValue || !weightValue) return null;
+    const heightCm = displayToCm(heightValue, heightUnit);
+    const weightKg = displayToKg(weightValue, weightUnit);
     const age = Math.max(13, Math.floor(daysBetween(birthDate) / 365.25));
     return calculateCalorieTarget({ gender, age, heightCm, weightKg, activityLevel: activity, goalType: goal });
-  }, [activity, birthDate, gender, goal, height, weight]);
+  }, [activity, birthDate, gender, goal, height, heightUnit, weight, weightUnit]);
 
   const save = async () => {
     setMessage(null);
-    const heightCm = parseNumber(height);
-    const weightKg = parseNumber(weight);
-    const targetWeightKg = parseNumber(targetWeight);
+    const heightValue = parseNumber(height);
+    const weightValue = parseNumber(weight);
+    const targetValue = parseNumber(targetWeight);
+    const heightCm = heightValue ? displayToCm(heightValue, heightUnit) : null;
+    const weightKg = weightValue ? displayToKg(weightValue, weightUnit) : null;
+    const targetWeightKg = targetValue ? displayToKg(targetValue, weightUnit) : null;
     const dailyCalories = parseNumber(calories) ?? estimatedCalories;
     try {
       await saveProfile.mutateAsync({ firstName, lastName });
@@ -110,13 +131,13 @@ export default function ProfileScreen() {
       <Card style={{ gap: space.lg }}>
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
-            <TextField label="Height, cm" value={height} onChangeText={setHeight} keyboardType="decimal-pad" maxLength={6} />
+            <TextField label={`Height, ${heightUnit}`} value={height} onChangeText={setHeight} keyboardType="decimal-pad" maxLength={6} />
           </View>
           <View style={{ flex: 1 }}>
-            <TextField label="Weight, kg" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" maxLength={6} />
+            <TextField label={`Weight, ${weightUnit}`} value={weight} onChangeText={setWeight} keyboardType="decimal-pad" maxLength={6} />
           </View>
         </View>
-        <TextField label="Target weight, kg" value={targetWeight} onChangeText={setTargetWeight} keyboardType="decimal-pad" maxLength={6} />
+        <TextField label={`Target weight, ${weightUnit}`} value={targetWeight} onChangeText={setTargetWeight} keyboardType="decimal-pad" maxLength={6} />
         <Chips label="Activity level" options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} />
         <Chips label="Goal" options={GOAL_OPTIONS} value={goal} onChange={setGoal} />
         <TextField

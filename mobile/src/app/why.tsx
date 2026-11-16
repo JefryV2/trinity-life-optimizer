@@ -26,7 +26,7 @@ export default function Why() {
 
   return (
     <Screen>
-      <PageHeader title="Why" date={formatStamp()} subtitle="Every point traced to an input." />
+      <PageHeader title="Why" date={formatStamp()} />
 
       {isPending || !report ? <LoadingState rows={4} /> : null}
 

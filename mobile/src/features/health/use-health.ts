@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { isoDate, startOfDay } from '@/lib/format';
+import type { Json } from '@/lib/database.types';
+import type { Micronutrients } from '@/lib/nutrition';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -23,6 +25,7 @@ export interface ExerciseRecord {
   intensity: string | null;
   completed_at: string | null;
   notes: string | null;
+  route?: Array<Array<{ lat: number; lng: number }>> | null;
 }
 
 export interface StepRecord {
@@ -48,7 +51,13 @@ export interface FoodEntry {
   protein_g: number | null;
   carbs_g: number | null;
   fat_g: number | null;
+  fiber_g?: number | null;
+  sugar_g?: number | null;
+  sodium_mg?: number | null;
   consumed_at: string | null;
+  notes?: string | null;
+  components?: unknown;
+  micronutrients?: Micronutrients | null;
 }
 
 export interface MentalRecord {
@@ -94,22 +103,22 @@ export interface HealthData {
   goals: HealthGoal[];
 }
 
-const invalidate = async (queryClient: ReturnType<typeof useQueryClient>) => {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ['health'] }),
-    queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    queryClient.invalidateQueries({ queryKey: ['insights'] }),
-  ]);
+const invalidate = (queryClient: ReturnType<typeof useQueryClient>) => {
+  // Update the screen that owns this data now. The aggregates are marked
+  // stale and refreshed when the user returns to Today, not in the save path.
+  void queryClient.invalidateQueries({ queryKey: ['health'] });
+  void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+  void queryClient.invalidateQueries({ queryKey: ['insights'] });
 };
 
-export const useHealth = () => {
+export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id;
 
   const query = useQuery({
     queryKey: ['health', userId],
-    enabled: Boolean(userId),
+    enabled: Boolean(userId) && fetch,
     queryFn: async (): Promise<HealthData> => {
       const today = isoDate();
       const dayStart = startOfDay().toISOString();
@@ -126,7 +135,7 @@ export const useHealth = () => {
           supabase
             .from('exercise_records')
             .select(
-              'id,exercise_name,exercise_type,duration_minutes,calories_burned,intensity,completed_at,notes',
+              'id,exercise_name,exercise_type,duration_minutes,calories_burned,intensity,completed_at,notes,route',
             )
             .eq('user_id', userId!)
             .order('completed_at', { ascending: false })
@@ -146,7 +155,7 @@ export const useHealth = () => {
           supabase
             .from('food_entries')
             .select(
-              'id,food_name,meal_type,servings,total_calories,protein_g,carbs_g,fat_g,consumed_at',
+              'id,food_name,meal_type,servings,total_calories,protein_g,carbs_g,fat_g,fiber_g,sugar_g,sodium_mg,consumed_at,notes,components,micronutrients',
             )
             .eq('user_id', userId!)
             .gte('consumed_at', dayStart)
@@ -212,6 +221,30 @@ export const useHealth = () => {
     onSuccess: () => invalidate(queryClient),
   });
 
+  const updateSleep = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      hours: number;
+      quality: number;
+      bedtime?: string;
+      wakeTime?: string;
+      notes?: string;
+    }) => {
+      const { error } = await supabase
+        .from('sleep_records')
+        .update({
+          sleep_duration_hours: input.hours,
+          sleep_quality: input.quality,
+          bedtime: input.bedtime || null,
+          wake_time: input.wakeTime || null,
+          notes: input.notes?.trim() || null,
+        })
+        .eq('id', input.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
   const addExercise = useMutation({
     mutationFn: async (input: {
       name: string;
@@ -220,6 +253,7 @@ export const useHealth = () => {
       calories: number;
       intensity: string;
       notes?: string;
+      completedAt?: string;
     }) => {
       const { error } = await supabase.from('exercise_records').insert({
         user_id: userId!,
@@ -228,9 +262,37 @@ export const useHealth = () => {
         duration_minutes: input.duration,
         calories_burned: input.calories,
         intensity: input.intensity,
-        completed_at: new Date().toISOString(),
+        completed_at: input.completedAt ?? new Date().toISOString(),
         notes: input.notes?.trim() || null,
       });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
+  const updateExercise = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      type: string;
+      duration: number;
+      calories: number;
+      intensity: string;
+      notes?: string;
+      completedAt?: string;
+    }) => {
+      const { error } = await supabase
+        .from('exercise_records')
+        .update({
+          exercise_name: input.name.trim(),
+          exercise_type: input.type,
+          duration_minutes: input.duration,
+          calories_burned: input.calories,
+          intensity: input.intensity,
+          completed_at: input.completedAt,
+          notes: input.notes?.trim() || null,
+        })
+        .eq('id', input.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => invalidate(queryClient),
@@ -296,7 +358,32 @@ export const useHealth = () => {
         if (error) throw new Error(error.message);
       }
     },
-    onSuccess: () => invalidate(queryClient),
+    // Show the new total before the round trip; the refetch reconciles it.
+    onMutate: async (millilitres: number) => {
+      if (!userId) return;
+      const key = ['dashboard', userId];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old) => {
+        if (!old || typeof old !== 'object') return old;
+        const data = old as { health?: { water?: number } };
+        if (!data.health) return old;
+        return {
+          ...data,
+          health: {
+            ...data.health,
+            water: Number(data.health.water ?? 0) + millilitres,
+          },
+        };
+      });
+      return { previous };
+    },
+    onError: (_error, _millilitres, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(['dashboard', userId], context.previous);
+      }
+    },
+    onSettled: () => invalidate(queryClient),
   });
 
   const setWaterTarget = useMutation({
@@ -337,6 +424,13 @@ export const useHealth = () => {
       protein: number;
       carbs: number;
       fat: number;
+      fiber?: number;
+      sugar?: number;
+      sodium?: number;
+      micros?: Micronutrients;
+      occurredAt?: string;
+      notes?: string;
+      components?: unknown;
     }) => {
       const { error } = await supabase.from('food_entries').insert({
         user_id: userId!,
@@ -348,8 +442,55 @@ export const useHealth = () => {
         protein_g: input.protein,
         carbs_g: input.carbs,
         fat_g: input.fat,
-        consumed_at: new Date().toISOString(),
+        fiber_g: input.fiber ?? null,
+        sugar_g: input.sugar ?? null,
+        sodium_mg: input.sodium ?? null,
+        micronutrients: input.micros ?? null,
+        notes: input.notes?.trim() || null,
+        components: (input.components ?? null) as Json | null,
+        consumed_at: input.occurredAt ?? new Date().toISOString(),
       });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
+  const updateFood = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      meal: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber?: number;
+      sugar?: number;
+      sodium?: number;
+      micros?: Micronutrients;
+      occurredAt?: string;
+      notes?: string;
+      components?: unknown;
+    }) => {
+      const { error } = await supabase
+        .from('food_entries')
+        .update({
+          food_name: input.name.trim(),
+          meal_type: input.meal,
+          total_calories: input.calories,
+          calories_per_serving: input.calories,
+          protein_g: input.protein,
+          carbs_g: input.carbs,
+          fat_g: input.fat,
+          fiber_g: input.fiber ?? null,
+          sugar_g: input.sugar ?? null,
+          sodium_mg: input.sodium ?? null,
+          micronutrients: input.micros ?? null,
+          notes: input.notes ?? null,
+          components: (input.components ?? null) as Json | null,
+          consumed_at: input.occurredAt,
+        })
+        .eq('id', input.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => invalidate(queryClient),
@@ -361,6 +502,7 @@ export const useHealth = () => {
       stress: number;
       energy: number;
       notes?: string;
+      loggedAt?: string;
     }) => {
       const { error } = await supabase.from('mental_health_logs').insert({
         user_id: userId!,
@@ -368,8 +510,32 @@ export const useHealth = () => {
         stress_level: input.stress,
         energy_level: input.energy,
         notes: input.notes?.trim() || null,
-        logged_at: new Date().toISOString(),
+        logged_at: input.loggedAt ?? new Date().toISOString(),
       });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
+  const updateMental = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      mood: number;
+      stress: number;
+      energy: number;
+      notes?: string;
+      loggedAt?: string;
+    }) => {
+      const { error } = await supabase
+        .from('mental_health_logs')
+        .update({
+          mood_rating: input.mood,
+          stress_level: input.stress,
+          energy_level: input.energy,
+          notes: input.notes?.trim() || null,
+          logged_at: input.loggedAt,
+        })
+        .eq('id', input.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => invalidate(queryClient),
@@ -435,12 +601,16 @@ export const useHealth = () => {
   return {
     ...query,
     addSleep,
+    updateSleep,
     addExercise,
+    updateExercise,
     saveSteps,
     addWater,
     setWaterTarget,
     addFood,
+    updateFood,
     addMental,
+    updateMental,
     addCycle,
     addGoal,
     deleteRecord,

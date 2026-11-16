@@ -1,20 +1,20 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Pressable, Switch, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, View } from 'react-native';
 
-import { BrandMark } from '@/components/brand-mark';
+import { Wordmark } from '@/components/wordmark';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { Chips } from '@/components/ui/chips';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { TextField } from '@/components/ui/text-field';
+import { arrival } from '@/features/landing/arrival-overlay';
+import { track } from '@/lib/analytics';
 import { useProfile } from '@/features/profile/use-profile';
-import { defaultFeatureFlags, FEATURE_FLAGS, type FeatureFlagKey } from '@/lib/feature-flags';
-import { ACTIVITY_OPTIONS, calculateCalorieTarget, GOAL_OPTIONS } from '@/lib/health-utils';
 import { useAuth } from '@/providers/auth-provider';
+import { calculateCalorieTarget } from '@/lib/health-utils';
 import { space, useTheme } from '@/theme';
 
 const GENDERS = [
@@ -31,16 +31,14 @@ const FOCUS: Array<{
 }> = [
   { value: 'health', label: 'Health', caption: 'Sleep, movement, food and mind', icon: 'heart' },
   { value: 'wealth', label: 'Wealth', caption: 'Spending, saving and investing', icon: 'wallet' },
-  { value: 'relations', label: 'Relations', caption: 'The people who matter', icon: 'people' },
+  { value: 'relations', label: 'People', caption: 'The people who matter', icon: 'people' },
 ];
 
-const TITLES = ['Welcome', 'Your details', 'Your baseline', 'Your focus', 'Ready'];
+const TITLES = ['Welcome', 'Your details', 'Your focus'];
 const SUBTITLES = [
   'Three pillars, one reading.',
   'Name, age and gender.',
-  'Used for calorie estimates on this device.',
-  'Choose where to start and what to track.',
-  'One last look before your first reading.',
+  'Choose where to start.',
 ];
 const LAST_STEP = TITLES.length - 1;
 
@@ -52,92 +50,95 @@ const numberOr = (text: string, fallback: number): number => {
 export default function Onboarding() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { markOnboarded } = useAuth();
-  const { saveProfile, saveHealthProfile, savePreferences, completeOnboarding } = useProfile();
+  const { markOnboarded, user } = useAuth();
+  const { saveProfile, saveHealthProfile, completeOnboarding } = useProfile();
 
   const [step, setStep] = useState(0);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState(() => {
+    const name = user?.user_metadata?.first_name;
+    return typeof name === 'string' ? name : '';
+  });
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<string | null>(null);
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
-  const [targetWeight, setTargetWeight] = useState('');
-  const [activity, setActivity] = useState('moderate');
-  const [goalType, setGoalType] = useState('maintain');
-  const [calories, setCalories] = useState('');
   const [focus, setFocus] = useState<'health' | 'wealth' | 'relations'>('health');
   const [goal, setGoal] = useState('');
-  const [flags, setFlags] = useState(defaultFeatureFlags);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const ageNum = numberOr(age, 0);
-  const canContinue =
-    step === 0 || step === 3 || step === LAST_STEP
-      ? true
-      : step === 1
-        ? firstName.trim().length > 0 && ageNum >= 13 && ageNum <= 100 && gender !== null
-        : numberOr(height, 0) >= 80 && numberOr(weight, 0) >= 25;
-
+  const heightCm = numberOr(height, 0) || null;
+  const weightKg = numberOr(weight, 0) || null;
   const estimatedCalories =
-    ageNum > 0 && numberOr(height, 0) > 0 && numberOr(weight, 0) > 0
+    heightCm && weightKg && ageNum
       ? calculateCalorieTarget({
           gender,
           age: ageNum,
-          heightCm: numberOr(height, 170),
-          weightKg: numberOr(weight, 70),
-          activityLevel: activity,
-          goalType,
+          heightCm,
+          weightKg,
+          activityLevel: 'moderate',
+          goalType: 'maintain',
         })
-      : 2000;
+      : null;
+  const canContinue =
+    step === 0 || step === 2
+      ? true
+      : firstName.trim().length > 0 && ageNum >= 13 && ageNum <= 100 && gender !== null;
 
   const next = () => {
     setError(null);
-    if (step === 2 && calories.trim() === '') setCalories(String(estimatedCalories));
     setStep((current) => Math.min(LAST_STEP, current + 1));
   };
 
   const finish = async () => {
     setSaving(true);
     setError(null);
+    // The overlay is owned by the root navigator, so it keeps playing while
+    // onboarding is replaced by the dashboard underneath it.
+    arrival.start();
     try {
-      await saveProfile.mutateAsync({ firstName, lastName });
+      await saveProfile.mutateAsync({ firstName, lastName: '' });
       const birthYear = new Date().getFullYear() - ageNum;
       await saveHealthProfile.mutateAsync({
         birthDate: `${birthYear}-01-01`,
         gender,
-        heightCm: numberOr(height, 0) || null,
-        weightKg: numberOr(weight, 0) || null,
-        targetWeightKg: numberOr(targetWeight, 0) || null,
-        activityLevel: activity,
-        goalType,
-        dailyCalories: numberOr(calories, estimatedCalories),
+        heightCm,
+        weightKg,
+        targetWeightKg: null,
+        activityLevel: 'moderate',
+        goalType: 'maintain',
+        dailyCalories: estimatedCalories,
       });
       await completeOnboarding.mutateAsync({
         firstName,
-        lastName,
+        lastName: '',
         focus,
         goal: goal.trim() || `Get stronger in ${focus}`,
       });
-      // completeOnboarding rewrites data_preferences, so merge the flags after it.
-      await savePreferences.mutateAsync(flags);
       await markOnboarded(true);
+      void track('onboarding_completed', { focus });
+
       router.replace('/(tabs)' as never);
+      // Give the tabs screen a frame to mount beneath the overlay before the
+      // wordmark starts dissolving into it.
+      setTimeout(() => arrival.navigated(), 120);
     } catch (caught) {
+      arrival.dismiss();
       setError(caught instanceof Error ? caught.message : 'Something went wrong. Try again.');
       setSaving(false);
     }
   };
 
   return (
+    <>
     <KeyboardAvoidingView
       behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
       <Screen contentContainerStyle={{ paddingTop: space.xxl }}>
         <View style={{ gap: space.xl }}>
-          {step === 0 ? <BrandMark size={56} /> : <BrandMark size={32} animated={false} />}
+          {step === 0 ? <Wordmark height={36} /> : <Wordmark height={24} />}
           <PageHeader
             title={TITLES[step]}
             date={`Step ${step + 1} of ${TITLES.length}`}
@@ -160,7 +161,7 @@ export default function Onboarding() {
         {step === 0 ? (
           <View style={{ gap: space.lg, paddingTop: space.sm }}>
             <AppText variant="callout" tone="secondary">
-              Trinity brings sleep, money and the people around you into one reading — three rings
+              Auxo brings sleep, money and the people around you into one reading — three rings
               that tell you where you stand today, and what would move it most.
             </AppText>
             <View style={{ gap: space.md }}>
@@ -180,7 +181,7 @@ export default function Onboarding() {
               ))}
             </View>
             <AppText variant="footnote" tone="tertiary">
-              Takes about a minute. Everything stays on this device unless you sign in.
+              Takes about a minute. Your entries stay private to your account.
             </AppText>
           </View>
         ) : null}
@@ -196,14 +197,6 @@ export default function Onboarding() {
               autoComplete="given-name"
             />
             <TextField
-              label="Last name (optional)"
-              value={lastName}
-              onChangeText={setLastName}
-              placeholder="Optional"
-              autoCapitalize="words"
-              autoComplete="family-name"
-            />
-            <TextField
               label="Age"
               value={age}
               onChangeText={setAge}
@@ -212,18 +205,10 @@ export default function Onboarding() {
               maxLength={3}
             />
             <Chips label="Gender" options={GENDERS} value={gender} onChange={setGender} />
-            <AppText variant="footnote" tone="tertiary">
-              Used for calorie math and to show cycle tracking when relevant.
-            </AppText>
-          </View>
-        ) : null}
-
-        {step === 2 ? (
-          <View style={{ gap: space.lg }}>
             <View style={{ flexDirection: 'row', gap: space.md }}>
               <View style={{ flex: 1 }}>
                 <TextField
-                  label="Height, cm"
+                  label="Height (cm, optional)"
                   value={height}
                   onChangeText={setHeight}
                   placeholder="170"
@@ -233,42 +218,22 @@ export default function Onboarding() {
               </View>
               <View style={{ flex: 1 }}>
                 <TextField
-                  label="Weight, kg"
+                  label="Weight (kg, optional)"
                   value={weight}
                   onChangeText={setWeight}
-                  placeholder="70"
+                  placeholder="65"
                   keyboardType="decimal-pad"
                   maxLength={5}
                 />
               </View>
             </View>
-            <TextField
-              label="Target weight, kg (optional)"
-              value={targetWeight}
-              onChangeText={setTargetWeight}
-              placeholder="Optional"
-              keyboardType="decimal-pad"
-              maxLength={5}
-            />
-            <Chips
-              label="Activity level"
-              options={ACTIVITY_OPTIONS}
-              value={activity}
-              onChange={setActivity}
-            />
-            <Chips label="Body goal" options={GOAL_OPTIONS} value={goalType} onChange={setGoalType} />
-            <TextField
-              label="Daily calorie target"
-              value={calories}
-              onChangeText={setCalories}
-              placeholder={`Estimate: ${estimatedCalories} kcal`}
-              keyboardType="number-pad"
-              maxLength={5}
-            />
+            <AppText variant="footnote" tone="tertiary">
+              Height and weight sharpen your calorie and protein targets. You can add them later in Profile.
+            </AppText>
           </View>
         ) : null}
 
-        {step === 3 ? (
+        {step === 2 ? (
           <View style={{ gap: space.lg }}>
             <View>
               {FOCUS.map((option, index) => {
@@ -323,61 +288,7 @@ export default function Onboarding() {
               maxLength={200}
             />
 
-            <SectionHeader title="Track" caption="You can change these later" />
-            <View>
-              {FEATURE_FLAGS.slice(0, 6).map((flag, index) => (
-                <View
-                  key={flag.key}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: space.md,
-                    paddingVertical: space.md,
-                    minHeight: 56,
-                    borderTopWidth: index === 0 ? 0 : 1,
-                    borderTopColor: colors.separator,
-                  }}
-                >
-                  <View style={{ flex: 1, gap: 1 }}>
-                    <AppText variant="callout">{flag.label}</AppText>
-                    <AppText variant="footnote" tone="tertiary">
-                      {flag.caption}
-                    </AppText>
-                  </View>
-                  <Switch
-                    value={flags[flag.key as FeatureFlagKey]}
-                    onValueChange={(value) => {
-                      setFlags((current) => ({ ...current, [flag.key]: value }));
-                    }}
-                    trackColor={{ true: colors.primary, false: colors.surfaceSunken }}
-                    thumbColor={colors.background}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
 
-        {step === 4 ? (
-          <View style={{ gap: space.lg }}>
-            <View style={{ gap: space.xs }}>
-              <AppText variant="headline">You're set, {firstName || 'there'}.</AppText>
-              <AppText variant="footnote" tone="secondary">
-                Focus: {FOCUS.find((option) => option.value === focus)?.label}. Daily target:{' '}
-                {numberOr(calories, estimatedCalories)} kcal.
-              </AppText>
-            </View>
-            <View style={{ gap: space.sm }}>
-              {FEATURE_FLAGS.filter((flag) => flags[flag.key as FeatureFlagKey]).map((flag) => (
-                <AppText key={flag.key} variant="caption" tone="tertiary">
-                  · {flag.label}
-                </AppText>
-              ))}
-            </View>
-            <AppText variant="callout" tone="secondary">
-              Your first reading starts at zero and fills in as you log. The rings, the score and
-              the weekly experiment all read from the same records.
-            </AppText>
           </View>
         ) : null}
 
@@ -402,7 +313,7 @@ export default function Onboarding() {
               />
             ) : (
               <Button
-                label="Start using Trinity"
+                label="Start using Auxo"
                 loading={saving}
                 disabled={!canContinue}
                 onPress={() => void finish()}
@@ -412,5 +323,6 @@ export default function Onboarding() {
         </View>
       </Screen>
     </KeyboardAvoidingView>
+    </>
   );
 }

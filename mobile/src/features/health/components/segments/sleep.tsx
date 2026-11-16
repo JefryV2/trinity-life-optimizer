@@ -10,7 +10,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
 import { useHealth } from '@/features/health/use-health';
 import { formatDate } from '@/lib/format';
-import { openAdd } from '@/lib/navigation';
+import { openAdd, openEdit } from '@/lib/navigation';
 import { space } from '@/theme';
 
 export const SleepSegment = () => {
@@ -80,6 +80,7 @@ export const SleepSegment = () => {
                 subtitle={`${formatDate(record.created_at)}${record.notes ? ` · ${record.notes}` : ''}`}
                 value={`Quality ${record.sleep_quality ?? '—'}/10`}
                 last={index === data.sleep.length - 1}
+                onPress={() => openEdit('sleep', record.id)}
                 onDelete={() => deleteRecord.mutate({ table: 'sleep_records', id: record.id })}
               />
             ))}

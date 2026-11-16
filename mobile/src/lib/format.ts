@@ -1,5 +1,7 @@
 /** Date, number and copy helpers shared by every screen. */
 
+import { getSettings } from '@/features/settings/use-settings';
+
 export const isoDate = (date: Date = new Date()): string => {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 10);
@@ -23,7 +25,7 @@ export const startOfMonth = (date: Date = new Date()): Date =>
 export const endOfMonth = (date: Date = new Date()): Date =>
   new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 
-export const formatMoney = (value: number, currency = 'USD'): string =>
+export const formatMoney = (value: number, currency = getSettings().currency): string =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,

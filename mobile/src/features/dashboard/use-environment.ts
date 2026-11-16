@@ -17,9 +17,10 @@ const aqiLabel = (aqi: number | null) => {
   return ['Good', 'Fair', 'Moderate', 'Poor', 'Very poor'][aqi - 1] ?? 'Unknown';
 };
 
-export const useEnvironment = () =>
+export const useEnvironment = (enabled = false) =>
   useQuery({
     queryKey: ['environment'],
+    enabled,
     staleTime: 30 * 60_000,
     retry: 1,
     queryFn: async (): Promise<EnvironmentData> => {

@@ -10,7 +10,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
 import { useHealth } from '@/features/health/use-health';
 import { formatDate } from '@/lib/format';
-import { openAdd } from '@/lib/navigation';
+import { openAdd, openEdit } from '@/lib/navigation';
 import { space } from '@/theme';
 
 export const MentalSegment = () => {
@@ -72,6 +72,7 @@ export const MentalSegment = () => {
                 title={`Mood ${record.mood_rating ?? '—'} · Stress ${record.stress_level ?? '—'} · Energy ${record.energy_level ?? '—'}`}
                 subtitle={`${record.logged_at ? formatDate(record.logged_at) : 'Recent'}${record.notes ? ` · ${record.notes}` : ''}`}
                 last={index === data.mental.length - 1}
+                onPress={() => openEdit('mental', record.id)}
                 onDelete={() => deleteRecord.mutate({ table: 'mental_health_logs', id: record.id })}
               />
             ))}

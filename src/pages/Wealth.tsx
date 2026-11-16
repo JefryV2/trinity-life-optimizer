@@ -26,6 +26,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/ds";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -447,7 +448,7 @@ export default function Wealth() {
               <span>Financial wellness</span>
               <span>{Math.min(100, Math.max(0, Math.round(wealthMetrics[3].value)))}%</span>
             </div>
-            <Progress value={Math.min(100, Math.max(0, wealthMetrics[3].value))} className="h-2 bg-white/20" />
+            <Progress value={Math.min(100, Math.max(0, wealthMetrics[3].value))} className="h-2 bg-[#0a0a0c]/20" />
           </div>
         </CardContent>
       </Card>
@@ -1474,32 +1475,12 @@ export default function Wealth() {
   return (
     <div className="min-h-screen bg-background safe-area-top safe-area-bottom ios-scroll">
       {/* iOS-style Header */}
-      <div className="ios-header safe-area-left safe-area-right">
-        <div className="flex items-center justify-between w-full px-4">
-          <div className="flex items-center gap-3">
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="h-10 w-10 p-0 haptic-light"
-              onClick={() => navigate('/')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <div className="ios-large-title">Wealth 💎</div>
-              <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" className="h-10 w-10 p-0 haptic-light" onClick={() => navigate('/calendar')}>
-              <Calendar className="h-4 w-4" />
-            </Button>
-            <Button size="sm" variant="ghost" className="h-10 w-10 p-0 haptic-light">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="WEALTH"
+        context={new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
+        onBack={() => navigate('/')}
+        action={{ label: 'CALENDAR', onClick: () => navigate('/calendar') }}
+      />
       
       {/* Budget Creation Modal */}
       {showBudgetModal && (
