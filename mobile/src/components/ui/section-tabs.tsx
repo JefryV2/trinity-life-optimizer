@@ -23,8 +23,20 @@ export const SectionTabs = <T extends string>({
 }: SectionTabsProps<T>) => {
   const { colors } = useTheme();
   const { width, fontScale } = useWindowDimensions();
-  const oneRow = fontScale <= 1 && width >= 405;
-  const columns = oneRow ? options.length : fontScale > 1.7 ? 2 : fontScale > 1.5 ? 3 : 4;
+  const oneRow =
+    width >= 405 &&
+    (fontScale <= 1 ||
+      (options.length <= 4 && fontScale <= 1.6) ||
+      (options.length === 5 && fontScale <= 1.35));
+  const columns = oneRow
+    ? options.length
+    : fontScale > 2.2
+      ? 2
+      : fontScale > 1.7
+        ? options.length > 4
+          ? 3
+          : 2
+        : Math.min(4, Math.ceil(options.length / 2));
 
   const rows: Array<Array<{ value: T; label: string }>> = [];
   for (let index = 0; index < options.length; index += columns) {
