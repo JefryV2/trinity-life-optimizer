@@ -8,7 +8,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Sheet } from '@/components/ui/sheet';
 import { useSectionNav } from '@/features/navigation/section-nav';
 import { useProfile } from '@/features/profile/use-profile';
-import { getBlurTarget, subscribeBlurTarget } from '@/lib/blur-target';
+import { getBlurTarget, isBlurTargetAlive, subscribeBlurTarget } from '@/lib/blur-target';
 import {
   healthSections,
   WEALTH_SECTIONS,
@@ -96,6 +96,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
   const hasMore = options.length > visible.length;
 
   const target = useSyncExternalStore(subscribeBlurTarget, getBlurTarget, getBlurTarget);
+  const blurTargetAlive = useMemo(() => isBlurTargetAlive(target), [target, fontScale]);
   const blurTarget = useMemo(() => ({ current: target }), [target]);
 
   useEffect(() => {
@@ -171,7 +172,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
           backgroundColor: 'rgba(7, 7, 8, 0.82)',
         }}
       >
-        {target ? (
+        {blurTargetAlive ? (
           <BlurView
             tint="systemThickMaterialDark"
             intensity={90}

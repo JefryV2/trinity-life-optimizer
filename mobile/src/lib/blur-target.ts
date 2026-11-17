@@ -1,5 +1,5 @@
 import type { ComponentRef } from 'react';
-import type { View } from 'react-native';
+import { findNodeHandle, type View } from 'react-native';
 
 type BlurTarget = ComponentRef<typeof View>;
 
@@ -24,4 +24,14 @@ export const subscribeBlurTarget = (listener: () => void) => {
   return () => {
     listeners.delete(listener);
   };
+};
+
+/** A node handle can survive in JS after its native view is torn down. */
+export const isBlurTargetAlive = (target: BlurTarget | null) => {
+  if (!target) return false;
+  try {
+    return Boolean(findNodeHandle(target));
+  } catch {
+    return false;
+  }
 };

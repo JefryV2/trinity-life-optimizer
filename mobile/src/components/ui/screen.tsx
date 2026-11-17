@@ -14,7 +14,12 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SwipeTabs, useIsTabRoute } from '@/components/ui/swipe';
-import { getBlurTarget, setBlurTarget, subscribeBlurTarget } from '@/lib/blur-target';
+import {
+  getBlurTarget,
+  isBlurTargetAlive,
+  setBlurTarget,
+  subscribeBlurTarget,
+} from '@/lib/blur-target';
 import { space, useTheme } from '@/theme';
 
 interface ScreenProps extends ScrollViewProps {
@@ -70,6 +75,10 @@ export const Screen = ({
     getBlurTarget,
     getBlurTarget,
   );
+  const blurTargetAlive = useMemo(
+    () => isBlurTargetAlive(blurTargetNode),
+    [blurTargetNode, fontScale],
+  );
   const blurTarget = useMemo(() => ({ current: blurTargetNode }), [blurTargetNode]);
 
   useFocusEffect(
@@ -90,7 +99,7 @@ export const Screen = ({
         cancelAnimationFrame(frame);
         if (getBlurTarget() === targetRef.current) setBlurTarget(null);
       };
-    }, [isTab]),
+    }, [isTab, fontScale]),
   );
 
   return (
@@ -134,7 +143,7 @@ export const Screen = ({
               overflow: 'hidden',
             }}
           >
-            {isFocused && blurTargetNode ? (
+            {isFocused && blurTargetAlive ? (
               <BlurView
                 tint="dark"
                 intensity={45}
