@@ -77,7 +77,9 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
         : health
       : wealth;
 
-  const barWidth = Math.min(Math.max(width - 24, 300), 440);
+  const barWidth = sectionMode
+    ? Math.min(Math.max(width - 24, 320), 420)
+    : Math.min(Math.max(width - 56, 256), 336);
   const narrow = barWidth < 360;
   const visibleLimit =
     fontScale > 1.15
@@ -212,7 +214,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                       style={({ pressed }) => ({
                         height: 44,
                         justifyContent: 'center',
-                        marginRight: 6,
+                        marginRight: space.sm,
                         opacity: pressed ? 0.72 : 1,
                       })}
                     >
@@ -246,14 +248,25 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                     accessibilityLabel="More sections"
                     onPress={() => setSheetOpen(true)}
                     style={({ pressed }) => ({
-                      width: 24,
+                      width: 28,
                       height: 44,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      opacity: pressed ? 0.55 : 1,
+                      opacity: pressed ? 0.6 : 1,
                     })}
                   >
-                    <Icon name="more" size={18} color={colors.textTertiary} />
+                    <View
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      }}
+                    >
+                      <Icon name="more" size={16} color={colors.textSecondary} />
+                    </View>
                   </Pressable>
                 ) : null}
               </View>
@@ -268,7 +281,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
               />
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {['index', routeName === 'health' ? 'wealth' : 'health', 'relations', 'more'].map(
+                {['index', 'relations', 'more'].map(
                   (name) => {
                     const meta = metaFor(name, colors);
                     return (
@@ -278,14 +291,14 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                         accessibilityLabel={meta.label}
                         onPress={() => go(name)}
                         style={({ pressed }) => ({
-                          width: 28,
+                          width: 32,
                           height: 44,
                           alignItems: 'center',
                           justifyContent: 'center',
                           opacity: pressed ? 0.55 : 1,
                         })}
                       >
-                        <Icon name={meta.icon} size={18} color={colors.textTertiary} />
+                        <Icon name={meta.icon} size={19} color={colors.textSecondary} />
                       </Pressable>
                     );
                   },
