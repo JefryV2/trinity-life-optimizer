@@ -182,42 +182,46 @@ export default function Dashboard() {
             </AppText>
           </View>
 
-          <View>
-            {pillars.map((pillar, index) => (
+          <View style={{ flexDirection: 'row', width: '100%', paddingVertical: space.xs }}>
+            {pillars.map((pillar) => (
               <Pressable
                 key={pillar.key}
                 accessibilityRole="button"
                 accessibilityHint={`Opens ${pillar.label}`}
                 onPress={pillar.open}
                 style={({ pressed }) => ({
-                  flexDirection: 'row',
+                  flex: 1,
                   alignItems: 'center',
-                  gap: space.md,
-                  paddingVertical: space.md,
-                  borderTopWidth: index === 0 ? 0 : 1,
-                  borderTopColor: colors.separator,
-                  opacity: pressed ? 0.65 : 1,
+                  gap: 2,
+                  opacity: pressed ? 0.6 : 1,
                 })}
               >
-                <View
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: 4,
-                    backgroundColor: pillar.color,
-                  }}
-                />
-                <View style={{ flex: 1, gap: 1 }}>
-                  <AppText variant="callout">{pillar.label}</AppText>
-                  <AppText variant="footnote" tone="tertiary">
-                    {pillar.caption}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <View
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: 4,
+                      backgroundColor: pillar.color,
+                    }}
+                  />
+                  <AppText variant="caption" tone="secondary" style={{ letterSpacing: 0.4 }}>
+                    {pillar.label.toUpperCase()}
                   </AppText>
                 </View>
                 <AppText
                   variant="headline"
-                  style={{ color: pillar.color, fontVariant: ['tabular-nums'] }}
+                  style={{
+                    fontSize: 30,
+                    lineHeight: 34,
+                    fontVariant: ['tabular-nums'],
+                    color: pillar.color,
+                  }}
                 >
                   {pillar.value === null ? '—' : Math.round(pillar.value)}
+                </AppText>
+                <AppText variant="caption" tone="tertiary">
+                  {pillar.caption}
                 </AppText>
               </Pressable>
             ))}
