@@ -31,6 +31,7 @@ export const TextField = ({ label, error, helper, style, ...rest }: TextFieldPro
       <View style={{ position: 'relative' }}>
         <TextInput
           {...rest}
+          accessibilityLabel={rest.accessibilityLabel ?? label}
           onFocus={(event) => {
             setFocused(true);
             rest.onFocus?.(event);

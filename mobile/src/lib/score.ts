@@ -44,11 +44,11 @@ export interface ScoreInput {
   health: {
     steps: number;
     sleepHours: number;
-    sleepQuality: number; // 1..5
+    sleepQuality: number; // 1..10
     exerciseMinutes: number;
     waterMl: number;
     waterTarget: number;
-    mood: number | null; // 1..5, null = not logged
+    mood: number | null; // 1..10, null = not logged
     stress: number | null; // 0..10, null = not logged (0 is a real value)
   };
   wealth: {
@@ -59,7 +59,7 @@ export interface ScoreInput {
   bonds: {
     interactions7d: number;
     people: number;
-    avgMood: number; // 1..5
+    avgMood: number; // 1..10
   };
 }
 
@@ -99,7 +99,7 @@ export function scoreHealth(input: ScoreInput['health']): Contribution[] {
   // Mental contributes only when logged, so a missing entry is not a penalty.
   // Zero stress is the best possible value, so "not logged" is null, not 0.
   const mentalParts = [
-    input.mood !== null ? input.mood / 5 : null,
+    input.mood !== null ? input.mood / 10 : null,
     input.stress !== null ? 1 - input.stress / 10 : null,
   ].filter((part): part is number => part !== null);
   const mentalLogged = mentalParts.length > 0;
@@ -113,28 +113,28 @@ export function scoreHealth(input: ScoreInput['health']): Contribution[] {
       'sleep',
       'Sleep',
       30,
-      (Math.min(input.sleepHours / SLEEP_TARGET, 1) + Math.min(Math.max(input.sleepQuality, 0) / 5, 1)) / 2,
-      `${input.sleepHours.toFixed(1)} h · ${Math.round(input.sleepQuality)}/5`,
+      (Math.min(input.sleepHours / SLEEP_TARGET, 1) + Math.min(Math.max(input.sleepQuality, 0) / 10, 1)) / 2,
+      `${input.sleepHours.toFixed(1)} h · quality ${input.sleepQuality.toFixed(1)}/10`,
     ),
-    contribution(
-      'exercise',
-      'Exercise',
-      20,
-      input.exerciseMinutes / EXERCISE_TARGET,
-      `${Math.round(input.exerciseMinutes)} / 45 min`,
-    ),
-    contribution('water', 'Water', 10, input.waterMl / waterTarget, `${Math.round(input.waterMl)} / ${Math.round(waterTarget)} ml`),
     contribution(
       'mental',
       'Mood & stress',
       10,
       mentalLogged ? mentalRatio : 0,
       mentalLogged
-        ? [input.mood !== null ? `${input.mood}/5` : null, input.stress !== null ? `stress ${input.stress.toFixed(1)}` : null]
+        ? [input.mood !== null ? `${input.mood.toFixed(1)}/10` : null, input.stress !== null ? `stress ${input.stress.toFixed(1)}` : null]
             .filter(Boolean)
             .join(' · ')
         : 'not logged',
     ),
+    contribution(
+      'exercise',
+      'Exercise',
+      20,
+      input.exerciseMinutes / EXERCISE_TARGET,
+      `${Math.round(input.exerciseMinutes)} min · target ${EXERCISE_TARGET}`,
+    ),
+    contribution('water', 'Water', 10, input.waterMl / waterTarget, `${Math.round(input.waterMl)} / ${Math.round(waterTarget)} ml`),
   ];
 }
 
@@ -147,7 +147,7 @@ export function scoreWealth(input: ScoreInput['wealth']): Contribution[] {
       'Savings rate',
       60,
       input.income > 0 ? input.savingsRate / 100 : 0,
-      input.income > 0 ? `${Math.round(input.savingsRate)}%` : 'not tracked',
+      input.income > 0 ? `${Math.round(input.savingsRate)}% saved` : 'not tracked',
       input.income > 0,
     ),
     contribution(
@@ -156,7 +156,7 @@ export function scoreWealth(input: ScoreInput['wealth']): Contribution[] {
       40,
       // no income logged means nothing is known about spending — no free points
       input.income > 0 ? 1 - spendRatio : 0,
-      input.income > 0 ? `${Math.round(spendRatio * 100)}% of income` : 'no income logged',
+      input.income > 0 ? `${Math.round(spendRatio * 100)}% of income spent` : 'no income logged',
       input.income > 0,
     ),
   ];
@@ -165,14 +165,14 @@ export function scoreWealth(input: ScoreInput['wealth']): Contribution[] {
 export function scoreBonds(input: ScoreInput['bonds']): Contribution[] {
   return [
     contribution('contact', 'People reached', 60, input.interactions7d / INTERACTIONS_TARGET, `${Math.round(input.interactions7d)} in 7 days`),
-    contribution('mood', 'How they felt', 40, input.avgMood / 5, `${input.avgMood.toFixed(1)}/5`),
+    contribution('mood', 'How they felt', 40, input.avgMood / 10, `${input.avgMood.toFixed(1)}/10`),
   ];
 }
 
 const PILLARS: Array<{ key: PillarKey; label: string; score: (input: ScoreInput) => Contribution[] }> = [
-  { key: 'health', label: 'HEALTH', score: (input) => scoreHealth(input.health) },
-  { key: 'wealth', label: 'WEALTH', score: (input) => scoreWealth(input.wealth) },
-  { key: 'bonds', label: 'PEOPLE', score: (input) => scoreBonds(input.bonds) },
+  { key: 'health', label: 'Health', score: (input) => scoreHealth(input.health) },
+  { key: 'wealth', label: 'Wealth', score: (input) => scoreWealth(input.wealth) },
+  { key: 'bonds', label: 'People', score: (input) => scoreBonds(input.bonds) },
 ];
 
 export interface ScoreReport {

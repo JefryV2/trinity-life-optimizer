@@ -1,52 +1,26 @@
-import { useEffect } from 'react';
 import { View } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withTiming,
-} from 'react-native-reanimated';
 
 import { radius, useTheme } from '@/theme';
 
-/**
- * Draws once on mount. Width is animated rather than scaleX because React
- * Native has no transform-origin, and a one-shot entrance on an occasional
- * screen is the one place a layout property is acceptable.
- */
+/** A static measure line. The value is already readable; it should not move. */
 export const GrowBar = ({
   ratio,
   color,
-  delay = 0,
   height = 5,
 }: {
   ratio: number;
   color: string;
+  /** Kept for call-site compatibility; bars no longer animate. */
   delay?: number;
   height?: number;
 }) => {
   const { colors } = useTheme();
-  const reduce = useReducedMotion();
-  const progress = useSharedValue(0);
   const target = Math.max(0, Math.min(100, ratio * 100));
-
-  useEffect(() => {
-    if (reduce) {
-      progress.value = target;
-      return;
-    }
-    progress.value = withDelay(
-      delay,
-      withTiming(target, { duration: 420, easing: Easing.out(Easing.cubic) }),
-    );
-  }, [delay, progress, reduce, target]);
-
-  const style = useAnimatedStyle(() => ({ width: `${progress.value}%` }));
 
   return (
     <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(target) }}
       style={{
         height,
         borderRadius: radius.pill,
@@ -54,8 +28,13 @@ export const GrowBar = ({
         overflow: 'hidden',
       }}
     >
-      <Animated.View
-        style={[{ height: '100%', borderRadius: radius.pill, backgroundColor: color }, style]}
+      <View
+        style={{
+          width: `${target}%`,
+          height: '100%',
+          borderRadius: radius.pill,
+          backgroundColor: color,
+        }}
       />
     </View>
   );

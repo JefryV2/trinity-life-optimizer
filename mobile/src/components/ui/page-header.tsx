@@ -4,27 +4,39 @@ import { AppText } from '@/components/ui/app-text';
 import { space, useTheme } from '@/theme';
 
 /**
- * The signature: every tab screen opens with its name, the date set in mono on
- * the right, and a ruled line. The date is the entry, the screen is the page.
+ * Compact page header: one title, one date, one rule. The title shrinks before
+ * the date ever truncates, and the whole row stays readable at large text.
  */
 export const PageHeader = ({
   title,
   date,
   subtitle,
+  rule = true,
 }: {
   title: string;
   date?: string;
   subtitle?: string;
+  rule?: boolean;
 }) => {
   const { colors } = useTheme();
   return (
     <View style={{ gap: space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
-        <AppText variant="display" style={{ flex: 1, fontSize: 34, lineHeight: 38 }}>
+        <AppText
+          variant="display"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={{ flex: 1, fontSize: 32, lineHeight: 36 }}
+        >
           {title}
         </AppText>
         {date ? (
-          <AppText variant="mono" tone="tertiary">
+          <AppText
+            variant="mono"
+            tone="tertiary"
+            numberOfLines={1}
+            style={{ flexShrink: 0, textAlign: 'right' }}
+          >
             {date}
           </AppText>
         ) : null}
@@ -34,7 +46,7 @@ export const PageHeader = ({
           {subtitle}
         </AppText>
       ) : null}
-      <View style={{ height: 1, backgroundColor: colors.border }} />
+      {rule ? <View style={{ height: 1, backgroundColor: colors.border }} /> : null}
     </View>
   );
 };

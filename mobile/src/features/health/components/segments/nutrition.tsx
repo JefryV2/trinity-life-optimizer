@@ -50,8 +50,14 @@ export const NutritionSegment = () => {
   const sodium = data.food.reduce((sum, entry) => sum + (entry.sodium_mg ?? 0), 0);
 
   const calorieTarget = profileData?.health?.daily_caloric_target ?? 2000;
+  const hasMacroDetail = data.food.some(
+    (entry) => entry.fiber_g != null || entry.sugar_g != null || entry.sodium_mg != null,
+  );
   const weight = profileData?.health?.weight_kg ?? 70;
   const proteinTarget = Math.round(weight * 1.6);
+  // One accent, then neutral steps: macros are not pillars, so they must not
+  // borrow Wealth amber or People blue.
+  const macroColors = [colors.primary, '#D6D6DB', '#6B6B73'];
 
   const runSearch = () => {
     if (query.trim().length >= 2) search.mutate(query.trim());
@@ -84,11 +90,31 @@ export const NutritionSegment = () => {
 
   return (
     <>
+      {data.food.length === 0 ? (
+        <EmptyState
+          icon="food"
+          title="Nothing logged today"
+          message={`Target ${formatNumber(calorieTarget)} kcal. Search the database, scan a barcode, or build a meal.`}
+          actionLabel="Log food"
+          onAction={() => setLogMenuVisible(true)}
+        />
+      ) : null}
+
+      {data.food.length > 0 ? (
+        <Button
+          label="Log food"
+          icon={<Icon name="food" size={16} color={colors.onPrimary} />}
+          onPress={() => setLogMenuVisible(true)}
+        />
+      ) : null}
+
+      {data.food.length > 0 ? (
+        <>
       <Card style={{ gap: space.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <AppText variant="headline">Calories</AppText>
           <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
-            {formatNumber(calories)} / {formatNumber(calorieTarget)} kcal
+            Target {formatNumber(calorieTarget)} kcal
           </AppText>
         </View>
         <Progress
@@ -100,18 +126,18 @@ export const NutritionSegment = () => {
             size={128}
             stroke={15}
             segments={[
-              { key: 'protein', label: 'Protein', value: protein, color: colors.success },
-              { key: 'carbs', label: 'Carbs', value: carbs, color: colors.amber },
-              { key: 'fat', label: 'Fat', value: fat, color: colors.bonds },
+              { key: 'protein', label: 'Protein', value: protein, color: macroColors[0] },
+              { key: 'carbs', label: 'Carbs', value: carbs, color: macroColors[1] },
+              { key: 'fat', label: 'Fat', value: fat, color: macroColors[2] },
             ]}
             centerValue={formatNumber(calories)}
             centerLabel="kcal"
           />
           <View style={{ flex: 1, gap: 8 }}>
             {[
-              { label: 'Protein', value: protein, target: proteinTarget, color: colors.success },
-              { label: 'Carbs', value: carbs, target: 250, color: colors.amber },
-              { label: 'Fat', value: fat, target: 70, color: colors.bonds },
+              { label: 'Protein', value: protein, target: proteinTarget, color: macroColors[0] },
+              { label: 'Carbs', value: carbs, target: 250, color: macroColors[1] },
+              { label: 'Fat', value: fat, target: 70, color: macroColors[2] },
             ].map((macro) => (
               <View key={macro.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View
@@ -132,31 +158,25 @@ export const NutritionSegment = () => {
         </View>
       </Card>
 
-      <Card>
-        <StatRow>
-          <Stat value={`${Math.round(fiber)}g`} label="Fiber / 30g" tone={fiber >= 30 ? 'success' : 'default'} />
-          <Stat value={`${Math.round(sugar)}g`} label="Sugar" />
-          <Stat value={formatNumber(sodium)} label="Sodium mg / 2300" tone={sodium > 2300 ? 'danger' : 'default'} />
-        </StatRow>
-      </Card>
+      {hasMacroDetail ? (
+        <Card>
+          <StatRow>
+            <Stat value={`${Math.round(fiber)}g`} label="Fiber / 30g" tone={fiber >= 30 ? 'success' : 'default'} />
+            <Stat value={`${Math.round(sugar)}g`} label="Sugar" />
+            <Stat
+              value={`${formatNumber(sodium)}mg`}
+              label="Sodium / 2,300 mg"
+              tone={sodium > 2300 ? 'danger' : 'default'}
+            />
+          </StatRow>
+        </Card>
+      ) : null}
 
       <MicronutrientPanel entries={data.food} profile={profileData?.health ?? null} />
+        </>
+      ) : null}
 
-      <Button
-        label="Log food"
-        icon={<Icon name="food" size={16} color={colors.onPrimary} />}
-        onPress={() => setLogMenuVisible(true)}
-      />
-
-      {data.food.length === 0 ? (
-        <EmptyState
-          icon="food"
-          title="Nothing logged today"
-          message="Search the database or enter calories manually."
-          actionLabel="Log food"
-          onAction={() => setLogMenuVisible(true)}
-        />
-      ) : (
+      {data.food.length > 0 ? (
         MEAL_ORDER.map((meal) => {
           const entries = data.food.filter((entry) => (entry.meal_type ?? 'snack') === meal);
           if (entries.length === 0) return null;
@@ -183,9 +203,10 @@ export const NutritionSegment = () => {
             </View>
           );
         })
-      )}
+      ) : null}
 
       <Sheet
+        compact
         visible={logMenuVisible}
         title="Log food"
         subtitle="Choose how you want to add it"

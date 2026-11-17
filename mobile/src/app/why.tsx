@@ -1,20 +1,19 @@
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { GrowBar } from '@/components/ui/grow-bar';
+import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GrowBar } from '@/components/ui/grow-bar';
 import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
+import { LoadingState } from '@/components/ui/states';
 import { useDashboard } from '@/features/dashboard/use-dashboard';
 import { formatStamp } from '@/lib/format';
 import { ACTION_HINT, PILLAR_COLOR, PILLAR_ROUTE } from '@/lib/score-labels';
-import { LoadingState } from '@/components/ui/states';
 import { space, useTheme } from '@/theme';
-
 
 export default function Why() {
   const { colors } = useTheme();
@@ -26,13 +25,14 @@ export default function Why() {
 
   return (
     <Screen>
+      <BackLink fallback="/(tabs)" />
       <PageHeader title="Why" date={formatStamp()} />
 
       {isPending || !report ? <LoadingState rows={4} /> : null}
 
       {report ? (
         <>
-          <Animated.View entering={FadeInDown.duration(240)} style={{ gap: space.xs }}>
+          <View style={{ gap: space.xs }}>
             <AppText variant="caption" tone="tertiary">
               LIFE SCORE
             </AppText>
@@ -49,46 +49,33 @@ export default function Why() {
                 ? 'Nothing logged yet. One entry is enough to start the reading.'
                 : `${strongest?.label ?? ''} is carrying you. ${weakest?.label ?? ''} has the most room.`}
             </AppText>
-          </Animated.View>
+          </View>
 
           {report.topAction ? (
-            <Animated.View entering={FadeInDown.duration(240).delay(60)} style={{ gap: space.md }}>
-              <SectionHeader index="01" title="Biggest move" />
+            <View style={{ gap: space.md }}>
+              <SectionHeader title="Next step" />
               <Card style={{ gap: space.sm }}>
-                <AppText variant="headline">{report.topAction.label}</AppText>
-                <AppText variant="footnote" tone="tertiary">
-                  {report.topAction.display}
-                </AppText>
-                <AppText variant="callout">
+                <AppText variant="headline">
                   {ACTION_HINT[report.topAction.key] ?? 'Log this to earn the points'}
                 </AppText>
-                <AppText variant="caption" tone="primary">
-                  {report.topAction.points} points available
+                <AppText variant="footnote" tone="tertiary">
+                  {`${report.topAction.display} · ${report.topAction.points} points available`}
                 </AppText>
                 <Button
-                  label={`Go to ${report.topAction.pillar}`}
-                  variant="secondary"
+                  label={`Go to ${
+                    report.topAction.pillar === 'bonds'
+                      ? 'People'
+                      : `${report.topAction.pillar[0].toUpperCase()}${report.topAction.pillar.slice(1)}`
+                  }`}
                   onPress={() => router.push(PILLAR_ROUTE[report.topAction!.pillar] as never)}
                 />
-                <AppText
-                  variant="caption"
-                  tone="primary"
-                  onPress={() => router.push('/experiments' as never)}
-                  style={{ paddingTop: 2 }}
-                >
-                  Try it for 7 days →
-                </AppText>
               </Card>
-            </Animated.View>
+            </View>
           ) : null}
 
           {report.pillars.map((pillar, index) => (
-            <Animated.View
-              key={pillar.key}
-              entering={FadeInDown.duration(240).delay(120 + index * 70)}
-              style={{ gap: space.md }}
-            >
-              <SectionHeader index={String(index + 2).padStart(2, '0')} title={pillar.label} />
+            <View key={pillar.key} style={{ gap: space.md }}>
+              <SectionHeader title={pillar.label} />
               <Card padded={false} style={{ paddingHorizontal: space.lg }}>
                 <View
                   style={{
@@ -101,10 +88,16 @@ export default function Why() {
                   <AppText variant="caption" tone="tertiary">
                     SCORE
                   </AppText>
-                  <AppText variant="numeric" style={{ color: PILLAR_COLOR[pillar.key], fontSize: 26, lineHeight: 30 }}>
+                  <AppText
+                    variant="numeric"
+                    style={{ color: PILLAR_COLOR[pillar.key], fontSize: 26, lineHeight: 30 }}
+                  >
                     {pillar.value}
                   </AppText>
                 </View>
+                <AppText variant="footnote" tone="tertiary" style={{ paddingTop: space.xs }}>
+                  {`${pillar.contributions.filter((item) => item.tracked).length} inputs`}
+                </AppText>
                 {pillar.contributions.map((item, itemIndex) => (
                   <View
                     key={item.key}
@@ -131,30 +124,20 @@ export default function Why() {
                       color={item.points === item.max ? colors.text : PILLAR_COLOR[pillar.key]}
                       delay={180 + index * 70 + itemIndex * 50}
                     />
-                    <AppText variant="caption" tone="faint">
+                    <AppText variant="footnote" tone="tertiary">
                       {item.display}
                       {item.lost > 0 ? ` · ${item.lost} points left` : ' · full'}
                     </AppText>
                   </View>
                 ))}
               </Card>
-            </Animated.View>
+            </View>
           ))}
 
-          <AppText variant="footnote" tone="faint" style={{ lineHeight: 18 }}>
+          <AppText variant="footnote" tone="tertiary" style={{ lineHeight: 18 }}>
             Each input has a fixed ceiling, so every point can be traced back to something you
             logged. These are heuristics for spotting patterns — not medical or financial advice.
           </AppText>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.back()}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, paddingVertical: space.md })}
-          >
-            <AppText variant="footnote" tone="primary">
-              ← Back to today
-            </AppText>
-          </Pressable>
         </>
       ) : null}
     </Screen>

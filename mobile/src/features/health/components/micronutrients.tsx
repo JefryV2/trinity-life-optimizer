@@ -30,6 +30,8 @@ export const MicronutrientPanel = ({
   const items = needs.items.filter((nutrient) => nutrient.featured);
   const hasData = hasMicronutrientData(entries);
 
+  if (!hasData) return null;
+
   return (
     <View style={{ gap: space.sm }}>
       <SectionHeader title="Vitamins & minerals" caption={needs.label} />
@@ -90,11 +92,6 @@ export const MicronutrientPanel = ({
           );
         })}
       </View>
-      {!hasData ? (
-        <AppText variant="caption" tone="tertiary">
-          Search foods to include vitamin data.
-        </AppText>
-      ) : null}
     </View>
   );
 };

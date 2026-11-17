@@ -7,10 +7,12 @@ import { RecentChips } from '@/components/ui/recent-chips';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { Slider } from '@/components/ui/slider';
 import { TextField } from '@/components/ui/text-field';
+import { periodDaysFor } from '@/features/health/cycle';
 import { useHealth } from '@/features/health/use-health';
 import { useRecentFoods } from '@/features/health/use-recent-foods';
 import { useHeart } from '@/features/heart/use-heart';
-import { isoDate } from '@/lib/format';
+import { useProfile } from '@/features/profile/use-profile';
+import { addDays, isoDate } from '@/lib/format';
 import { useFormSubmit } from '@/lib/use-form-submit';
 import { space } from '@/theme';
 
@@ -21,14 +23,17 @@ export const SleepForm = ({ recordId }: { recordId?: string }) => {
   const { saving, error, setError, submit } = useFormSubmit();
   const [hours, setHours] = useState('');
   const [quality, setQuality] = useState(7);
-  const [bedtime, setBedtime] = useState(() => {
-    const date = new Date();
-    date.setHours(23, 0, 0, 0);
-    return date;
-  });
+  // "Last night" means the most recent completed night, never a future one.
   const [wake, setWake] = useState(() => {
     const date = new Date();
     date.setHours(7, 0, 0, 0);
+    if (date.getTime() > Date.now()) date.setDate(date.getDate() - 1);
+    return date;
+  });
+  const [bedtime, setBedtime] = useState(() => {
+    const date = new Date(wake);
+    date.setDate(date.getDate() - 1);
+    date.setHours(23, 0, 0, 0);
     return date;
   });
   const [notes, setNotes] = useState('');
@@ -79,7 +84,14 @@ export const SleepForm = ({ recordId }: { recordId?: string }) => {
           keyboardType="decimal-pad"
           maxLength={4}
         />
-        <Slider label="Sleep quality" value={quality} onChange={setQuality} min={1} max={10} />
+        <Slider
+          label="Sleep quality"
+          value={quality}
+          onChange={setQuality}
+          min={1}
+          max={10}
+          formatValue={(value) => `${value}/10`}
+        />
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
             <DateTimeField label="Bedtime" value={bedtime} mode="time" onChange={setBedtime} />
@@ -458,12 +470,13 @@ export const FoodForm = ({ meal = false, recordId }: { meal?: boolean; recordId?
   );
 };
 
-export const MentalForm = ({ recordId }: { recordId?: string }) => {
+export const MentalForm = ({ recordId, initialMood }: { recordId?: string; initialMood?: string }) => {
   const { data, addMental, updateMental } = useHealth();
   const { saving, error, submit } = useFormSubmit();
-  const [mood, setMood] = useState(6);
+  const [mood, setMood] = useState(initialMood ? Number(initialMood) : 6);
   const [stress, setStress] = useState(4);
   const [energy, setEnergy] = useState(6);
+  const [anxiety, setAnxiety] = useState(3);
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState(new Date());
   const existing = data?.mental.find((record) => record.id === recordId);
@@ -473,6 +486,7 @@ export const MentalForm = ({ recordId }: { recordId?: string }) => {
     setMood(existing.mood_rating ?? 6);
     setStress(existing.stress_level ?? 4);
     setEnergy(existing.energy_level ?? 6);
+    setAnxiety(existing.anxiety_level ?? 3);
     setNotes(existing.notes ?? '');
     if (existing.logged_at) setDate(new Date(existing.logged_at));
   }, [existing?.id]);
@@ -485,7 +499,7 @@ export const MentalForm = ({ recordId }: { recordId?: string }) => {
       error={error}
       onSubmit={() =>
         void submit(() => {
-          const input = { mood, stress, energy, notes, loggedAt: date.toISOString() };
+          const input = { mood, stress, energy, anxiety, notes, loggedAt: date.toISOString() };
           return existing
             ? updateMental.mutateAsync({ id: existing.id, ...input })
             : addMental.mutateAsync(input);
@@ -497,6 +511,7 @@ export const MentalForm = ({ recordId }: { recordId?: string }) => {
         <Slider label="Mood" value={mood} onChange={setMood} min={1} max={10} formatValue={(v) => `${v}/10`} />
         <Slider label="Stress" value={stress} onChange={setStress} min={1} max={10} formatValue={(v) => `${v}/10`} />
         <Slider label="Energy" value={energy} onChange={setEnergy} min={1} max={10} formatValue={(v) => `${v}/10`} />
+        <Slider label="Anxiety" value={anxiety} onChange={setAnxiety} min={1} max={10} formatValue={(v) => `${v}/10`} />
         <TextField
           label="What's on your mind? (optional)"
           value={notes}
@@ -510,36 +525,85 @@ export const MentalForm = ({ recordId }: { recordId?: string }) => {
   );
 };
 
-const FLOWS = [
+const CYCLE_FLOWS = [
   { value: 'light', label: 'Light' },
-  { value: 'medium', label: 'Medium' },
+  { value: 'moderate', label: 'Medium' },
   { value: 'heavy', label: 'Heavy' },
 ];
 
-export const CycleForm = () => {
-  const { addCycle } = useHealth();
-  const { saving, error, submit } = useFormSubmit();
+const PERIOD_LENGTHS = [2, 3, 4, 5, 6, 7, 8, 9, 10].map((days) => ({
+  value: String(days),
+  label: `${days} days`,
+}));
+
+export const CycleForm = ({ recordId }: { recordId?: string }) => {
+  const { data, addCycle, updateCycle } = useHealth();
+  const { data: profileData } = useProfile();
+  const { saving, error, setError, submit } = useFormSubmit();
+  const existing = data?.cycles.find((record) => record.id === recordId);
+  const defaultPeriod = profileData?.health?.period_length_days ?? 5;
+
   const [start, setStart] = useState(new Date());
-  const [flow, setFlow] = useState('medium');
+  const [periodLength, setPeriodLength] = useState(String(defaultPeriod));
+  const [flow, setFlow] = useState('moderate');
   const [pain, setPain] = useState(0);
   const [notes, setNotes] = useState('');
 
+  useEffect(() => {
+    if (!existing) return;
+    setStart(new Date(`${existing.cycle_start_date}T12:00:00`));
+    setPeriodLength(String(periodDaysFor(existing, defaultPeriod)));
+    setFlow(existing.flow_intensity === 'medium' ? 'moderate' : existing.flow_intensity ?? 'moderate');
+    setPain(existing.pain_level ?? 0);
+    setNotes(existing.notes ?? '');
+  }, [existing?.id]);
+
+  const save = () => {
+    const length = Number(periodLength);
+    if (!Number.isFinite(length) || length < 2 || length > 10) {
+      setError('Choose how many days your period lasted.');
+      return;
+    }
+    const input = {
+      startDate: isoDate(start),
+      endDate: isoDate(addDays(start, length - 1)),
+      periodLength: length,
+      flow,
+      pain,
+      notes,
+    };
+    void submit(() =>
+      existing
+        ? updateCycle.mutateAsync({ id: existing.id, ...input })
+        : addCycle.mutateAsync(input),
+    );
+  };
+
   return (
     <FormFrame
-      title="Log cycle start"
-      submitLabel="Save cycle"
+      title={existing ? 'Edit cycle' : 'Log cycle start'}
+      submitLabel={existing ? 'Save changes' : 'Save cycle'}
       loading={saving}
       error={error}
-      onSubmit={() =>
-        void submit(() =>
-          addCycle.mutateAsync({ startDate: isoDate(start), flow, pain, notes }),
-        )
-      }
+      onSubmit={save}
     >
       <View style={{ gap: space.xl }}>
         <DateTimeField label="First day" value={start} onChange={setStart} />
-        <Chips label="Flow" options={FLOWS} value={flow} onChange={setFlow} />
-        <Slider label="Pain level" value={pain} onChange={setPain} min={0} max={10} />
+        <Chips
+          label="Period length"
+          options={PERIOD_LENGTHS}
+          value={periodLength}
+          onChange={setPeriodLength}
+        />
+        <Chips label="Flow" options={CYCLE_FLOWS} value={flow} onChange={setFlow} />
+        <Slider
+          label="Pain level"
+          value={pain}
+          onChange={setPain}
+          min={0}
+          max={10}
+          formatValue={(value) => `${value}/10`}
+        />
         <TextField
           label="Notes (optional)"
           value={notes}

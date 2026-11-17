@@ -40,9 +40,7 @@ export default function MoreScreen() {
   };
 
   return (
-    <Screen>
-      <PageHeader title="You" date={formatStamp()} />
-
+    <Screen header={<PageHeader title="You" date={formatStamp()} rule={false} />}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
         <View
           style={{
@@ -70,7 +68,7 @@ export default function MoreScreen() {
 
       <SectionHeader title="Review" />
       <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-        <ListRow icon="sparkles" title="Weekly review" subtitle="Your seven-day reading" onPress={() => router.push('/weekly-review' as never)} />
+        <ListRow icon="book" title="Weekly review" subtitle="Your seven-day reading" onPress={() => router.push('/weekly-review' as never)} />
         <ListRow icon="chart" title="Insights" subtitle="Trends and correlations" onPress={() => router.push('/insights')} />
         <ListRow icon="calendar" title="Progress calendar" subtitle="Daily pillar scores" onPress={() => router.push('/calendar')} />
         <ListRow icon="trophy" title="Achievements" subtitle="Milestones from your records" onPress={() => router.push('/profile/achievements')} last />

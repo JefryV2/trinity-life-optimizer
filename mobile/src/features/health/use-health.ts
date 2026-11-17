@@ -74,6 +74,8 @@ export interface CycleRecord {
   id: string;
   cycle_start_date: string;
   cycle_end_date: string | null;
+  cycle_length_days: number | null;
+  period_length_days: number | null;
   flow_intensity: string | null;
   pain_level: number | null;
   symptoms: string[] | null;
@@ -166,13 +168,13 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
             .select('id,mood_rating,stress_level,energy_level,anxiety_level,notes,logged_at')
             .eq('user_id', userId!)
             .order('logged_at', { ascending: false })
-            .limit(14),
+            .limit(60),
           supabase
             .from('menstrual_cycles')
-            .select('id,cycle_start_date,cycle_end_date,flow_intensity,pain_level,symptoms,notes')
+            .select('id,cycle_start_date,cycle_end_date,cycle_length_days,period_length_days,flow_intensity,pain_level,symptoms,notes')
             .eq('user_id', userId!)
             .order('cycle_start_date', { ascending: false })
-            .limit(6),
+            .limit(12),
           supabase
             .from('health_goals')
             .select(
@@ -501,6 +503,7 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
       mood: number;
       stress: number;
       energy: number;
+      anxiety: number;
       notes?: string;
       loggedAt?: string;
     }) => {
@@ -509,6 +512,7 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
         mood_rating: input.mood,
         stress_level: input.stress,
         energy_level: input.energy,
+        anxiety_level: input.anxiety,
         notes: input.notes?.trim() || null,
         logged_at: input.loggedAt ?? new Date().toISOString(),
       });
@@ -523,6 +527,7 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
       mood: number;
       stress: number;
       energy: number;
+      anxiety: number;
       notes?: string;
       loggedAt?: string;
     }) => {
@@ -532,6 +537,7 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
           mood_rating: input.mood,
           stress_level: input.stress,
           energy_level: input.energy,
+          anxiety_level: input.anxiety,
           notes: input.notes?.trim() || null,
           logged_at: input.loggedAt,
         })
@@ -544,6 +550,8 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
   const addCycle = useMutation({
     mutationFn: async (input: {
       startDate: string;
+      endDate: string;
+      periodLength: number;
       flow: string;
       pain: number;
       notes?: string;
@@ -551,10 +559,38 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
       const { error } = await supabase.from('menstrual_cycles').insert({
         user_id: userId!,
         cycle_start_date: input.startDate,
+        cycle_end_date: input.endDate,
+        period_length_days: input.periodLength,
         flow_intensity: input.flow,
         pain_level: input.pain,
         notes: input.notes?.trim() || null,
       });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
+  const updateCycle = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      startDate: string;
+      endDate: string;
+      periodLength: number;
+      flow: string;
+      pain: number;
+      notes?: string;
+    }) => {
+      const { error } = await supabase
+        .from('menstrual_cycles')
+        .update({
+          cycle_start_date: input.startDate,
+          cycle_end_date: input.endDate,
+          period_length_days: input.periodLength,
+          flow_intensity: input.flow,
+          pain_level: input.pain,
+          notes: input.notes?.trim() || null,
+        })
+        .eq('id', input.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => invalidate(queryClient),
@@ -612,6 +648,7 @@ export const useHealth = ({ fetch = true }: { fetch?: boolean } = {}) => {
     addMental,
     updateMental,
     addCycle,
+    updateCycle,
     addGoal,
     deleteRecord,
   };

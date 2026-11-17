@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { radius, space, useTheme } from '@/theme';
@@ -73,9 +73,20 @@ export const Nudge = ({
         {body}
       </AppText>
       {actionLabel && onPress ? (
-        <AppText variant="footnote" tone="primary" onPress={onPress} style={{ paddingTop: 2 }}>
-          {actionLabel} →
-        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onPress}
+          style={({ pressed }) => ({
+            minHeight: 44,
+            justifyContent: 'center',
+            alignSelf: 'flex-start',
+            opacity: pressed ? 0.65 : 1,
+          })}
+        >
+          <AppText variant="footnote" tone="primary">
+            {actionLabel} →
+          </AppText>
+        </Pressable>
       ) : null}
       <View style={{ height: 1, backgroundColor: colors.separator }} />
     </View>

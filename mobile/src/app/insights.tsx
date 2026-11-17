@@ -22,7 +22,7 @@ export default function InsightsScreen() {
   const [range, setRange] = useState<'7' | '30'>('30');
   const { data, isPending, isError, error, refetch, isRefetching } = useInsights(range === '7' ? 7 : 30);
 
-  const chartDays = data?.days.slice(-14) ?? [];
+  const chartDays = data?.days.slice(range === '7' ? -7 : -30) ?? [];
   const moodCorrelations = (data?.correlations ?? [])
     .filter((item) => item.label.toLowerCase().includes('mood'))
     .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
@@ -69,7 +69,7 @@ export default function InsightsScreen() {
                 Auxo score
               </AppText>
               <AppText variant="mono" tone="tertiary">
-                last 14 days
+                last {range} days
               </AppText>
             </View>
             <LineChart

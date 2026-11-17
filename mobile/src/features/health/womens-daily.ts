@@ -44,7 +44,7 @@ export const useWomensDaily = () => {
         .select('id,date,flow_intensity,moods,symptoms,pain_level,notes')
         .eq('user_id', userId!)
         .order('date', { ascending: false })
-        .limit(30);
+        .limit(120);
       if (error) {
         if (error.code === 'PGRST205') return { logs: [], available: false };
         throw new Error(error.message);

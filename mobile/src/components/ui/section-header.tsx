@@ -4,45 +4,42 @@ import { AppText } from '@/components/ui/app-text';
 import { space, useTheme } from '@/theme';
 
 /**
- * A section head is a numbered entry on a ruled line: `01  NUMBERS ───────  ADD`.
- * The rule runs to the edge, so sections read as a sequence rather than cards.
+ * A section head: title, rule, optional action. No decorative numbering —
+ * sections are a document, not a sequence of steps.
  */
 export const SectionHeader = ({
-  index,
   title,
   caption,
   actionLabel,
+  actionNode,
   onAction,
 }: {
+  /** Kept for call-site compatibility; numbering is intentionally not rendered. */
   index?: string;
   title: string;
   caption?: string;
   actionLabel?: string;
+  actionNode?: React.ReactNode;
   onAction?: () => void;
 }) => {
   const { colors } = useTheme();
   return (
     <View style={{ gap: space.sm - 2 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        {index ? (
-          <AppText variant="caption" tone="primary">
-            {index}
-          </AppText>
-        ) : null}
         <AppText variant="headline">{title}</AppText>
         <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
-        {actionLabel && onAction ? (
+        {actionNode ?? (actionLabel && onAction ? (
           <Pressable
             accessibilityRole="button"
             onPress={onAction}
-            hitSlop={10}
-            style={{ minHeight: 28, justifyContent: 'center' }}
+            hitSlop={12}
+            style={{ minHeight: 32, justifyContent: 'center' }}
           >
             <AppText variant="caption" tone="primary">
               {actionLabel}
             </AppText>
           </Pressable>
-        ) : null}
+        ) : null)}
       </View>
       {caption ? (
         <AppText variant="footnote" tone="tertiary">

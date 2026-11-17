@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { isoDate } from '@/lib/format';
 import {
   evaluateExperiment,
   leverByKey,
@@ -22,7 +23,7 @@ export interface ExperimentRow {
   status: 'running' | 'done' | 'abandoned';
 }
 
-const iso = (date: Date) => date.toISOString().slice(0, 10);
+const iso = (date: Date) => isoDate(date);
 export const addDays = (day: string, days: number) =>
   iso(new Date(new Date(`${day}T00:00:00`).getTime() + days * 86_400_000));
 

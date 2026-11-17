@@ -22,6 +22,8 @@ export interface HealthProfile {
   activity_level: string | null;
   goal_type: string | null;
   daily_caloric_target: number | null;
+  cycle_length_days: number | null;
+  period_length_days: number | null;
   resting_heart_rate: number | null;
 }
 
@@ -48,7 +50,7 @@ export const useProfile = () => {
         supabase
           .from('user_profiles_health')
           .select(
-            'id,birth_date,gender,height_cm,weight_kg,target_weight_kg,activity_level,goal_type,daily_caloric_target,resting_heart_rate',
+            'id,birth_date,gender,height_cm,weight_kg,target_weight_kg,activity_level,goal_type,daily_caloric_target,cycle_length_days,period_length_days,resting_heart_rate',
           )
           .eq('user_id', userId!)
           .maybeSingle(),
@@ -120,6 +122,36 @@ export const useProfile = () => {
         activity_level: input.activityLevel,
         goal_type: input.goalType,
         daily_caloric_target: input.dailyCalories,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existing.data?.id) {
+        const { error } = await supabase
+          .from('user_profiles_health')
+          .update(payload)
+          .eq('id', existing.data.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase
+          .from('user_profiles_health')
+          .insert({ ...payload, user_id: userId! });
+        if (error) throw new Error(error.message);
+      }
+    },
+    onSuccess: invalidate,
+  });
+
+  const saveCycleSettings = useMutation({
+    mutationFn: async (input: { cycleLengthDays: number; periodLengthDays: number }) => {
+      const existing = await supabase
+        .from('user_profiles_health')
+        .select('id')
+        .eq('user_id', userId!)
+        .maybeSingle();
+
+      const payload = {
+        cycle_length_days: input.cycleLengthDays,
+        period_length_days: input.periodLengthDays,
         updated_at: new Date().toISOString(),
       };
 
@@ -211,6 +243,7 @@ export const useProfile = () => {
   return {
     ...query,
     saveProfile,
+    saveCycleSettings,
     saveHealthProfile,
     savePreferences,
     completeOnboarding,

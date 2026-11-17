@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
 import { RingMeter } from '@/components/charts/ring-meter';
@@ -13,8 +12,6 @@ import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
-import { Stat, StatRow } from '@/components/ui/stat';
-import { TextField } from '@/components/ui/text-field';
 import { useRelations } from '@/features/relations/use-relations';
 import { daysBetween, formatDate, formatNumber, formatStamp, relativeDay } from '@/lib/format';
 import { openAdd, openEdit } from '@/lib/navigation';
@@ -30,7 +27,6 @@ const channelIcon = (channel: string | null): IconName => {
 export default function PeopleScreen() {
   const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, isRefetching, addQualityTime } = useRelations();
-  const [query, setQuery] = useState('');
 
   const people = data?.relationships ?? [];
   const interactions = data?.interactions ?? [];
@@ -63,11 +59,15 @@ export default function PeopleScreen() {
       name: person.name,
       cadence,
       days,
+      lastContactAt: person.last_contact_at,
       overdue: days !== null && days > cadence,
     };
   });
   const inTouch = circle.filter((person) => !person.overdue).length;
   const overdue = circle.filter((person) => person.overdue);
+  const latest = circle
+    .filter((person) => person.days !== null)
+    .sort((a, b) => Number(a.days) - Number(b.days))[0];
 
   const addQuickTime = () => {
     addQualityTime.mutate(30, {
@@ -78,32 +78,64 @@ export default function PeopleScreen() {
 
   return (
     <Screen
+      header={<PageHeader title="People" date={formatStamp()} rule={false} />}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
           onRefresh={() => {
             void refetch();
           }}
-          tintColor={colors.primary}
+          tintColor={colors.bonds}
         />
       }
     >
-      <PageHeader title="People" date={formatStamp()} />
-
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
       {data ? (
         <>
-          <Card raised style={{ gap: space.xl }}>
-            <StatRow>
-              <Stat value={formatNumber(people.length)} label="People" />
-              <Stat value={formatNumber(recentMinutes)} label="Minutes, 30d" />
-              <Stat
-                value={averageMood ? averageMood.toFixed(1) : '—'}
-                label="Avg feeling"
+          <Card raised style={{ gap: space.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
+              <RingMeter
+                value={inTouch}
+                max={circle.length}
+                size={96}
+                stroke={8}
+                color={colors.bonds}
+                center={`${inTouch}/${circle.length}`}
+                label="In touch"
               />
-            </StatRow>
+              <View style={{ flex: 1, gap: 3 }}>
+                {overdue.length > 0 ? (
+                  <>
+                    <AppText variant="headline">{`${overdue.length} overdue`}</AppText>
+                    <AppText variant="footnote" tone="secondary">
+                      {`${overdue
+                        .slice(0, 3)
+                        .map((person) => person.name)
+                        .join(', ')}${
+                        overdue.length > 3 ? ` and ${overdue.length - 3} more` : ''
+                      } — worth a message.`}
+                    </AppText>
+                  </>
+                ) : latest ? (
+                  <>
+                    <AppText variant="headline">{latest.name}</AppText>
+                    <AppText variant="footnote" tone="secondary">
+                      Last spoke {(latest.lastContactAt ? relativeDay(latest.lastContactAt) : '').toLowerCase()}
+                    </AppText>
+                  </>
+                ) : (
+                  <AppText variant="body" tone="secondary">
+                    Log a first conversation to start the cadence.
+                  </AppText>
+                )}
+                <AppText variant="footnote" tone="tertiary" style={{ marginTop: 2 }}>
+                  {`${formatNumber(recentMinutes)} min · ${averageMood ? averageMood.toFixed(1) : '—'} avg feeling`}
+                </AppText>
+              </View>
+            </View>
+
             <View style={{ gap: space.xs }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
                 <AppText variant="callout">Quality time</AppText>
@@ -111,8 +143,9 @@ export default function PeopleScreen() {
                   {formatNumber(qualityDone)} / {formatNumber(qualityTarget)} min
                 </AppText>
               </View>
-              <Progress value={qualityPct} />
+              <Progress value={qualityPct} color={colors.bonds} />
             </View>
+
             <View style={{ flexDirection: 'row', gap: space.md }}>
               <View style={{ flex: 1 }}>
                 <Button label="Log contact" onPress={() => openAdd('interaction')} />
@@ -128,40 +161,8 @@ export default function PeopleScreen() {
             </View>
           </Card>
 
-          {circle.length > 0 ? (
-            <View style={{ gap: space.md }}>
-              <SectionHeader title="Your circle" caption="Who is still within their usual cadence" />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
-                <RingMeter
-                  value={inTouch}
-                  max={circle.length}
-                  size={116}
-                  stroke={9}
-                  color={colors.primary}
-                  center={`${inTouch}/${circle.length}`}
-                  label="In touch"
-                />
-                <View style={{ flex: 1, gap: 4 }}>
-                  <AppText variant="headline">
-                    {overdue.length === 0 ? 'Everyone is current' : `${overdue.length} overdue`}
-                  </AppText>
-                  <AppText variant="footnote" tone="secondary">
-                    {overdue.length === 0
-                      ? 'No one has drifted past their usual cadence.'
-                      : `${overdue
-                          .slice(0, 3)
-                          .map((person) => person.name)
-                          .join(', ')}${
-                          overdue.length > 3 ? ` and ${overdue.length - 3} more` : ''
-                        } — worth a message.`}
-                  </AppText>
-                </View>
-              </View>
-            </View>
-          ) : null}
-
           <SectionHeader
-            title="People"
+            title="Your circle"
             actionLabel="Add"
             onAction={() => openAdd('person')}
           />
@@ -175,11 +176,7 @@ export default function PeopleScreen() {
             />
           ) : (
             <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              {people
-                .filter((person) =>
-                  `${person.name} ${person.relation_type ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()),
-                )
-                .map((person, index) => {
+              {people.map((person, index) => {
                 const cadence = cadenceFor(person.id);
                 const days = person.last_contact_at ? daysBetween(person.last_contact_at) : null;
                 const overdue = days !== null && days > cadence;
@@ -205,9 +202,15 @@ export default function PeopleScreen() {
                         {relativeDay(person.last_contact_at)}
                       </AppText>
                     </View>
-                    <Progress value={progress} color={overdue ? colors.danger : colors.primary} />
-                    <AppText variant="caption" tone="tertiary">
-                      {`Usually every ${cadence} days`}
+                    <Progress value={progress} color={overdue ? colors.danger : colors.bonds} />
+                    <AppText variant="footnote" tone="tertiary">
+                      {`Every ~${cadence} days${
+                        days === null
+                          ? ''
+                          : overdue
+                            ? ` · ${days - cadence} ${days - cadence === 1 ? 'day' : 'days'} over`
+                            : ` · ${Math.max(0, cadence - days)} ${cadence - days === 1 ? 'day' : 'days'} left`
+                      }`}
                     </AppText>
                   </Pressable>
                 );
@@ -215,12 +218,7 @@ export default function PeopleScreen() {
             </Card>
           )}
 
-          <SectionHeader
-            title="Recent contact"
-            caption="Last 30 days"
-            actionLabel="Log"
-            onAction={() => openAdd('interaction')}
-          />
+          <SectionHeader title="Recent contact" caption="Last 30 days" />
           {interactions.length === 0 ? (
             <EmptyState
               icon="message"

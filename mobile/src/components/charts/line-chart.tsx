@@ -12,6 +12,7 @@ export const LineChart = ({
   values,
   width,
   height = 180,
+  minValue,
   maxValue = 100,
   color,
   startLabel,
@@ -20,6 +21,8 @@ export const LineChart = ({
   values: number[];
   width: number;
   height?: number;
+  /** Set a data-driven minimum for money charts. Omit for 0-based scores. */
+  minValue?: number;
   maxValue?: number;
   color?: string;
   startLabel?: string;
@@ -28,9 +31,21 @@ export const LineChart = ({
   const { colors } = useTheme();
   const plot = height - 10;
   const step = values.length > 1 ? width / (values.length - 1) : width;
+  const low = minValue ?? 0;
+  const high = Math.max(maxValue, low + 1);
+  const span = high - low;
+  // Money charts should show movement, not a flat line pinned to the ceiling.
+  // A small padded domain keeps a £0 change visible and centred.
+  const pad = minValue === undefined ? 0 : span > 0 ? span * 0.12 : Math.max(1, high * 0.02);
+  const domainLow = low - pad;
+  const domainHigh = high + pad;
+  const domainSpan = Math.max(1, domainHigh - domainLow);
   const points = values.map((value, index) => {
     const x = index * step;
-    const y = 4 + (1 - Math.min(1, Math.max(0, value / maxValue))) * (plot - 8);
+    const normalized = minValue === undefined
+      ? Math.min(1, Math.max(0, value / high))
+      : Math.min(1, Math.max(0, (value - domainLow) / domainSpan));
+    const y = 4 + (1 - normalized) * (plot - 8);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   const last = points[points.length - 1]?.split(',') ?? ['0', '0'];

@@ -188,7 +188,14 @@ export const InteractionForm = ({ personId, recordId }: { personId?: string; rec
           keyboardType="number-pad"
           maxLength={4}
         />
-        <Slider label="Feeling" value={mood} onChange={setMood} min={1} max={10} />
+        <Slider
+          label="Feeling"
+          value={mood}
+          onChange={setMood}
+          min={1}
+          max={10}
+          formatValue={(value) => `${value}/10`}
+        />
         <DateTimeField label="When" value={date} onChange={setDate} />
         <TextField
           label="Notes (optional)"

@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/auth-provider';
 
 export interface CalendarDay {
   date: string;
+  total: number | null;
   health: number | null;
   wealth: number | null;
   relations: number | null;
@@ -14,10 +15,7 @@ export interface CalendarDay {
   totalGoals: number;
 }
 
-const TABLES = [
-  ['health_daily_scores', 'health'],
-  ['wealth_daily_scores', 'wealth'],
-  ['relations_daily_scores', 'relations'],
+const GOAL_TABLES = [
   ['health_goals_progress', 'healthGoals'],
   ['wealth_goals_progress', 'wealthGoals'],
   ['relations_goals_progress', 'relationsGoals'],
@@ -25,6 +23,7 @@ const TABLES = [
 
 const emptyDay = (date: string): CalendarDay => ({
   date,
+  total: null,
   health: null,
   wealth: null,
   relations: null,
@@ -50,36 +49,58 @@ export const useCalendar = (month: Date) => {
         cursor.setDate(cursor.getDate() + 1);
       }
 
-      const results = await Promise.all(
-        TABLES.map(async ([table, key]) => {
-          const select = key.endsWith('Goals')
-            ? 'date,score,completed_count,total_count'
-            : 'date,score';
+      // One canonical reading per day: the same snapshots the weekly review
+      // and experiments use, so today cannot say 64 here and 69 on Today.
+      const [scores, ...goalResults] = await Promise.all([
+        supabase
+          .from('score_snapshots')
+          .select('date,total,health,wealth,bonds')
+          .eq('user_id', userId)
+          .gte('date', start)
+          .lte('date', end),
+        ...GOAL_TABLES.map(async ([table, key]) => {
           const result = await supabase
             .from(table)
-            .select(select)
+            .select('date,score,completed_count,total_count')
             .eq('user_id', userId)
             .gte('date', start)
             .lte('date', end);
           return { key, result };
         }),
-      );
+      ]);
 
-      for (const { key, result } of results) {
+      if (scores.error) throw new Error(scores.error.message);
+      for (const row of scores.data ?? []) {
+        const typed = row as unknown as {
+          date: string;
+          total: number | null;
+          health: number | null;
+          wealth: number | null;
+          bonds: number | null;
+        };
+        const bucket = buckets.get(typed.date);
+        if (!bucket) continue;
+        bucket.total = typed.total;
+        bucket.health = typed.health;
+        bucket.wealth = typed.wealth;
+        bucket.relations = typed.bonds;
+      }
+
+      for (const { key, result } of goalResults) {
         if (result.error) {
           if (result.error.code === 'PGRST205') continue;
           throw new Error(result.error.message);
         }
         for (const row of result.data ?? []) {
-          const typed = row as unknown as { date: string; score: number | null; completed_count?: number; total_count?: number };
+          const typed = row as unknown as {
+            date: string;
+            completed_count?: number;
+            total_count?: number;
+          };
           const bucket = buckets.get(typed.date);
           if (!bucket) continue;
-          if (key === 'health' || key === 'wealth' || key === 'relations') {
-            bucket[key] = typed.score;
-          } else {
-            bucket.completedGoals += Number(typed.completed_count ?? 0);
-            bucket.totalGoals += Number(typed.total_count ?? 0);
-          }
+          bucket.completedGoals += Number(typed.completed_count ?? 0);
+          bucket.totalGoals += Number(typed.total_count ?? 0);
         }
       }
 

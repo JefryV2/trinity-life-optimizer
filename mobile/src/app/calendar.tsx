@@ -18,14 +18,15 @@ const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const scoreColor = (score: number | null, colors: ReturnType<typeof useTheme>['colors']) => {
   if (score === null) return colors.surfaceAlt;
-  if (score >= 75) return colors.success;
+  if (score >= 70) return colors.success;
   if (score >= 50) return colors.amber;
-  if (score > 0) return colors.primary;
+  if (score > 0) return colors.textTertiary;
   return colors.surfaceSunken;
 };
 
 const trinity = (day: CalendarDay | null) => {
   if (!day) return null;
+  if (day.total !== null) return day.total;
   const values = [day.health, day.wealth, day.relations].filter((value): value is number => value !== null);
   if (!values.length) return null;
   return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
@@ -128,6 +129,9 @@ export default function CalendarScreen() {
                   <Pressable
                     key={day.date}
                     accessibilityRole="button"
+                    accessibilityLabel={`${formatLongDate(day.date)}: ${
+                      score === null ? 'no reading' : `${score} out of 100`
+                    }`}
                     accessibilityState={{ selected: active }}
                     onPress={() => setSelected(day.date)}
                     style={({ pressed }) => ({
@@ -163,6 +167,20 @@ export default function CalendarScreen() {
                   </Pressable>
                 );
               })}
+            </View>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space.lg }}>
+          {[
+            { color: colors.success, label: '70+' },
+            { color: colors.amber, label: '50–74' },
+            { color: colors.textTertiary, label: 'Under 50' },
+          ].map((item) => (
+            <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: item.color }} />
+              <AppText variant="caption" tone="tertiary">
+                {item.label}
+              </AppText>
             </View>
           ))}
         </View>

@@ -49,6 +49,10 @@ export const Slider = ({
   };
 
   const percent = ((value - min) / (max - min)) * 100;
+  const adjust = (direction: 1 | -1) => {
+    const next = Number(clamp(value + direction * step, min, max).toFixed(2));
+    onChange(next);
+  };
 
   return (
     <View style={{ gap: space.xs }}>
@@ -65,8 +69,15 @@ export const Slider = ({
       <View
         {...responder.panHandlers}
         onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        accessible
         accessibilityRole="adjustable"
+        accessibilityLabel={label}
         accessibilityValue={{ min, max, now: value }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'increment') adjust(1);
+          if (event.nativeEvent.actionName === 'decrement') adjust(-1);
+        }}
         style={{ height: 44, justifyContent: 'center' }}
       >
         <View

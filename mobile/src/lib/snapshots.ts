@@ -1,3 +1,4 @@
+import { isoDate } from '@/lib/format';
 import type { ScoreReport } from '@/lib/score';
 import { supabase } from '@/lib/supabase';
 
@@ -25,7 +26,7 @@ export const saveDailySnapshot = async (
   const pillar = (key: 'health' | 'wealth' | 'bonds') =>
     report.pillars.find((item) => item.key === key)?.value ?? 0;
 
-  const date = new Date().toISOString().slice(0, 10);
+  const date = isoDate();
   const key = JSON.stringify([
     userId,
     date,

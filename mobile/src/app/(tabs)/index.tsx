@@ -1,28 +1,22 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { TrinityRings } from '@/components/charts/trinity-rings';
-import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Nudge } from '@/components/ui/pillar-strip';
 import { Screen } from '@/components/ui/screen';
-import { Reveal } from '@/components/ui/reveal';
 import { SectionHeader } from '@/components/ui/section-header';
-import { LoadingState, ErrorState } from '@/components/ui/states';
-import { Stat, StatRow } from '@/components/ui/stat';
+import { ErrorState, LoadingState } from '@/components/ui/states';
 import { FirstSignal } from '@/features/dashboard/first-signal';
 import { useDashboard } from '@/features/dashboard/use-dashboard';
-import { useHealth } from '@/features/health/use-health';
-import { formatLongDate, formatNumber, greeting, scoreLabel } from '@/lib/format';
+import { formatNumber, formatStamp, greeting, scoreLabel } from '@/lib/format';
 import { trackOnce } from '@/lib/analytics';
 import { openAdd, openHealth, openInsight, openRelations, openWealth } from '@/lib/navigation';
 import { ACTION_HINT, ACTION_LABEL, PILLAR_COLOR, PILLAR_ROUTE } from '@/lib/score-labels';
-import { radius, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 const PILLAR_ICON: Record<string, IconName> = {
   health: 'heart',
@@ -33,13 +27,6 @@ const PILLAR_ICON: Record<string, IconName> = {
 export default function Dashboard() {
   const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, isRefetching, isStale } = useDashboard();
-  const { addWater } = useHealth({ fetch: false });
-
-  const pillarColor = {
-    health: PILLAR_COLOR.health,
-    wealth: PILLAR_COLOR.wealth,
-    relations: PILLAR_COLOR.bonds,
-  };
 
   const firstSignal = data
     ? data.focus === 'health'
@@ -49,21 +36,11 @@ export default function Dashboard() {
         : data.relations.interactions === 0
     : false;
 
-  const [justLogged, setJustLogged] = useState(false);
-  const loggedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
     if (data && !firstSignal) {
       void trackOnce('first_signal_logged', { focus: data.focus });
     }
   }, [data, firstSignal]);
-
-  useEffect(
-    () => () => {
-      if (loggedTimer.current) clearTimeout(loggedTimer.current);
-    },
-    [],
-  );
 
   // Other tabs mark the dashboard stale instead of refetching 14 tables in the
   // save path. Catch up when Today becomes visible again.
@@ -73,18 +50,94 @@ export default function Dashboard() {
     }, [data, isStale, refetch]),
   );
 
-  const drinkWater = useCallback(() => {
-    addWater.mutate(250, {
-      onSuccess: () => {
-        setJustLogged(true);
-        if (loggedTimer.current) clearTimeout(loggedTimer.current);
-        loggedTimer.current = setTimeout(() => setJustLogged(false), 1600);
-      },
-    });
-  }, [addWater]);
+  const hour = new Date().getHours();
+  const late = hour >= 22 || hour < 5;
+  const healthPillar = data?.score.pillars.find((pillar) => pillar.key === 'health');
+  const sleep = healthPillar?.contributions.find((item) => item.key === 'sleep');
+  const nightAction = late && sleep && sleep.lost > 0 ? sleep : null;
+  const topAction = data?.score.topAction ?? null;
+  const latePlan = Boolean(
+    late && !nightAction && topAction && ['steps', 'exercise'].includes(topAction.key),
+  );
+
+  const openTopAction = () => {
+    if (!topAction) return;
+    switch (topAction.key) {
+      case 'sleep':
+        openAdd('sleep');
+        break;
+      case 'steps':
+      case 'water':
+        openHealth('fitness');
+        break;
+      case 'exercise':
+        openAdd('exercise');
+        break;
+      case 'mental':
+      case 'mood':
+        openAdd('mental');
+        break;
+      case 'savings':
+        openWealth('overview');
+        break;
+      case 'spend':
+        openWealth('expenses');
+        break;
+      case 'contact':
+        if (data?.relations.people === 0) openAdd('person');
+        else openAdd('interaction');
+        break;
+      default:
+        router.push(PILLAR_ROUTE[topAction.pillar] as never);
+    }
+  };
+
+  const pillars = data
+    ? [
+        {
+          key: 'health' as const,
+          label: 'Health',
+          value: data.health.score,
+          color: PILLAR_COLOR.health,
+          caption:
+            data.health.steps > 0
+              ? `${formatNumber(data.health.steps)} steps`
+              : data.health.sleepHours > 0
+                ? `${data.health.sleepHours.toFixed(1)} h sleep`
+                : 'Not logged',
+          open: () => openHealth(),
+        },
+        {
+          key: 'wealth' as const,
+          label: 'Wealth',
+          value: data.wealth.tracked ? data.wealth.score : null,
+          color: data.wealth.tracked ? PILLAR_COLOR.wealth : colors.textTertiary,
+          caption: data.wealth.tracked ? `${Math.round(data.wealth.rate)}% saved` : 'No income logged',
+          open: () => openWealth(),
+        },
+        {
+          key: 'relations' as const,
+          label: 'People',
+          value: data.relations.score,
+          color: PILLAR_COLOR.bonds,
+          caption: `${data.relations.people} ${data.relations.people === 1 ? 'person' : 'people'}`,
+          open: openRelations,
+        },
+      ]
+    : [];
 
   return (
     <Screen
+      header={
+        <View style={{ gap: 2 }}>
+          <AppText variant="title" numberOfLines={1}>
+            {greeting()}, {data?.name ?? 'there'}
+          </AppText>
+          <AppText variant="mono" tone="tertiary">
+            {formatStamp()}
+          </AppText>
+        </View>
+      }
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -95,15 +148,6 @@ export default function Dashboard() {
         />
       }
     >
-      <View style={{ gap: 2 }}>
-        <AppText variant="title">
-          {greeting()}, {data?.name ?? 'there'}
-        </AppText>
-        <AppText variant="footnote" tone="secondary">
-          {formatLongDate()}
-        </AppText>
-      </View>
-
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
@@ -111,13 +155,20 @@ export default function Dashboard() {
         <>
           {firstSignal ? <FirstSignal focus={data.focus} people={data.relations.people} /> : null}
 
-          <Reveal index={0}>
-          <View style={{ alignItems: 'center', gap: space.md }}>
+          <View style={{ alignItems: 'center', gap: space.sm }}>
             <TrinityRings
-              size={220}
+              size={180}
+              stroke={11}
+              gap={6}
+              centerSize={48}
               rings={[
                 { key: 'health', label: 'Health', value: data.health.score, color: colors.primary },
-                { key: 'wealth', label: 'Wealth', value: data.wealth.score, color: data.wealth.tracked ? colors.amber : colors.textFaint },
+                {
+                  key: 'wealth',
+                  label: 'Wealth',
+                  value: data.wealth.score,
+                  color: data.wealth.tracked ? colors.amber : colors.textFaint,
+                },
                 { key: 'relations', label: 'People', value: data.relations.score, color: PILLAR_COLOR.bonds },
               ]}
               center={Math.round(data.trinity)}
@@ -127,235 +178,108 @@ export default function Dashboard() {
             <AppText variant="headline" tone="secondary">
               {scoreLabel(data.trinity)}
             </AppText>
+          </View>
 
-            <View style={{ flexDirection: 'row', gap: space.lg, width: '100%' }}>
-              {(
-                [
-                  {
-                    key: 'health' as const,
-                    label: 'Health',
-                    caption: `${formatNumber(data.health.steps)} steps`,
-                    value: data.health.score,
-                    open: () => openHealth(),
-                  },
-                  {
-                    key: 'wealth' as const,
-                    label: 'Wealth',
-                    caption: data.wealth.tracked ? `${Math.round(data.wealth.rate)}% saved` : 'No income logged',
-                    value: data.wealth.score,
-                    open: () => openWealth(),
-                  },
-                  {
-                    key: 'relations' as const,
-                    label: 'People',
-                    caption: `${data.relations.people} people`,
-                    value: data.relations.score,
-                    open: openRelations,
-                  },
-                ]
-              ).map((pillar) => (
-                <Pressable
-                  key={pillar.key}
-                  accessibilityRole="button"
-                  onPress={pillar.open}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    alignItems: 'center',
-                    gap: 2,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: 4,
-                        backgroundColor: pillarColor[pillar.key],
-                      }}
-                    />
-                    <AppText variant="caption" tone="secondary" style={{ letterSpacing: 0.4 }}>
-                      {pillar.label.toUpperCase()}
-                    </AppText>
-                  </View>
-                  <AppText
-                    variant="headline"
-                    style={{
-                      fontSize: 30,
-                      lineHeight: 34,
-                      fontVariant: ['tabular-nums'],
-                      color: pillarColor[pillar.key],
-                    }}
-                  >
-                    {pillar.key === 'wealth' && !data.wealth.tracked ? '—' : Math.round(pillar.value)}
-                  </AppText>
-                  <AppText variant="caption" tone="tertiary">
+          <View>
+            {pillars.map((pillar, index) => (
+              <Pressable
+                key={pillar.key}
+                accessibilityRole="button"
+                accessibilityHint={`Opens ${pillar.label}`}
+                onPress={pillar.open}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  paddingVertical: space.md,
+                  borderTopWidth: index === 0 ? 0 : 1,
+                  borderTopColor: colors.separator,
+                  opacity: pressed ? 0.65 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 4,
+                    backgroundColor: pillar.color,
+                  }}
+                />
+                <View style={{ flex: 1, gap: 1 }}>
+                  <AppText variant="callout">{pillar.label}</AppText>
+                  <AppText variant="footnote" tone="tertiary">
                     {pillar.caption}
                   </AppText>
-                </Pressable>
-              ))}
-            </View>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
-              <AppText
-                variant="footnote"
-                tone="primary"
-                onPress={() => router.push('/why' as never)}
-                style={{ paddingVertical: 4 }}
-              >
-                {data.score.total > 0 ? `Why ${data.score.total}?` : 'How the score works'}
-              </AppText>
-              <AppText
-                variant="footnote"
-                tone="tertiary"
-                onPress={() => router.push('/experiments' as never)}
-                style={{ paddingVertical: 4 }}
-              >
-                Run a 7-day experiment
-              </AppText>
-            </View>
+                </View>
+                <AppText
+                  variant="headline"
+                  style={{ color: pillar.color, fontVariant: ['tabular-nums'] }}
+                >
+                  {pillar.value === null ? '—' : Math.round(pillar.value)}
+                </AppText>
+              </Pressable>
+            ))}
           </View>
-          </Reveal>
 
-          {data.score?.topAction && !firstSignal ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/why' as never)}
+            hitSlop={12}
+            style={({ pressed }) => ({
+              alignSelf: 'center',
+              minHeight: 44,
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <AppText variant="footnote" tone="primary">
+              {data.score.total > 0 ? `Why ${data.score.total}?` : 'How the score works'}
+            </AppText>
+          </Pressable>
+
+          {!firstSignal ? (
             <View style={{ gap: space.sm }}>
-              <SectionHeader index="01" title="One thing" />
+              <SectionHeader title="Next step" />
               <Nudge
-                title={data.score.topAction.label}
-                body={ACTION_HINT[data.score.topAction.key] ?? 'Log this and the reading gets sharper.'}
-                actionLabel={ACTION_LABEL[data.score.topAction.key] ?? 'Open'}
-                onPress={() => {
-                  const action = data.score.topAction!;
-                  switch (action.key) {
-                    case 'sleep':
-                      openAdd('sleep');
-                      break;
-                    case 'steps':
-                    case 'water':
-                      openHealth('fitness');
-                      break;
-                    case 'exercise':
-                      openAdd('exercise');
-                      break;
-                    case 'mental':
-                    case 'mood':
-                      openAdd('mental');
-                      break;
-                    case 'savings':
-                    case 'spend':
-                      openAdd('transaction');
-                      break;
-                    case 'contact':
-                      if (data.relations.people === 0) openAdd('person');
-                      else openAdd('interaction');
-                      break;
-                    default:
-                      router.push(PILLAR_ROUTE[action.pillar] as never);
-                  }
-                }}
+                title={
+                  nightAction
+                    ? ACTION_HINT.sleep
+                    : latePlan
+                      ? 'Plan tomorrow'
+                      : topAction
+                        ? ACTION_HINT[topAction.key] ?? topAction.label
+                        : 'Log one thing'
+                }
+                body={
+                  nightAction
+                    ? `${nightAction.display} · ${nightAction.lost} points left`
+                    : latePlan
+                      ? 'Steps and workouts are better in daylight. Pick one thing for tomorrow.'
+                      : topAction
+                        ? `${topAction.display} · ${topAction.points} points available`
+                        : 'One entry is enough to make today readable.'
+                }
+                actionLabel={
+                  nightAction
+                    ? 'Log sleep'
+                    : latePlan
+                      ? 'Choose a next step'
+                      : topAction
+                        ? ACTION_LABEL[topAction.key] ?? 'Open'
+                        : 'Log'
+                }
+                onPress={
+                  nightAction
+                    ? () => openAdd('sleep')
+                    : latePlan
+                      ? () => router.push('/experiments' as never)
+                      : openTopAction
+                }
               />
             </View>
           ) : null}
 
-          <Reveal index={1}>
-          <View style={{ gap: space.md }}>
-            <SectionHeader index="02" title="Today's vitals" />
-            <Card style={{ gap: space.lg }}>
-              <StatRow>
-                <Stat value={formatNumber(data.health.steps)} label="Steps" />
-                <Stat
-                  value={data.health.sleepHours > 0 ? data.health.sleepHours.toFixed(1) : '—'}
-                  label="Sleep avg (h)"
-                />
-              </StatRow>
-              <StatRow>
-                <Stat
-                  value={formatNumber(data.health.water)}
-                  label="Water (ml)"
-                  tone={data.health.water >= data.health.waterTarget ? 'success' : 'default'}
-                />
-                <Stat
-                  value={data.health.stress > 0 ? data.health.stress.toFixed(1) : '—'}
-                  label="Stress /10"
-                  tone={data.health.stress >= 7 ? 'danger' : 'default'}
-                />
-              </StatRow>
-            </Card>
-          </View>
-          </Reveal>
-
-          <Reveal index={2}>
-          <View style={{ gap: space.md }}>
-            <SectionHeader index="03" title="Stress" />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
-              <RingMeter
-                value={data.stress.score}
-                max={100}
-                size={88}
-                stroke={7}
-                color={
-                  data.stress.level === 'High'
-                    ? colors.danger
-                    : data.stress.level === 'Medium'
-                      ? colors.amber
-                      : colors.primary
-                }
-                center={String(data.stress.score)}
-                label="Load"
-              />
-              <View style={{ flex: 1, gap: 4 }}>
-                <AppText variant="headline">{data.stress.level}</AppText>
-                {data.stress.drivers.length > 0 ? (
-                  data.stress.drivers.map((driver) => (
-                    <AppText key={driver.key} variant="footnote" tone="secondary">
-                      {driver.label}
-                    </AppText>
-                  ))
-                ) : (
-                  <AppText variant="footnote" tone="secondary">
-                    All clear.
-                  </AppText>
-                )}
-              </View>
-            </View>
-          </View>
-          </Reveal>
-
-          <Reveal index={3}>
-          <View style={{ gap: space.md }}>
-            <SectionHeader index="04" title="Quick log" />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-              <Button
-                label="+250 ml water"
-                variant="soft"
-                size="small"
-                icon={
-                  justLogged ? (
-                    <Animated.View key="logged" entering={FadeIn.duration(160)}>
-                      <Icon name="check" size={15} color={colors.primary} />
-                    </Animated.View>
-                  ) : (
-                    <Icon name="water" size={15} color={colors.primary} />
-                  )
-                }
-                loading={addWater.isPending}
-                onPress={drinkWater}
-              />
-              <Button label="Sleep" variant="secondary" size="small" onPress={() => openAdd('sleep')} />
-              <Button
-                label="Expense"
-                variant="secondary"
-                size="small"
-                onPress={() => openAdd('transaction')}
-              />
-              <Button label="Food" variant="secondary" size="small" onPress={() => router.push('/meal-builder' as never)} />
-              <Button label="Mood" variant="secondary" size="small" onPress={() => openAdd('mental')} />
-            </View>
-          </View>
-          </Reveal>
-
           {data.insights.length > 0 ? (
-            <Reveal index={4}>
             <View style={{ gap: space.md }}>
               <SectionHeader title="Coach notes" />
               {data.insights.map((insight) => (
@@ -364,8 +288,7 @@ export default function Dashboard() {
                   accessibilityRole="button"
                   onPress={() => openInsight(insight.href)}
                   style={({ pressed }) => ({
-                    borderRadius: radius.card,
-                    opacity: pressed ? 0.85 : 1,
+                    opacity: pressed ? 0.8 : 1,
                   })}
                 >
                   <Card style={{ gap: space.sm }}>
@@ -373,7 +296,7 @@ export default function Dashboard() {
                       <Icon
                         name={PILLAR_ICON[insight.pillar]}
                         size={15}
-                        color={pillarColor[insight.pillar]}
+                        color={PILLAR_COLOR[insight.pillar]}
                       />
                       <AppText variant="callout" style={{ flex: 1, fontWeight: '600' }}>
                         {insight.title}
@@ -387,7 +310,6 @@ export default function Dashboard() {
                 </Pressable>
               ))}
             </View>
-            </Reveal>
           ) : null}
         </>
       ) : null}

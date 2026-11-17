@@ -27,7 +27,7 @@ import {
 import { space, useTheme } from '@/theme';
 
 export default function AddFormRoute() {
-  const { form, person, id } = useLocalSearchParams<{ form: string; person?: string; id?: string }>();
+  const { form, person, id, mood } = useLocalSearchParams<{ form: string; person?: string; id?: string; mood?: string }>();
   const { colors } = useTheme();
 
   const forms: Record<string, React.ReactNode> = {
@@ -36,8 +36,8 @@ export default function AddFormRoute() {
     steps: <StepsForm />,
     food: <FoodForm recordId={id} />,
     meal: <FoodForm meal recordId={id} />,
-    mental: <MentalForm recordId={id} />,
-    cycle: <CycleForm />,
+    mental: <MentalForm recordId={id} initialMood={mood} />,
+    cycle: <CycleForm recordId={id} />,
     goal: <GoalForm />,
     'heart-manual': <HeartManualForm />,
     account: <AccountForm />,

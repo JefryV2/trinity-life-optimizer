@@ -33,6 +33,7 @@ export const DateTimeField = ({ label, value, mode = 'date', onChange }: DateTim
       </AppText>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`${label}: ${formatted}`}
         onPress={open}
         style={({ pressed }) => ({
           minHeight: 46,

@@ -22,9 +22,9 @@ const empty: ScoreInput = {
 };
 
 const perfect: ScoreInput = {
-  health: { steps: 12000, sleepHours: 8.5, sleepQuality: 5, exerciseMinutes: 60, waterMl: 3000, waterTarget: 2500, mood: 5, stress: 0 },
+  health: { steps: 12000, sleepHours: 8.5, sleepQuality: 10, exerciseMinutes: 60, waterMl: 3000, waterTarget: 2500, mood: 10, stress: 0 },
   wealth: { income: 5000, expenses: 0, savingsRate: 100 },
-  bonds: { interactions7d: 8, people: 6, avgMood: 5 },
+  bonds: { interactions7d: 8, people: 6, avgMood: 10 },
 };
 
 check('empty input scores 0', computeScore(empty).total === 0);
@@ -57,12 +57,12 @@ const negative = computeScore({ ...empty, wealth: { ...empty.wealth, expenses: -
 check('negative inputs do not produce negative points', negative.pillars.every((p) => p.value >= 0));
 
 const unloggedMental = computeScore({ ...empty, health: { ...empty.health, steps: 10000 } });
-const loggedMental = computeScore({ ...empty, health: { ...empty.health, steps: 10000, mood: 5, stress: 0 } });
+const loggedMental = computeScore({ ...empty, health: { ...empty.health, steps: 10000, mood: 10, stress: 0 } });
 check('a missing mental log is not a penalty beyond its ceiling', unloggedMental.pillars[0].value < loggedMental.pillars[0].value);
 
 const weakest = computeScore({
   ...empty,
-  health: { ...empty.health, steps: 10000, sleepHours: 8, sleepQuality: 5, exerciseMinutes: 45, waterMl: 2500, mood: 5, stress: 0 },
+  health: { ...empty.health, steps: 10000, sleepHours: 8, sleepQuality: 10, exerciseMinutes: 45, waterMl: 2500, mood: 10, stress: 0 },
   wealth: { income: 5000, expenses: 100, savingsRate: 90 },
   bonds: { interactions7d: 0, people: 0, avgMood: 0 },
 });
@@ -77,12 +77,12 @@ check('no action suggested when nothing is left', nothingLeft.topAction === null
 
 /* stress */
 const calmInput = {
-  health: { steps: 9000, sleepHours: 8, sleepQuality: 5, exerciseMinutes: 40, waterMl: 2500, waterTarget: 2500, mood: 4, stress: 1 },
+  health: { steps: 9000, sleepHours: 8, sleepQuality: 10, exerciseMinutes: 40, waterMl: 2500, waterTarget: 2500, mood: 8, stress: 1 },
   wealth: { income: 5000, expenses: 2000, savingsRate: 60 },
-  bonds: { interactions7d: 5, people: 5, avgMood: 4 },
+  bonds: { interactions7d: 5, people: 5, avgMood: 8 },
 };
 const loadedInput = {
-  health: { steps: 1000, sleepHours: 4, sleepQuality: 2, exerciseMinutes: 0, waterMl: 200, waterTarget: 2500, mood: 2, stress: 9 },
+  health: { steps: 1000, sleepHours: 4, sleepQuality: 4, exerciseMinutes: 0, waterMl: 200, waterTarget: 2500, mood: 4, stress: 9 },
   wealth: { income: 1000, expenses: 1100, savingsRate: 0 },
   bonds: { interactions7d: 0, people: 0, avgMood: 0 },
 };

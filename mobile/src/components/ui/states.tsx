@@ -28,7 +28,7 @@ export const EmptyState = ({
         {message}
       </AppText>
       {actionLabel && onAction ? (
-        <Button label={actionLabel} onPress={onAction} size="small" variant="secondary" />
+        <Button label={actionLabel} onPress={onAction} size="small" />
       ) : null}
     </Card>
   );

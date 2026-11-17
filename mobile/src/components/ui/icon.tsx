@@ -32,7 +32,6 @@ const GLYPH = {
   trash: 'trash-outline',
   arrowUp: 'trending-up-outline',
   arrowDown: 'trending-down-outline',
-  sparkles: 'sparkles-outline',
   target: 'flag-outline',
   lock: 'lock-closed-outline',
   bell: 'notifications-outline',

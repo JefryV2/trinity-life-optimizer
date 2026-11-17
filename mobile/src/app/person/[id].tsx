@@ -15,12 +15,18 @@ import { Stat, StatRow } from '@/components/ui/stat';
 import { useRelations } from '@/features/relations/use-relations';
 import { daysBetween, formatDate, formatNumber, relativeDay } from '@/lib/format';
 import { openEdit } from '@/lib/navigation';
-import { space } from '@/theme';
+import { space, useTheme } from '@/theme';
+
+const humanise = (value: string) =>
+  value
+    .replace(/[-_]/g, ' ')
+    .replace(/^./, (letter) => letter.toUpperCase());
 
 const importanceLabel = (value: number | null) =>
   ['Acquaintance', 'Casual', 'Close', 'Core', 'Inner circle'][Math.min(4, Math.max(0, (value ?? 3) - 1))];
 
 export default function PersonDetail() {
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isPending } = useRelations();
   const person = data?.relationships.find((item) => item.id === id);
@@ -68,12 +74,12 @@ export default function PersonDetail() {
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
       <BackLink fallback="/(tabs)/relations" />
-      <PageHeader title={person.name} date={person.relation_type ?? 'person'} />
+      <PageHeader title={person.name} date={person.relation_type ? humanise(person.relation_type) : 'Person'} />
 
       <Card style={{ gap: space.lg }}>
         <StatRow>
           <Stat value={formatNumber(interactions.length)} label="Contacts" />
-          <Stat value={`${formatNumber(minutes)}m`} label="Time" />
+          <Stat value={`${formatNumber(minutes)} min`} label="Time" />
           <Stat value={mood ? mood.toFixed(1) : '—'} label="Avg feeling" />
         </StatRow>
         <View style={{ gap: space.xs }}>
@@ -83,7 +89,7 @@ export default function PersonDetail() {
               {importanceLabel(person.importance)}
             </AppText>
           </View>
-          <Progress value={progress} color={progress >= 100 ? '#FF6B5A' : undefined} />
+          <Progress value={progress} color={progress >= 100 ? colors.danger : colors.bonds} />
         </View>
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 1 }}>
@@ -114,7 +120,7 @@ export default function PersonDetail() {
           {interactions.map((interaction, index) => (
             <ListRow
               key={interaction.id}
-              title={interaction.channel ?? 'Contact'}
+              title={interaction.channel ? humanise(interaction.channel) : 'Contact'}
               subtitle={`${formatDate(interaction.occurred_at)}${interaction.notes ? ` · ${interaction.notes}` : ''}`}
               value={`${formatNumber(Number(interaction.duration_minutes ?? 0))} min`}
               onPress={() => openEdit('interaction', interaction.id)}

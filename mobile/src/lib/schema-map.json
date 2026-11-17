@@ -299,7 +299,9 @@
     "created_at": "timestamp with time zone",
     "updated_at": "timestamp with time zone",
     "resting_heart_rate": "integer",
-    "daily_step_goal": "integer"
+    "daily_step_goal": "integer",
+    "cycle_length_days": "integer",
+    "period_length_days": "integer"
   },
   "uv_index_records": {
     "id": "uuid",

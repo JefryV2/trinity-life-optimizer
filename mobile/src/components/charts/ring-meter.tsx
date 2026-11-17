@@ -1,22 +1,13 @@
-import { useEffect } from 'react';
 import { View } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedProps,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
 import { AppText } from '@/components/ui/app-text';
 import { fonts, useTheme } from '@/theme';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
 /**
  * One small ring with a value in the middle. Reused for the Health vitals,
  * budgets and the cycle day so the ring language stays consistent everywhere.
+ * The arc is static: the number is the reading, not an animation.
  */
 export const RingMeter = ({
   value,
@@ -49,21 +40,13 @@ export const RingMeter = ({
   const ratio = Math.max(0, Math.min(1, value / max));
   const ringColor = color ?? colors.primary;
 
-  const reduced = useReducedMotion();
-  const progress = useSharedValue(0);
-  useEffect(() => {
-    progress.value = reduced ? ratio : withTiming(ratio, {
-      duration: 900,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [progress, ratio, reduced]);
-
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference - progress.value * circumference,
-  }));
-
   return (
-    <View style={{ alignItems: 'center', gap: 5 }}>
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`${label ?? 'Value'}: ${center ?? Math.round(value)}${max !== 100 ? ` out of ${Math.round(max)}` : ' out of 100'}`}
+      style={{ alignItems: 'center', gap: 5 }}
+    >
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={size} height={size} style={{ position: 'absolute' }}>
           <Circle
@@ -74,7 +57,7 @@ export const RingMeter = ({
             strokeWidth={stroke}
             fill="none"
           />
-          <AnimatedCircle
+          <Circle
             cx={mid}
             cy={mid}
             r={r}
@@ -83,7 +66,7 @@ export const RingMeter = ({
             strokeLinecap="round"
             fill="none"
             strokeDasharray={`${circumference} ${circumference}`}
-            animatedProps={animatedProps}
+            strokeDashoffset={circumference - ratio * circumference}
             rotation={-90}
             origin={`${mid}, ${mid}`}
           />

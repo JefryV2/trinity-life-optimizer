@@ -4,7 +4,7 @@ import { RefreshControl } from 'react-native';
 
 import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
-import { ScrollTabs } from '@/components/ui/scroll-tabs';
+import { TabPicker } from '@/components/ui/tab-picker';
 import { SwipeSteps } from '@/components/ui/swipe';
 import { FitnessSegment } from '@/features/health/components/segments/fitness';
 import { HeartSegment } from '@/features/health/components/segments/heart';
@@ -51,6 +51,7 @@ export default function HealthHub() {
 
   return (
     <Screen
+      header={<PageHeader title="Health" date={formatStamp()} rule={false} />}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -61,9 +62,7 @@ export default function HealthHub() {
         />
       }
     >
-      <PageHeader title="Health" date={formatStamp()} />
-
-      <ScrollTabs options={options} value={active} onChange={setTab} />
+      <TabPicker options={options} value={active} onChange={setTab} title="Health section" />
 
       <SwipeSteps
         index={Math.max(0, options.findIndex((option) => option.value === active))}

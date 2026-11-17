@@ -3,11 +3,9 @@ import { View } from 'react-native';
 import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Card } from '@/components/ui/card';
-import { LogStrip, type LogAction } from '@/components/ui/log-strip';
 import { Progress } from '@/components/ui/progress';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
-import { Stat, StatRow } from '@/components/ui/stat';
 import { EnvironmentCard } from '@/features/dashboard/environment-card';
 import { useHealth } from '@/features/health/use-health';
 import { useProfile } from '@/features/profile/use-profile';
@@ -17,7 +15,7 @@ import { space, useTheme } from '@/theme';
 
 export const OverviewSegment = () => {
   const { colors } = useTheme();
-  const { data, isPending, isError, error, refetch, addWater } = useHealth();
+  const { data, isPending, isError, error, refetch } = useHealth();
   const { data: profileData } = useProfile();
 
   if (isPending) return <LoadingState />;
@@ -41,32 +39,27 @@ export const OverviewSegment = () => {
   const caloriesEaten = data.food.reduce((sum, entry) => sum + (entry.total_calories ?? 0), 0);
   const lastSleep = data.sleep[0]?.sleep_duration_hours ?? 0;
 
-  const activityScore = Math.round(
-    Math.min(stepsToday / 10000, 1) * 45 +
-      Math.min(exerciseMinutes / 30, 1) * 25 +
-      Math.min(lastSleep / 8, 1) * 30,
-  );
-
   const calorieTarget = profileData?.health?.daily_caloric_target ?? 2000;
   const water = data.hydration?.water_intake_ml ?? 0;
   const waterTarget = data.hydration?.target_ml ?? 2500;
 
-  const logActions: LogAction[] = [
-    { icon: 'bed', label: 'Sleep', onPress: () => openAdd('sleep') },
-    { icon: 'dumbbell', label: 'Workout', onPress: () => openAdd('exercise') },
-    { icon: 'food', label: 'Food', onPress: () => openAdd('food') },
-    {
-      icon: 'water',
-      label: 'Water',
-      primary: true,
-      loading: addWater.isPending,
-      onPress: () =>
-        addWater.mutate(250, {
-          onSuccess: () => {
-          },
-        }),
-    },
-  ];
+  const stepGoal = data.goals.find(
+    (goal) => goal.goal_type === 'activity' && goal.unit === 'steps' && (goal.target_value ?? 0) > 0,
+  );
+  const sleepGoal = data.goals.find(
+    (goal) => goal.goal_type === 'sleep' && (goal.target_value ?? 0) > 0,
+  );
+  const stepTarget = stepGoal?.target_value ?? 10000;
+  const sleepTarget = sleepGoal?.target_value ?? 8;
+  const otherGoals = data.goals.filter(
+    (goal) => goal.id !== stepGoal?.id && goal.id !== sleepGoal?.id,
+  );
+
+  const activityScore = Math.round(
+    Math.min(stepsToday / stepTarget, 1) * 45 +
+      Math.min(exerciseMinutes / 30, 1) * 25 +
+      Math.min(lastSleep / sleepTarget, 1) * 30,
+  );
 
   return (
     <>
@@ -90,10 +83,11 @@ export const OverviewSegment = () => {
         >
           <RingMeter
             value={stepsToday}
-            max={10000}
+            max={stepTarget}
             color={colors.primary}
-            center={`${Math.round(Math.min(1, stepsToday / 10000) * 100)}%`}
+            center={formatNumber(stepsToday)}
             label="Steps"
+            sublabel={`of ${(stepTarget / 1000).toFixed(stepTarget % 1000 === 0 ? 0 : 1)}k`}
           />
           <RingMeter
             value={exerciseMinutes}
@@ -101,32 +95,26 @@ export const OverviewSegment = () => {
             color={colors.primary}
             center={`${Math.round(exerciseMinutes)}m`}
             label="Move"
+            sublabel="of 30m"
           />
           <RingMeter
             value={lastSleep}
-            max={8}
+            max={sleepTarget}
             color={colors.primary}
             center={lastSleep.toFixed(1)}
             label="Sleep"
+            sublabel={`of ${sleepTarget}h`}
           />
           <RingMeter
             value={water}
             max={waterTarget}
             color={colors.primary}
-            center={`${Math.round(Math.min(1, water / waterTarget) * 100)}%`}
+            center={`${(water / 1000).toFixed(1)}L`}
             label="Water"
+            sublabel={`of ${(waterTarget / 1000).toFixed(waterTarget % 1000 === 0 ? 0 : 1)}L`}
           />
         </View>
       </Card>
-
-      <StatRow>
-        <Stat value={formatNumber(stepsToday)} label="Steps" />
-        <Stat value={String(exerciseMinutes)} label="Active min" />
-      </StatRow>
-      <StatRow>
-        <Stat value={formatNumber(caloriesEaten)} label="Eaten, kcal" />
-        <Stat value={formatNumber(caloriesBurned)} label="Burned, kcal" />
-      </StatRow>
 
       <Card style={{ gap: space.lg }}>
         <View style={{ gap: space.xs }}>
@@ -140,32 +128,39 @@ export const OverviewSegment = () => {
             value={(caloriesEaten / calorieTarget) * 100}
             color={caloriesEaten > calorieTarget ? colors.danger : colors.primary}
           />
-        </View>
-        <View style={{ gap: space.xs }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-            <AppText variant="callout">Hydration</AppText>
-            <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
-              {formatNumber(water)} / {formatNumber(waterTarget)} ml
+            <AppText variant="caption" tone="tertiary">
+              {formatNumber(caloriesBurned)} burned
+            </AppText>
+            <AppText variant="caption" tone="tertiary">
+              {formatNumber(Math.max(0, calorieTarget - caloriesEaten))} kcal left
             </AppText>
           </View>
-          <Progress value={(water / waterTarget) * 100} />
         </View>
       </Card>
 
       <EnvironmentCard />
 
       <SectionHeader title="Goals" actionLabel="New goal" onAction={() => openAdd('goal')} />
-      {data.goals.length === 0 ? (
-        <EmptyState
-          icon="target"
-          title="No goals yet"
-          message="Set one reachable number — steps, sleep, water — and watch it fill up."
-          actionLabel="Create a goal"
-          onAction={() => openAdd('goal')}
-        />
+      {otherGoals.length === 0 ? (
+        data.goals.length > 0 ? (
+          <Card>
+            <AppText variant="footnote" tone="secondary">
+              Daily steps and sleep targets are in the rings above.
+            </AppText>
+          </Card>
+        ) : (
+          <EmptyState
+            icon="target"
+            title="No goals yet"
+            message="Set one reachable number — steps, sleep, water — and watch it fill up."
+            actionLabel="Create a goal"
+            onAction={() => openAdd('goal')}
+          />
+        )
       ) : (
         <Card style={{ gap: space.lg }}>
-          {data.goals.map((goal) => {
+          {otherGoals.map((goal) => {
             const percent =
               goal.target_value && goal.target_value > 0
                 ? ((goal.current_value ?? 0) / goal.target_value) * 100
@@ -188,7 +183,6 @@ export const OverviewSegment = () => {
         </Card>
       )}
 
-      <LogStrip items={logActions} />
     </>
   );
 };

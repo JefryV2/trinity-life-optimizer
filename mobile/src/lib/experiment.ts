@@ -81,7 +81,7 @@ export const LEVERS: Lever[] = [
     rule: 'at least 2 interactions',
     metric: 'interactions',
     threshold: 2,
-    rationale: 'Contact is the only thing the bonds score actually rewards.',
+    rationale: 'Contact is the only thing the People score actually rewards.',
   },
 ];
 

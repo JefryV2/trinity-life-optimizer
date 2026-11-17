@@ -474,10 +474,12 @@ export type Database = {
           activity_level: string | null
           birth_date: string | null
           created_at: string
+          cycle_length_days: number | null
           daily_caloric_target: number | null
           gender: string | null
           goal_type: string | null
           height_cm: number | null
+          period_length_days: number | null
           id: string
           resting_heart_rate: number | null
           target_weight_kg: number | null
@@ -489,10 +491,12 @@ export type Database = {
           activity_level?: string | null
           birth_date?: string | null
           created_at?: string
+          cycle_length_days?: number | null
           daily_caloric_target?: number | null
           gender?: string | null
           goal_type?: string | null
           height_cm?: number | null
+          period_length_days?: number | null
           id?: string
           resting_heart_rate?: number | null
           target_weight_kg?: number | null
@@ -504,11 +508,13 @@ export type Database = {
           activity_level?: string | null
           birth_date?: string | null
           created_at?: string
+          cycle_length_days?: number | null
           daily_caloric_target?: number | null
           gender?: string | null
           goal_type?: string | null
           height_cm?: number | null
           id?: string
+          period_length_days?: number | null
           resting_heart_rate?: number | null
           target_weight_kg?: number | null
           updated_at?: string

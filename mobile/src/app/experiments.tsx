@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
+import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GrowBar } from '@/components/ui/grow-bar';
@@ -34,10 +35,12 @@ export default function Experiments() {
     finish,
     refresh,
   } = useExperiments();
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   if (loading) {
     return (
       <Screen>
+        <BackLink />
         <PageHeader title="Experiments" date={formatStamp()} />
         <LoadingState rows={4} />
       </Screen>
@@ -47,6 +50,7 @@ export default function Experiments() {
   if (error) {
     return (
       <Screen>
+        <BackLink />
         <PageHeader title="Experiments" date={formatStamp()} />
         <ErrorState message={error.message} onRetry={() => void refresh()} />
       </Screen>
@@ -54,6 +58,10 @@ export default function Experiments() {
   }
 
   const running = experiment?.status === 'running';
+  const pickable = levers.filter((item) =>
+    ['sleep', 'steps', 'savings', 'contact'].includes(item.key),
+  );
+  const selected = pickable.find((item) => item.key === selectedKey) ?? null;
   const blocks = Array.from({ length: WINDOW_DAYS }, (_, index) => {
     const date = experiment ? addDays(experiment.started_on, index) : null;
     const day = date ? days.find((row) => row.date === date) : undefined;
@@ -63,6 +71,7 @@ export default function Experiments() {
 
   return (
     <Screen>
+      <BackLink />
       <PageHeader
         title={experiment ? 'Experiment' : 'Experiments'}
         date={formatStamp()}
@@ -77,16 +86,16 @@ export default function Experiments() {
 
       {experiment && lever ? (
         <>
-          <Animated.View entering={FadeInDown.duration(240)} style={{ gap: space.xs }}>
+          <View style={{ gap: space.xs }}>
             <AppText variant="caption" tone="tertiary">
               {running ? 'RUNNING' : 'FINISHED'}
             </AppText>
             <AppText variant="display" style={{ fontSize: 40, lineHeight: 44 }}>
               {lever.label}
             </AppText>
-          </Animated.View>
+          </View>
 
-          <Animated.View entering={FadeInDown.duration(240).delay(60)} style={{ gap: space.md }}>
+          <View style={{ gap: space.md }}>
             <SectionHeader index="01" title="The week" />
             <Card style={{ gap: space.md }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -119,10 +128,10 @@ export default function Experiments() {
                 {lever.rationale}
               </AppText>
             </Card>
-          </Animated.View>
+          </View>
 
           {verdict ? (
-            <Animated.View entering={FadeInDown.duration(240).delay(120)} style={{ gap: space.md }}>
+            <View style={{ gap: space.md }}>
               <SectionHeader
                 index="02"
                 title="Verdict"
@@ -153,7 +162,7 @@ export default function Experiments() {
                   </View>
                 ) : null}
               </Card>
-            </Animated.View>
+            </View>
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -187,67 +196,98 @@ export default function Experiments() {
             )}
           </View>
 
-          <AppText variant="caption" tone="faint" style={{ lineHeight: 16 }}>
+          <AppText variant="footnote" tone="tertiary" style={{ lineHeight: 18 }}>
             Ending early is not a failure — a week you stop is still a week you learned from.
           </AppText>
         </>
       ) : (
         <>
-          <Animated.View entering={FadeInDown.duration(240)} style={{ gap: space.xs }}>
+          <View style={{ gap: space.xs }}>
             <AppText variant="caption" tone="tertiary">
               START A WEEK
             </AppText>
             <AppText variant="display" style={{ fontSize: 40, lineHeight: 44 }}>
-              One lever
+              One change
             </AppText>
             <AppText variant="callout" tone="secondary">
-              Pick a single rule to hold for seven days. The app already records the days — at the
-              end it compares the ones you met with the ones you missed.
+              Pick one rule to hold for seven days. At the end it compares the days you met with the
+              days you missed.
             </AppText>
-          </Animated.View>
+          </View>
 
-          <Animated.View entering={FadeInDown.duration(240).delay(60)} style={{ gap: space.md }}>
-            <SectionHeader index="01" title="Choose" />
+          <View style={{ gap: space.md }}>
+            <SectionHeader title="Choose" />
             <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              {levers
-                .filter((item) => ['sleep', 'steps', 'savings', 'contact'].includes(item.key))
-                .map((item: Lever, index) => (
-                  <View
+              {pickable.map((item: Lever, index) => {
+                const isSelected = selectedKey === item.key;
+                return (
+                  <Pressable
                     key={item.key}
-                    style={{
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    onPress={() => setSelectedKey(item.key)}
+                    style={({ pressed }) => ({
                       paddingVertical: space.md,
-                      gap: 6,
                       borderTopWidth: index === 0 ? 0 : 1,
                       borderTopColor: colors.separator,
-                    }}
+                      opacity: pressed ? 0.7 : 1,
+                    })}
                   >
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-                      <AppText variant="callout" style={{ flex: 1 }}>
-                        {item.label}
-                      </AppText>
-                      <AppText variant="caption" style={{ color: PILLAR_COLOR[item.pillar] }}>
-                        {item.pillar}
-                      </AppText>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+                      <View
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginTop: 1,
+                        }}
+                      >
+                        {isSelected ? (
+                          <View
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor: colors.primary,
+                            }}
+                          />
+                        ) : null}
+                      </View>
+                      <View style={{ flex: 1, gap: 3 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
+                          <AppText variant="callout" style={{ flex: 1 }}>
+                            {item.label}
+                          </AppText>
+                          <AppText variant="caption" style={{ color: PILLAR_COLOR[item.pillar] }}>
+                            {item.pillar === 'bonds' ? 'PEOPLE' : item.pillar.toUpperCase()}
+                          </AppText>
+                        </View>
+                        <AppText variant="footnote" tone="tertiary" style={{ lineHeight: 18 }}>
+                          {item.rationale}
+                        </AppText>
+                      </View>
                     </View>
-                    <AppText variant="footnote" tone="tertiary" style={{ lineHeight: 18 }}>
-                      {item.rationale}
-                    </AppText>
-                    <AppText
-                      variant="caption"
-                      tone="primary"
-                      onPress={() => start(item)}
-                      style={{ paddingTop: 2, opacity: starting ? 0.5 : 1 }}
-                    >
-                      Start 7 days →
-                    </AppText>
-                  </View>
-                ))}
+                  </Pressable>
+                );
+              })}
             </Card>
-            <AppText variant="caption" tone="faint" style={{ lineHeight: 16 }}>
+            <Button
+              label={selected ? `Start ${selected.label} for 7 days` : 'Choose one first'}
+              disabled={!selected}
+              loading={starting}
+              onPress={() => {
+                if (selected) start(selected);
+              }}
+            />
+            <AppText variant="footnote" tone="tertiary" style={{ lineHeight: 18 }}>
               A week is judged from the days you logged — up to three on each side of the rule. You
               can end it early at any point.
             </AppText>
-          </Animated.View>
+          </View>
         </>
       )}
     </Screen>

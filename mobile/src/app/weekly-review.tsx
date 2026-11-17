@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorState, LoadingState } from '@/components/ui/states';
-import { addDays, formatStamp, isoDate, startOfDay } from '@/lib/format';
+import { addDays, formatDate, isoDate, startOfDay } from '@/lib/format';
 import { PILLAR_COLOR } from '@/lib/score-labels';
 import { trackOnce } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
@@ -39,6 +39,50 @@ const average = (rows: Snapshot[], key: keyof Omit<Snapshot, 'date'>): number | 
 
 const delta = (current: number | null, previous: number | null): number | null =>
   current === null || previous === null ? null : current - previous;
+
+const WeekStrip = ({ days }: { days: Array<{ date: string; total: number | null }> }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 5, paddingTop: space.xs }}>
+      {days.map((day) => {
+        const label = new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, {
+          weekday: 'narrow',
+        });
+        const height = day.total === null ? 4 : Math.max(8, (Math.min(100, day.total) / 100) * 60);
+        return (
+          <View
+            key={day.date}
+            accessible
+            accessibilityLabel={`${label}: ${day.total === null ? 'not logged' : `${day.total} out of 100`}`}
+            style={{ flex: 1, alignItems: 'center', gap: 6 }}
+          >
+            <View
+              style={{
+                width: '100%',
+                height: 60,
+                justifyContent: 'flex-end',
+                backgroundColor: colors.surfaceSunken,
+                borderRadius: radius.segment,
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                style={{
+                  height,
+                  backgroundColor: day.total === null ? 'transparent' : colors.primary,
+                  borderRadius: radius.segment,
+                }}
+              />
+            </View>
+            <AppText variant="caption" tone={day.total === null ? 'tertiary' : 'secondary'}>
+              {label}
+            </AppText>
+          </View>
+        );
+      })}
+    </View>
+  );
+};
 
 export default function WeeklyReview() {
   const { colors } = useTheme();
@@ -77,13 +121,18 @@ export default function WeeklyReview() {
   const currentTotal = average(current, 'total');
   const previousTotal = average(previous, 'total');
   const totalDelta = delta(currentTotal, previousTotal);
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = isoDate(addDays(weekStart, index));
+    const row = current.find((item) => item.date === date);
+    return { date, total: row?.total ?? null };
+  });
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
       <BackLink />
       <PageHeader
         title="This week"
-        date={`${formatStamp(weekStart)} – ${formatStamp(today)}`}
+        date={`${formatDate(weekStart)} – ${formatDate(today)}`}
       />
 
       {query.isPending ? <LoadingState rows={4} /> : null}
@@ -106,7 +155,7 @@ export default function WeeklyReview() {
         <>
           <Card raised style={{ gap: space.md }}>
             <AppText variant="caption" tone="tertiary" style={{ letterSpacing: 0.8 }}>
-              7-DAY AVERAGE
+              {`${current.length}-DAY AVERAGE`}
             </AppText>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
               <AppText variant="display" selectable>
@@ -127,8 +176,9 @@ export default function WeeklyReview() {
               )}
             </View>
             <AppText variant="footnote" tone="secondary">
-              {current.length} of 7 days with a reading. {previous.length > 0 ? 'Compared with the previous 7 days.' : 'The next week gives this a baseline.'}
+              {`${current.length} of 7 days logged.${previous.length > 0 ? ' Compared with the previous week.' : ''}`}
             </AppText>
+            <WeekStrip days={weekDays} />
           </Card>
 
           <View style={{ gap: space.md }}>
@@ -182,13 +232,12 @@ export default function WeeklyReview() {
       <View style={{ gap: space.md }}>
         <SectionHeader index="02" title="Next week" />
         <Card style={{ gap: space.md }}>
-          <AppText variant="callout">Pick one lever for the next seven days.</AppText>
+          <AppText variant="callout">Pick one next step for the next seven days.</AppText>
           <AppText variant="footnote" tone="secondary">
             The experiment compares the days you meet the rule with the days you miss it.
           </AppText>
           <Button
-            label="Open experiments"
-            variant="secondary"
+            label="Choose a next step"
             onPress={() => router.push('/experiments' as never)}
           />
         </Card>

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { isoDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -16,7 +17,7 @@ export const useNetWorthHistory = () => {
     queryKey: ['net-worth-history', user?.id],
     enabled: Boolean(user?.id),
     queryFn: async (): Promise<NetWorthPoint[]> => {
-      const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+      const since = isoDate(new Date(Date.now() - 30 * 86_400_000));
       const { data, error } = await supabase
         .from('score_snapshots')
         .select('date, net_worth')

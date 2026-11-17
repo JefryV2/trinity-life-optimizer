@@ -19,8 +19,8 @@ export const ACTION_LABEL: Record<string, string> = {
   exercise: 'Log a workout',
   water: 'Log water',
   mental: 'Log mood',
-  savings: 'Log income',
-  spend: 'Log spending',
+  savings: 'Review savings',
+  spend: 'Review spending',
   contact: 'Log contact',
   mood: 'Log how it felt',
 };
@@ -31,8 +31,8 @@ export const ACTION_HINT: Record<string, string> = {
   exercise: 'One 20-minute session',
   water: 'Two more glasses',
   mental: 'Log mood and stress',
-  savings: 'Log this month’s income',
-  spend: 'Log this month’s spending',
+  savings: 'Move a little more into savings',
+  spend: 'Trim one expense this month',
   contact: 'Message one person',
   mood: 'Log how it felt',
 };

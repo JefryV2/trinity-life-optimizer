@@ -1,11 +1,12 @@
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { enableFreeze } from 'react-native-screens';
 
 import { Icon, type IconName } from '@/components/ui/icon';
+import { QuickLog } from '@/features/quick-log/quick-log';
 import { getBlurTarget, subscribeBlurTarget } from '@/lib/blur-target';
 import { useTheme, type ThemeColors } from '@/theme';
 
@@ -31,6 +32,7 @@ type TabBarProps = {
     }) => object;
   };
   navigateToTab: (routeKey: string) => void;
+  onQuickLog: () => void;
 };
 
 const metaFor = (route: string, colors: ThemeColors): TabMeta => {
@@ -53,7 +55,7 @@ const metaFor = (route: string, colors: ThemeColors): TabMeta => {
  * blur, while the active tab is communicated only by its icon: filled, brighter
  * and in its pillar colour. No filled pill, no square.
  */
-const AuxoTabBar = ({ state, emitter, navigateToTab }: TabBarProps) => {
+const AuxoTabBar = ({ state, emitter, navigateToTab, onQuickLog }: TabBarProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -84,16 +86,18 @@ const AuxoTabBar = ({ state, emitter, navigateToTab }: TabBarProps) => {
           overflow: 'hidden',
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.10)',
-          backgroundColor: 'rgba(8, 8, 10, 0.22)',
+          backgroundColor: 'rgba(7, 7, 8, 0.82)',
         }}
       >
-        <BlurView
-          tint="systemThickMaterialDark"
-          intensity={60}
-          blurMethod="dimezisBlurViewSdk31Plus"
-          blurTarget={blurTarget}
-          style={StyleSheet.absoluteFill}
-        />
+        {target ? (
+          <BlurView
+            tint="systemThickMaterialDark"
+            intensity={90}
+            blurMethod="dimezisBlurViewSdk31Plus"
+            blurTarget={blurTarget}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
         <View
           style={{
             flex: 1,
@@ -141,27 +145,64 @@ const AuxoTabBar = ({ state, emitter, navigateToTab }: TabBarProps) => {
             </Pressable>
           );
         })}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Quick log"
+          accessibilityHint="Opens quick log actions"
+          onPress={onQuickLog}
+          style={({ pressed }) => ({
+            flex: 1,
+            height: 56,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.94 : 1 }],
+          })}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="plus" size={20} color={colors.onPrimary} />
+          </View>
+        </Pressable>
         </View>
       </View>
+
     </View>
   );
 };
 
 export default function TabsLayout() {
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+
   return (
-    <Tabs
-      tabBar={(props) => <AuxoTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        lazy: true,
-        freezeOnBlur: true,
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Today' }} />
-      <Tabs.Screen name="health" options={{ title: 'Health' }} />
-      <Tabs.Screen name="wealth" options={{ title: 'Wealth' }} />
-      <Tabs.Screen name="relations" options={{ title: 'People' }} />
-      <Tabs.Screen name="more" options={{ title: 'You' }} />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      <Tabs
+        detachInactiveScreens={false}
+        tabBar={(props) => (
+          <AuxoTabBar {...props} onQuickLog={() => setQuickLogOpen(true)} />
+        )}
+        screenOptions={{
+          headerShown: false,
+          lazy: true,
+          freezeOnBlur: false,
+        }}
+      >
+        <Tabs.Screen name="index" options={{ title: 'Today' }} />
+        <Tabs.Screen name="health" options={{ title: 'Health' }} />
+        <Tabs.Screen name="wealth" options={{ title: 'Wealth' }} />
+        <Tabs.Screen name="relations" options={{ title: 'People' }} />
+        <Tabs.Screen name="more" options={{ title: 'You' }} />
+      </Tabs>
+      <QuickLog visible={quickLogOpen} onClose={() => setQuickLogOpen(false)} />
+    </View>
   );
 }

@@ -114,7 +114,7 @@ export const buildDemoDatabase = (): Record<string, Row[]> => {
     user_id: DEMO_USER_ID,
     cycle_start_date: day(8 + index * 28),
     cycle_end_date: day(4 + index * 28),
-    flow_intensity: index === 0 ? 'medium' : 'light',
+    flow_intensity: index === 0 ? 'moderate' : 'light',
     pain_level: [3, 2, 4][index],
     symptoms: index === 0 ? ['cramps', 'fatigue'] : ['fatigue'],
     notes: null,
@@ -144,8 +144,8 @@ export const buildDemoDatabase = (): Record<string, Row[]> => {
     user_id: DEMO_USER_ID,
     date: day(index),
     flow_intensity: index === 0 ? 'light' : null,
-    moods: index === 0 ? ['calm', 'tired'] : ['energised'],
-    symptoms: index === 0 ? ['cramps'] : [],
+    moods: index === 0 ? ['Calm', 'Tired'] : ['Energetic'],
+    symptoms: index === 0 ? ['Cramps'] : [],
     pain_level: index === 0 ? 2 : 0,
     notes: null,
   }));
@@ -315,36 +315,65 @@ export const buildDemoDatabase = (): Record<string, Row[]> => {
     confidence: index % 3 === 0 ? 1 : 0.95,
   }));
 
+  // Keep the stored daily series close to what the live score engine reports
+  // today: health reads high, savings are modest, people are steady. Otherwise
+  // Insights and Today tell two different stories about the same week.
   const healthScores = range(60).map((index) => {
     const daysAgo = 59 - index;
-    const wave = Math.sin(index / 5) * 9;
+    const wave = Math.sin(index / 5) * 6;
     return {
       id: id('health-score', index),
       user_id: DEMO_USER_ID,
       date: day(daysAgo),
-      score: Math.round(74 + wave + (index % 7 === 0 ? -6 : 0)),
+      score: Math.round(80 + wave + (index % 7 === 0 ? -4 : 0)),
     };
   });
 
   const wealthScores = range(60).map((index) => {
     const daysAgo = 59 - index;
-    const wave = Math.cos(index / 7) * 7;
+    const wave = Math.cos(index / 7) * 5;
     return {
       id: id('wealth-score', index),
       user_id: DEMO_USER_ID,
       date: day(daysAgo),
-      score: Math.round(70 + wave),
+      score: Math.round(40 + wave),
     };
   });
 
   const relationsScores = range(60).map((index) => {
     const daysAgo = 59 - index;
-    const wave = Math.sin(index / 4 + 1) * 8;
+    const wave = Math.sin(index / 4 + 1) * 5;
     return {
       id: id('relations-score', index),
       user_id: DEMO_USER_ID,
       date: day(daysAgo),
-      score: Math.round(77 + wave),
+      score: Math.round(80 + wave),
+    };
+  });
+
+  const demoNetWorth =
+    accounts.reduce((sum, row) => sum + Number(row.balance ?? 0), 0) +
+    investments.reduce((sum, row) => sum + Number(row.market_value ?? 0), 0);
+  const snapshots = range(60).map((index) => {
+    const health = Number(healthScores[index].score);
+    const wealth = Number(wealthScores[index].score);
+    const bonds = Number(relationsScores[index].score);
+    return {
+      id: id('snapshot', index),
+      user_id: DEMO_USER_ID,
+      date: day(59 - index),
+      total: Math.round(health * 0.4 + wealth * 0.3 + bonds * 0.3),
+      health,
+      wealth,
+      bonds,
+      sleep_hours: Number((7 + Math.sin(index / 5) * 0.7).toFixed(1)),
+      steps: 6500 + ((index * 1373) % 4500),
+      water_ml: 1500 + ((index * 310) % 1200),
+      exercise_min: 15 + (index % 4) * 15,
+      savings_rate: 25 + Math.round(Math.cos(index / 7) * 8),
+      interactions: 2 + (index % 4),
+      mood: 6 + Math.round(Math.sin(index / 4) * 2),
+      net_worth: Math.round(demoNetWorth - 1800 + index * 30.5),
     };
   });
 
@@ -365,6 +394,7 @@ export const buildDemoDatabase = (): Record<string, Row[]> => {
     });
 
   return {
+    __meta: [{ id: 'meta', seeded_on: isoDate(), version: 4 }],
     profiles: [
       {
         id: id('profile', 0),
@@ -431,6 +461,7 @@ export const buildDemoDatabase = (): Record<string, Row[]> => {
     health_daily_scores: healthScores,
     wealth_daily_scores: wealthScores,
     relations_daily_scores: relationsScores,
+    score_snapshots: snapshots,
     health_goals_progress: goalProgress('health-goal-progress', 72),
     wealth_goals_progress: goalProgress('wealth-goal-progress', 68),
     relations_goals_progress: goalProgress('relations-goal-progress', 76),

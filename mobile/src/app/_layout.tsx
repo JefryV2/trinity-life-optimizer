@@ -117,7 +117,7 @@ function RootNavigator() {
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
           headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.primary,
+          headerTintColor: colors.textSecondary,
           headerTitleStyle: { color: colors.text, fontFamily: 'Baloo2_700Bold', fontSize: 18 },
           headerBackTitleStyle: { fontFamily: 'Baloo2_600SemiBold' },
           headerShadowVisible: false,

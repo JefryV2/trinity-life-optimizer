@@ -1,12 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { AppState } from 'react-native';
 
 import { endOfMonth, isoDate, startOfDay, startOfMonth } from '@/lib/format';
 import {
-  healthScore,
-  relationsScore,
   savingsRate,
-  trinityScore,
-  wealthScore,
   type ExerciseRow,
   type MentalRow,
   type SleepRow,
@@ -62,8 +60,9 @@ const since = (days: number) => new Date(Date.now() - days * 86_400_000).toISOSt
 
 export const useDashboard = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['dashboard', user?.id],
     enabled: Boolean(user),
     queryFn: async (): Promise<DashboardData> => {
@@ -86,6 +85,7 @@ export const useDashboard = () => {
         wealthDaily,
         relationsDaily,
         accounts,
+        investments,
         transactions,
         relationships,
         interactions,
@@ -150,6 +150,7 @@ export const useDashboard = () => {
           .order('date', { ascending: false })
           .limit(1),
         supabase.from('finance_accounts').select('balance').eq('user_id', userId),
+        supabase.from('investments').select('market_value').eq('user_id', userId),
         supabase
           .from('transactions')
           .select('amount,direction,category,occurred_at')
@@ -212,6 +213,14 @@ export const useDashboard = () => {
             ) / (interactions.data ?? []).length
           : 0;
 
+      // Net worth is cash plus the portfolio, everywhere: header, chart and snapshot.
+      const netWorth =
+        (accounts.data ?? []).reduce((sum, row) => sum + Number(row.balance ?? 0), 0) +
+        (investments.data ?? []).reduce(
+          (sum, row) => sum + Number(row.market_value ?? 0),
+          0,
+        );
+
       const scoreInput = {
         health: {
           steps: steps.data?.steps ?? 0,
@@ -244,10 +253,15 @@ export const useDashboard = () => {
         savingsRate: savingsRate(income, expenses),
         interactions: (interactions.data ?? []).length,
         mood: mentalRows.length > 0 ? mood : null,
-        netWorth: (accounts.data ?? []).reduce(
-          (sum, row) => sum + Number(row.balance ?? 0),
-          0,
-        ),
+        netWorth,
+      }).then(() => {
+        // The chart and the weekly review read today's snapshot, so they must
+        // not keep the pre-write value cached.
+        void queryClient.invalidateQueries({ queryKey: ['net-worth-history'] });
+        void queryClient.invalidateQueries({ queryKey: ['weekly-review'] });
+        void queryClient.invalidateQueries({ queryKey: ['experiments'] });
+        void queryClient.invalidateQueries({ queryKey: ['calendar'] });
+        void queryClient.invalidateQueries({ queryKey: ['insights'] });
       });
 
       const pillarValue = (key: 'health' | 'wealth' | 'bonds') =>
@@ -349,10 +363,7 @@ export const useDashboard = () => {
         wealth: {
           score: wealth,
           tracked: wealthTracked,
-          netWorth: (accounts.data ?? []).reduce(
-            (sum, row) => sum + Number(row.balance ?? 0),
-            0,
-          ),
+          netWorth,
           income,
           expenses,
           rate: savingsRate(income, expenses),
@@ -370,4 +381,14 @@ export const useDashboard = () => {
       };
     },
   });
+
+  const refetchDashboard = query.refetch;
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refetchDashboard();
+    });
+    return () => subscription.remove();
+  }, [refetchDashboard]);
+
+  return query;
 };

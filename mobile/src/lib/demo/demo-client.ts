@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session, User } from '@supabase/supabase-js';
 
+import { isoDate } from '@/lib/format';
+
 import { buildDemoDatabase } from './demo-seed';
 import { isDemoMode } from './demo-mode';
 import { createDemoSession } from './demo-user';
@@ -36,7 +38,11 @@ const ensureLoaded = async (): Promise<DemoDatabase> => {
   if (database) return database;
   try {
     const raw = await AsyncStorage.getItem(DB_KEY);
-    if (raw) database = JSON.parse(raw) as DemoDatabase;
+    if (raw) {
+      const parsed = JSON.parse(raw) as DemoDatabase;
+      const meta = parsed.__meta?.[0];
+      if (meta?.seeded_on === isoDate() && meta?.version === 4) database = parsed;
+    }
   } catch {
     database = null;
   }

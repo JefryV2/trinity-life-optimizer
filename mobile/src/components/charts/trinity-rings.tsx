@@ -84,6 +84,7 @@ export const TrinityRings = ({
   gap = 7,
   center,
   centerLabel,
+  centerSize = 56,
 }: {
   rings: TrinityRingItem[];
   size?: number;
@@ -91,12 +92,20 @@ export const TrinityRings = ({
   gap?: number;
   center?: string | number;
   centerLabel?: string;
+  centerSize?: number;
 }) => {
   const { colors } = useTheme();
   const mid = size / 2;
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Life score ${center ?? 'not logged'}. ${rings
+        .map((ring) => `${ring.label} ${Math.round(ring.value)}`)
+        .join(', ')}.`}
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+    >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         {rings.map((ring, index) => {
           const r = mid - stroke / 2 - index * (stroke + gap);
@@ -114,7 +123,7 @@ export const TrinityRings = ({
         })}
       </Svg>
       <View style={{ alignItems: 'center' }}>
-        <AppText variant="numeric" selectable style={{ fontSize: 56, lineHeight: 58 }}>
+        <AppText variant="numeric" selectable style={{ fontSize: centerSize, lineHeight: centerSize + 2 }}>
           {center ?? '—'}
         </AppText>
         {centerLabel ? (

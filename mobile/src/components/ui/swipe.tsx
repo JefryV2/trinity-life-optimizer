@@ -54,10 +54,11 @@ export const SwipeTabs = ({ children }: { children: React.ReactNode }) => {
     router.replace(next as never);
   });
 
-  if (index < 0) return <>{children}</>;
-
+  // Keep the same host wrapper on every route. Swapping between a View and a
+  // Fragment remounts the tab screen underneath a pushed form, which tears
+  // down native blur targets and leaves their refs stale.
   return (
-    <View style={{ flex: 1 }} {...pager.panHandlers}>
+    <View style={{ flex: 1 }} {...(index >= 0 ? pager.panHandlers : {})}>
       {children}
     </View>
   );

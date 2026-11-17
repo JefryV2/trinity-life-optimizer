@@ -118,7 +118,12 @@ export default function HydrationScreen() {
       <SectionHeader title="Daily target" />
       <View style={{ gap: space.lg }}>
         <TextField label="Target ml" value={targetText} onChangeText={setTargetText} keyboardType="number-pad" maxLength={4} />
-        <Button label="Save target" onPress={saveTarget} loading={setWaterTarget.isPending} />
+        <Button
+          label="Save target"
+          variant="secondary"
+          onPress={saveTarget}
+          loading={setWaterTarget.isPending}
+        />
       </View>
 
       <SectionHeader title="Reminders" caption="Daily nudges at 10:00, 13:00, 16:00 and 19:00" />
