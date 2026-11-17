@@ -63,9 +63,11 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
   const { data: profileData } = useProfile();
   const { health, wealth, setHealth, setWealth } = useSectionNav();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [mainNav, setMainNav] = useState(false);
 
   const routeName = baseName(state.routes[state.index]?.name ?? 'index');
   const sectionMode = routeName === 'health' || routeName === 'wealth';
+  const showSections = sectionMode && !mainNav;
   const female = profileData?.health?.gender === 'female';
   const options = (
     routeName === 'health' ? healthSections(female) : WEALTH_SECTIONS
@@ -77,7 +79,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
         : health
       : wealth;
 
-  const barWidth = sectionMode
+  const barWidth = showSections
     ? Math.min(Math.max(width - 24, 320), 420)
     : Math.min(Math.max(width - 56, 256), 336);
   const narrow = barWidth < 360;
@@ -103,6 +105,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
 
   useEffect(() => {
     setSheetOpen(false);
+    setMainNav(false);
   }, [routeName]);
 
   const go = (name: string) => {
@@ -192,7 +195,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
             alignItems: 'center',
           }}
         >
-          {sectionMode ? (
+          {showSections ? (
             <>
               <View
                 style={{
@@ -281,28 +284,41 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
               />
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {['index', 'relations', 'more'].map(
-                  (name) => {
-                    const meta = metaFor(name, colors);
-                    return (
-                      <Pressable
-                        key={name}
-                        accessibilityRole="button"
-                        accessibilityLabel={meta.label}
-                        onPress={() => go(name)}
-                        style={({ pressed }) => ({
-                          width: 32,
-                          height: 44,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: pressed ? 0.55 : 1,
-                        })}
-                      >
-                        <Icon name={meta.icon} size={19} color={colors.textSecondary} />
-                      </Pressable>
-                    );
-                  },
-                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Main navigation"
+                  accessibilityHint="Shows the main tabs"
+                  onPress={() => setMainNav(true)}
+                  style={({ pressed }) => ({
+                    width: 32,
+                    height: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: pressed ? 0.55 : 1,
+                  })}
+                >
+                  <Icon name="back" size={19} color={colors.textSecondary} />
+                </Pressable>
+                {['relations', 'more'].map((name) => {
+                  const meta = metaFor(name, colors);
+                  return (
+                    <Pressable
+                      key={name}
+                      accessibilityRole="button"
+                      accessibilityLabel={meta.label}
+                      onPress={() => go(name)}
+                      style={({ pressed }) => ({
+                        width: 32,
+                        height: 44,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: pressed ? 0.55 : 1,
+                      })}
+                    >
+                      <Icon name={meta.icon} size={19} color={colors.textSecondary} />
+                    </Pressable>
+                  );
+                })}
                 {quickLog}
               </View>
             </>
@@ -310,8 +326,14 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
             <>
               {state.routes.map((route, index) => {
                 const focused = state.index === index;
+                const name = baseName(route.name);
+                const expandable = name === 'health' || name === 'wealth';
                 const meta = metaFor(route.name, colors);
                 const onPress = () => {
+                  if (focused && expandable) {
+                    setMainNav(false);
+                    return;
+                  }
                   const event = emitter.emit({
                     type: 'tabPress',
                     target: route.key,
@@ -326,6 +348,9 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                     accessibilityRole="button"
                     accessibilityLabel={meta.label}
                     accessibilityState={{ selected: focused }}
+                    accessibilityHint={
+                      focused && expandable ? 'Shows this pillar’s sections' : undefined
+                    }
                     onPress={onPress}
                     onLongPress={() =>
                       emitter.emit({ type: 'tabLongPress', target: route.key })
@@ -344,6 +369,18 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                       size={focused ? 23 : 21}
                       color={focused ? meta.color : colors.textTertiary}
                     />
+                    {focused && expandable ? (
+                      <View
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          bottom: 5,
+                          transform: [{ rotate: '90deg' }],
+                        }}
+                      >
+                        <Icon name="chevron" size={10} color={meta.color} />
+                      </View>
+                    ) : null}
                   </Pressable>
                 );
               })}
