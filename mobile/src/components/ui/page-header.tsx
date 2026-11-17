@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { space, useTheme } from '@/theme';
@@ -19,24 +19,35 @@ export const PageHeader = ({
   rule?: boolean;
 }) => {
   const { colors } = useTheme();
+  const { fontScale } = useWindowDimensions();
+  // At larger text sizes the date moves under the title instead of squeezing
+  // the title into an ellipsis.
+  const stackDate = Boolean(date) && fontScale > 1.15;
   return (
     <View style={{ gap: space.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
-        <AppText
-          variant="display"
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          style={{ flex: 1, fontSize: 32, lineHeight: 36 }}
-        >
-          {title}
-        </AppText>
-        {date ? (
+      <View style={{ gap: stackDate ? 2 : 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
           <AppText
-            variant="mono"
-            tone="tertiary"
+            variant="display"
             numberOfLines={1}
-            style={{ flexShrink: 0, textAlign: 'right' }}
+            ellipsizeMode="tail"
+            style={{ flex: 1, fontSize: 32, lineHeight: 36 }}
           >
+            {title}
+          </AppText>
+          {date && !stackDate ? (
+            <AppText
+              variant="mono"
+              tone="tertiary"
+              numberOfLines={1}
+              style={{ flexShrink: 0, textAlign: 'right' }}
+            >
+              {date}
+            </AppText>
+          ) : null}
+        </View>
+        {date && stackDate ? (
+          <AppText variant="mono" tone="tertiary" numberOfLines={1}>
             {date}
           </AppText>
         ) : null}

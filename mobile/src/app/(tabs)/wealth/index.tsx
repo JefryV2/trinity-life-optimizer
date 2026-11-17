@@ -13,7 +13,7 @@ import { ListRow } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
-import { TabPicker } from '@/components/ui/tab-picker';
+import { SectionTabs } from '@/components/ui/section-tabs';
 import { SwipeSteps } from '@/components/ui/swipe';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -117,7 +117,7 @@ export default function WealthHub() {
         />
       }
     >
-      <TabPicker options={OPTIONS} value={tab} onChange={setTab} title="Wealth section" />
+      <SectionTabs options={OPTIONS} value={tab} onChange={setTab} label="Wealth section" />
 
       <SwipeSteps
         index={Math.max(0, OPTIONS.findIndex((option) => option.value === tab))}

@@ -1,14 +1,16 @@
 import { BlurTargetView, BlurView } from 'expo-blur';
-import { useFocusEffect, useIsFocused } from 'expo-router';
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useSyncExternalStore, type ComponentRef } from 'react';
 import {
   findNodeHandle,
+  Platform,
   ScrollView,
   StyleSheet,
   type ScrollViewProps,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SwipeTabs, useIsTabRoute } from '@/components/ui/swipe';
@@ -35,9 +37,32 @@ export const Screen = ({
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   // The bar grows with the user's text size so the title never clips.
-  const headerHeight = HEADER_HEIGHT + Math.max(0, fontScale - 1) * 40;
+  const headerHeight =
+    HEADER_HEIGHT + Math.max(0, fontScale - 1) * 40 + (fontScale > 1.15 ? 22 : 0);
   const isTab = useIsTabRoute();
   const isFocused = useIsFocused();
+  const router = useRouter();
+  const edgeStart = useRef(0);
+
+  // Android has no native edge-swipe back. This is deliberately edge-only so
+  // it never competes with vertical scrolling or a section swipe.
+  const backGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(!isTab && Platform.OS === 'android')
+        .activeOffsetX([-14, 14])
+        .failOffsetY([-14, 14])
+        .runOnJS(true)
+        .onBegin((event) => {
+          edgeStart.current = event.x;
+        })
+        .onEnd((event) => {
+          if (edgeStart.current > 36 || event.translationX > -64) return;
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)' as never);
+        }),
+    [isTab, router],
+  );
   const targetRef = useRef<ComponentRef<typeof View>>(null);
   const topInset = safeAreaTop ? insets.top : 0;
   const blurTargetNode = useSyncExternalStore(
@@ -70,7 +95,8 @@ export const Screen = ({
 
   return (
     <SwipeTabs>
-      <View style={{ flex: 1 }}>
+      <GestureDetector gesture={backGesture}>
+        <View style={{ flex: 1 }}>
         <BlurTargetView ref={targetRef} style={{ flex: 1 }}>
           <ScrollView
             {...rest}
@@ -137,7 +163,8 @@ export const Screen = ({
             </View>
           </View>
         ) : null}
-      </View>
+        </View>
+      </GestureDetector>
     </SwipeTabs>
   );
 };

@@ -4,7 +4,7 @@ import { RefreshControl } from 'react-native';
 
 import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
-import { TabPicker } from '@/components/ui/tab-picker';
+import { SectionTabs } from '@/components/ui/section-tabs';
 import { SwipeSteps } from '@/components/ui/swipe';
 import { FitnessSegment } from '@/features/health/components/segments/fitness';
 import { HeartSegment } from '@/features/health/components/segments/heart';
@@ -62,7 +62,7 @@ export default function HealthHub() {
         />
       }
     >
-      <TabPicker options={options} value={active} onChange={setTab} title="Health section" />
+      <SectionTabs options={options} value={active} onChange={setTab} label="Health section" />
 
       <SwipeSteps
         index={Math.max(0, options.findIndex((option) => option.value === active))}

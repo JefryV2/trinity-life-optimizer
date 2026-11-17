@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
+import { RingMeter } from '@/components/charts/ring-meter';
 import { TrinityRings } from '@/components/charts/trinity-rings';
 import { AppText } from '@/components/ui/app-text';
 import { Card } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Nudge } from '@/components/ui/pillar-strip';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
+import { Stat, StatRow } from '@/components/ui/stat';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { FirstSignal } from '@/features/dashboard/first-signal';
 import { useDashboard } from '@/features/dashboard/use-dashboard';
@@ -131,10 +133,10 @@ export default function Dashboard() {
       header={
         <View style={{ gap: 2 }}>
           <AppText variant="title" numberOfLines={1}>
-            {greeting()}, {data?.name ?? 'there'}
+            {greeting()}
           </AppText>
           <AppText variant="mono" tone="tertiary">
-            {formatStamp()}
+            {data?.name ? `${data.name} · ${formatStamp()}` : formatStamp()}
           </AppText>
         </View>
       }
@@ -278,6 +280,64 @@ export default function Dashboard() {
               />
             </View>
           ) : null}
+
+          <View style={{ gap: space.md }}>
+            <SectionHeader title="Today's vitals" />
+            <StatRow>
+              <Stat value={formatNumber(data.health.steps)} label="Steps" />
+              <Stat
+                value={data.health.sleepHours > 0 ? data.health.sleepHours.toFixed(1) : '—'}
+                label="Sleep avg (h)"
+              />
+            </StatRow>
+            <StatRow>
+              <Stat
+                value={formatNumber(data.health.water)}
+                label="Water (ml)"
+                tone={data.health.water >= data.health.waterTarget ? 'success' : 'default'}
+              />
+              <Stat
+                value={data.health.stress > 0 ? data.health.stress.toFixed(1) : '—'}
+                label="Stress /10"
+                tone={data.health.stress >= 7 ? 'danger' : 'default'}
+              />
+            </StatRow>
+          </View>
+
+          <View style={{ gap: space.md }}>
+            <SectionHeader title="Stress load" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
+              <RingMeter
+                value={data.stress.score}
+                max={100}
+                size={88}
+                stroke={7}
+                color={
+                  data.stress.level === 'High'
+                    ? colors.danger
+                    : data.stress.level === 'Medium'
+                      ? colors.amber
+                      : colors.primary
+                }
+                center={String(data.stress.score)}
+                label="Load"
+              />
+              <View style={{ flex: 1, gap: 3 }}>
+                <AppText variant="headline">{data.stress.level}</AppText>
+                {data.stress.drivers.length > 0 ? (
+                  data.stress.drivers.map((driver) => (
+                    <AppText key={driver.key} variant="footnote" tone="secondary">
+                      {driver.label}
+                    </AppText>
+                  ))
+                ) : (
+                  <AppText variant="footnote" tone="secondary">
+                    All clear.
+                  </AppText>
+                )}
+              </View>
+            </View>
+          </View>
 
           {data.insights.length > 0 ? (
             <View style={{ gap: space.md }}>
