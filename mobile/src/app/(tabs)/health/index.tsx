@@ -1,10 +1,9 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { RefreshControl } from 'react-native';
 
 import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
-import { SectionTabs } from '@/components/ui/section-tabs';
 import { SwipeSteps } from '@/components/ui/swipe';
 import { FitnessSegment } from '@/features/health/components/segments/fitness';
 import { HeartSegment } from '@/features/health/components/segments/heart';
@@ -14,27 +13,21 @@ import { OverviewSegment } from '@/features/health/components/segments/overview'
 import { SleepSegment } from '@/features/health/components/segments/sleep';
 import { WomenSegment } from '@/features/health/components/segments/women';
 import { useHealth } from '@/features/health/use-health';
+import { useSectionNav } from '@/features/navigation/section-nav';
 import { useProfile } from '@/features/profile/use-profile';
 import { formatStamp } from '@/lib/format';
-import type { HealthTab } from '@/lib/navigation';
+import { healthSections, type HealthTab } from '@/lib/navigation';
 import { useTheme } from '@/theme';
 
-const BASE_OPTIONS: Array<{ value: HealthTab; label: string }> = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'nutrition', label: 'Nutrition' },
-  { value: 'fitness', label: 'Fitness' },
-  { value: 'sleep', label: 'Sleep' },
-  { value: 'mental', label: 'Mental' },
-  { value: 'heart', label: 'Heart' },
-];
+const BASE_OPTIONS = healthSections(false);
 
 const isHealthTab = (value: string): value is HealthTab =>
-  BASE_OPTIONS.some((option) => option.value === value) || value === 'women';
+  value === 'women' || BASE_OPTIONS.some((option) => option.value === value);
 
 export default function HealthHub() {
   const { colors } = useTheme();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<HealthTab>('overview');
+  const { health: tab, setHealth: setTab } = useSectionNav();
   const { data: profileData } = useProfile();
   const { refetch, isRefetching } = useHealth();
 
@@ -44,9 +37,7 @@ export default function HealthHub() {
     if (params.tab && isHealthTab(params.tab)) setTab(params.tab);
   }, [params.tab]);
 
-  const options = female
-    ? [...BASE_OPTIONS, { value: 'women' as const, label: "Women's" }]
-    : BASE_OPTIONS;
+  const options = female ? healthSections(true) : BASE_OPTIONS;
   const active = tab === 'women' && !female ? 'overview' : tab;
 
   return (
@@ -62,8 +53,6 @@ export default function HealthHub() {
         />
       }
     >
-      <SectionTabs options={options} value={active} onChange={setTab} label="Health section" />
-
       <SwipeSteps
         index={Math.max(0, options.findIndex((option) => option.value === active))}
         count={options.length}

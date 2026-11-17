@@ -13,29 +13,22 @@ import { ListRow } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
-import { SectionTabs } from '@/components/ui/section-tabs';
 import { SwipeSteps } from '@/components/ui/swipe';
 import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Stat, StatRow } from '@/components/ui/stat';
 import { TextField } from '@/components/ui/text-field';
+import { useSectionNav } from '@/features/navigation/section-nav';
 import { useSettings } from '@/features/settings/use-settings';
 import { useWealth, type Budget, type Investment, type Transaction } from '@/features/wealth/use-wealth';
 import { useNetWorthHistory } from '@/features/wealth/use-net-worth-history';
 import { formatDate, formatMoney, formatNumber, formatStamp } from '@/lib/format';
-import { openAdd, openEdit, type WealthTab } from '@/lib/navigation';
+import { openAdd, openEdit, WEALTH_SECTIONS, type WealthTab } from '@/lib/navigation';
 import { buildSmartSpendingGroups } from '@/lib/spending-smart-groups';
 import { space, useTheme } from '@/theme';
 
-const OPTIONS: Array<{ value: WealthTab; label: string }> = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'investments', label: 'Invest' },
-  { value: 'expenses', label: 'Expenses' },
-  { value: 'goals', label: 'Budgets' },
-];
-
 const isWealthTab = (value: string): value is WealthTab =>
-  OPTIONS.some((option) => option.value === value);
+  WEALTH_SECTIONS.some((option) => option.value === value);
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 
@@ -51,7 +44,7 @@ export default function WealthHub() {
   useSettings(); // subscribe: formatMoney follows the selected currency
 
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<WealthTab>('overview');
+  const { wealth: tab, setWealth: setTab } = useSectionNav();
   const { data, isPending, isError, error, refetch, isRefetching, removeTransaction, removeInvestment, removeBudget } =
     useWealth();
 
@@ -117,12 +110,10 @@ export default function WealthHub() {
         />
       }
     >
-      <SectionTabs options={OPTIONS} value={tab} onChange={setTab} label="Wealth section" />
-
       <SwipeSteps
-        index={Math.max(0, OPTIONS.findIndex((option) => option.value === tab))}
-        count={OPTIONS.length}
-        onChange={(next) => setTab(OPTIONS[next].value)}
+        index={Math.max(0, WEALTH_SECTIONS.findIndex((option) => option.value === tab))}
+        count={WEALTH_SECTIONS.length}
+        onChange={(next) => setTab(WEALTH_SECTIONS[next].value)}
       >
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
