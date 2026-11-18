@@ -14,7 +14,7 @@ export type WealthTab = 'overview' | 'investments' | 'expenses' | 'goals';
 export const HEALTH_SECTIONS: Array<{ value: HealthTab; label: string }> = [
   { value: 'overview', label: 'Overview' },
   { value: 'nutrition', label: 'Nutrition' },
-  { value: 'fitness', label: 'Fitness' },
+  { value: 'fitness', label: 'Activity' },
   { value: 'sleep', label: 'Sleep' },
   { value: 'mental', label: 'Mental' },
   { value: 'heart', label: 'Heart' },

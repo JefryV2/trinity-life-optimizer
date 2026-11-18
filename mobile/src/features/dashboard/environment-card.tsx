@@ -1,69 +1,105 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { Stat, StatRow } from '@/components/ui/stat';
+import { Panel } from '@/components/ui/panel';
 import { useEnvironment } from '@/features/dashboard/use-environment';
-import { aqiColor, pm25Color, uvColor, uvLabel } from '@/lib/health-colors';
-import { space } from '@/theme';
+import { aqiColor, uvColor, uvLabel } from '@/lib/health-colors';
+import { radius, space, useTheme } from '@/theme';
 
 /**
  * Local conditions are useful, not essential. Nothing asks for location until
- * the user chooses to check; Today no longer triggers a permission prompt on
- * first launch.
+ * the user chooses to check; the empty tiles keep the promise visible.
  */
 export const EnvironmentCard = () => {
+  const { colors } = useTheme();
   const [enabled, setEnabled] = useState(false);
   const environment = useEnvironment(enabled);
 
-  return (
-    <View style={{ gap: space.md }}>
-      <SectionHeader title="Around you" caption="Air and UV where you are" />
-      <Card style={{ gap: space.lg }}>
-        {!enabled ? (
-          <>
-            <AppText variant="footnote" tone="secondary">
-              Check local air quality and UV. Auxo only asks for location when you
-              choose this.
-            </AppText>
-            <Button
-              label="Check local conditions"
-              variant="secondary"
-              size="small"
-              onPress={() => setEnabled(true)}
-            />
-          </>
-        ) : environment.isPending ? (
-          <AppText variant="footnote" tone="secondary">
-            Reading the air…
-          </AppText>
-        ) : environment.isError ? (
-          <AppText variant="footnote" tone="danger">
-            {environment.error.message}
-          </AppText>
-        ) : environment.data ? (
-          <StatRow>
-            <Stat
-              value={environment.data.uv !== null ? environment.data.uv.toFixed(1) : '—'}
-              label={`UV · ${uvLabel(environment.data.uv)}`}
-              color={uvColor(environment.data.uv)}
-            />
-            <Stat
-              value={environment.data.aqi !== null ? String(environment.data.aqi) : '—'}
-              label={`Air · ${environment.data.label}`}
-              color={aqiColor(environment.data.aqi)}
-            />
-            <Stat
-              value={environment.data.pm25 !== null ? environment.data.pm25.toFixed(1) : '—'}
-              label="PM2.5 µg/m³"
-              color={pm25Color(environment.data.pm25)}
-            />
-          </StatRow>
-        ) : null}
-      </Card>
+  const check = () => {
+    if (enabled) void environment.refetch();
+    else setEnabled(true);
+  };
+
+  const data = environment.data;
+  const air = data?.aqi != null ? `${data.aqi} · ${data.label}` : '—';
+  const uv = data?.uv != null ? `${data.uv.toFixed(1)} · ${uvLabel(data.uv)}` : '—';
+
+  const Tile = ({
+    label,
+    value,
+    color,
+  }: {
+    label: string;
+    value: string;
+    color: string;
+  }) => (
+    <View
+      style={{
+        flex: 1,
+        minHeight: 46,
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: colors.border,
+        borderRadius: radius.inner,
+        paddingHorizontal: space.md,
+      }}
+    >
+      <View style={{ gap: 2 }}>
+        <AppText variant="footnote" tone="secondary" numberOfLines={1}>
+          {label}
+        </AppText>
+        <AppText
+          variant="callout"
+          style={{ color: value === '—' ? colors.textTertiary : color, fontWeight: '600' }}
+          numberOfLines={1}
+        >
+          {value}
+        </AppText>
+      </View>
     </View>
+  );
+
+  return (
+    <Panel style={{ gap: space.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+        <View style={{ flex: 1, gap: 1 }}>
+          <AppText variant="headline">Around you</AppText>
+          <AppText variant="footnote" tone="tertiary">
+            Location only when you tap
+          </AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Check local conditions"
+          onPress={check}
+          style={({ pressed }) => ({
+            minHeight: 40,
+            paddingHorizontal: space.lg,
+            borderRadius: radius.pill,
+            backgroundColor: colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.72 : 1,
+          })}
+        >
+          <AppText variant="callout" style={{ color: colors.onPrimary, fontWeight: '700' }}>
+            Check
+          </AppText>
+        </Pressable>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <Tile label="Air quality" value={air} color={aqiColor(data?.aqi ?? null)} />
+        <Tile label="UV index" value={uv} color={uvColor(data?.uv ?? null)} />
+      </View>
+
+      {environment.isError ? (
+        <AppText variant="footnote" tone="danger">
+          {environment.error.message}
+        </AppText>
+      ) : null}
+    </Panel>
   );
 };

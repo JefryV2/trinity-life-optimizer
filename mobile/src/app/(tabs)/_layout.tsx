@@ -18,7 +18,11 @@ export default function TabsLayout() {
         <Tabs
           detachInactiveScreens={false}
           tabBar={(props) => (
-            <UnifiedDock {...props} onQuickLog={() => setQuickLogOpen(true)} />
+            <UnifiedDock
+              {...props}
+              quickLogOpen={quickLogOpen}
+              onQuickLog={() => setQuickLogOpen((open) => !open)}
+            />
           )}
           screenOptions={{
             headerShown: false,

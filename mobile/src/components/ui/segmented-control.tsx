@@ -35,7 +35,7 @@ export const SegmentedControl = <T extends string>({
         padding: 3,
         gap: 2,
         borderRadius: radius.pill,
-        backgroundColor: colors.surfaceSunken,
+        backgroundColor: colors.surfaceAlt,
       }}
     >
       {options.map((option) => {
@@ -52,11 +52,11 @@ export const SegmentedControl = <T extends string>({
               minHeight: 28,
               justifyContent: 'center',
               borderRadius: radius.pill,
-              backgroundColor: selected ? colors.surfaceAlt : 'transparent',
+              backgroundColor: selected ? colors.primary : 'transparent',
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <AppText variant="mono" tone={selected ? 'default' : 'tertiary'}>
+            <AppText variant="mono" tone={selected ? 'onPrimary' : 'tertiary'}>
               {option.label}
             </AppText>
           </Pressable>

@@ -5,8 +5,8 @@ import { MoodTrail, type MoodPoint } from '@/components/charts/mood-trail';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { MetricRail } from '@/components/ui/metric-rail';
+import { Panel } from '@/components/ui/panel';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { useHealth, type MentalRecord } from '@/features/health/use-health';
 import { confirmDelete } from '@/lib/confirm';
@@ -83,8 +83,8 @@ const MoodScale = ({ value, onSelect }: { value: number | null; onSelect: (value
       <View
         style={{
           flexDirection: 'row',
-          gap: 2,
-          height: 16,
+          gap: 3,
+          height: 12,
           borderRadius: radius.segment,
           overflow: 'hidden',
         }}
@@ -99,7 +99,7 @@ const MoodScale = ({ value, onSelect }: { value: number | null; onSelect: (value
             onPress={() => onSelect(index + 1)}
             style={({ pressed }) => ({
               flex: 1,
-              backgroundColor: index < active ? colors.textSecondary : colors.surfaceSunken,
+              backgroundColor: index < active ? colors.primary : colors.surfaceSunken,
               opacity: value === null ? 0.5 : pressed ? 0.7 : 1,
             })}
           />
@@ -141,17 +141,17 @@ const MetaRow = ({
         borderBottomColor: colors.separator,
       }}
     >
-      <AppText variant="footnote" tone="secondary" style={{ flex: 1 }}>
-        {label}
-      </AppText>
-      <View style={{ alignItems: 'flex-end', gap: 1 }}>
-        <AppText variant="callout">{value}</AppText>
+      <View style={{ flex: 1, gap: 1 }}>
+        <AppText variant="callout">{label}</AppText>
         {detail ? (
           <AppText variant="footnote" tone="tertiary">
             {detail}
           </AppText>
         ) : null}
       </View>
+      <AppText variant="headline" style={{ textAlign: 'right' }}>
+        {value}
+      </AppText>
     </View>
   );
 };
@@ -188,58 +188,37 @@ const JournalEntry = ({
       delayLongPress={350}
       style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          gap: space.md,
-          paddingVertical: space.lg,
-          borderBottomWidth: last ? 0 : 1,
-          borderBottomColor: colors.separator,
-        }}
-      >
-        <View
-          style={{
-            width: 2,
-            borderRadius: 1,
-            backgroundColor: accent,
-            marginTop: 3,
-            marginBottom: 3,
-          }}
-        />
-        <View style={{ flex: 1, gap: space.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.sm }}>
-            <AppText variant="footnote" tone="secondary" style={{ flex: 1 }}>
+      <Panel style={{ gap: space.sm, marginBottom: last ? 0 : space.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <AppText variant="callout" style={{ fontWeight: '700' }}>
               {date}
             </AppText>
-            <AppText variant="caption" tone="tertiary">
+            <AppText variant="footnote" tone="tertiary">
+              {`Stress ${record.stress_level ?? '—'} · Energy ${record.energy_level ?? '—'} · Anxiety ${record.anxiety_level ?? '—'}`}
+            </AppText>
+            {record.notes ? (
+              <AppText variant="body" tone="secondary" style={{ marginTop: space.xs }}>
+                {record.notes}
+              </AppText>
+            ) : null}
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 0 }}>
+            <AppText
+              variant="numeric"
+              style={{ color: accent, fontSize: 30, lineHeight: 33, minWidth: 28 }}
+            >
+              {mood ?? '—'}
+            </AppText>
+            <AppText
+              variant="caption"
+              style={{ color: accent, letterSpacing: 0.7, textAlign: 'right' }}
+            >
               {moodLabel(mood)}
             </AppText>
           </View>
-          {record.notes ? (
-            <AppText variant="body" tone="secondary">
-              {record.notes}
-            </AppText>
-          ) : null}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.lg }}>
-            <AppText variant="mono" tone="tertiary">
-              Stress {record.stress_level ?? '—'}
-            </AppText>
-            <AppText variant="mono" tone="tertiary">
-              Energy {record.energy_level ?? '—'}
-            </AppText>
-            <AppText variant="mono" tone="tertiary">
-              Anxiety {record.anxiety_level ?? '—'}
-            </AppText>
-          </View>
         </View>
-        <AppText
-          variant="numeric"
-          style={{ color: accent, fontSize: 30, lineHeight: 34, minWidth: 28, textAlign: 'right' }}
-        >
-          {mood ?? '—'}
-        </AppText>
-      </View>
+      </Panel>
     </Pressable>
   );
 };
@@ -251,7 +230,7 @@ export const MentalSegment = () => {
   const [range, setRange] = useState<RangeKey>('7');
   const [showAll, setShowAll] = useState(false);
 
-  const chartWidth = Math.max(0, Math.min(720, width) - 40);
+  const chartWidth = Math.max(0, Math.min(720, width) - 72);
 
   const rangeDays = Number(range);
   const inRange = useMemo(() => {
@@ -338,9 +317,8 @@ export const MentalSegment = () => {
 
   return (
     <>
-      <SectionHeader title="How you feel" />
-      <View style={{ gap: space.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.lg }}>
+      <Panel style={{ gap: space.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
           <AppText
             variant="numeric"
             style={{
@@ -351,7 +329,7 @@ export const MentalSegment = () => {
           >
             {latestMood ?? '—'}
           </AppText>
-          <View style={{ flex: 1, gap: 1, paddingBottom: 8 }}>
+          <View style={{ flex: 1, gap: 1 }}>
             <AppText variant="headline">{moodLabel(latestMood)}</AppText>
             <AppText variant="footnote" tone="tertiary">
               / 10 · {latest.logged_at ? formatStamp(new Date(latest.logged_at)) : 'No date'}
@@ -361,11 +339,13 @@ export const MentalSegment = () => {
 
         <MoodScale value={latestMood} onSelect={(mood) => openAdd('mental', { mood: String(mood) })} />
 
+        <View style={{ height: 1, backgroundColor: colors.separator }} />
+
         <View style={{ gap: space.lg }}>
           <MetricRail
             label="Stress"
             value={latest.stress_level}
-            color={stressColor(latest.stress_level, colors)}
+            color={colors.textSecondary}
             valueLabel={
               latest.stress_level === null
                 ? 'Not logged'
@@ -375,7 +355,7 @@ export const MentalSegment = () => {
           <MetricRail
             label="Energy"
             value={latest.energy_level}
-            color={energyColor(latest.energy_level, colors)}
+            color={colors.primary}
             valueLabel={
               latest.energy_level === null
                 ? 'Not logged'
@@ -385,7 +365,7 @@ export const MentalSegment = () => {
           <MetricRail
             label="Anxiety"
             value={latest.anxiety_level}
-            color={stressColor(latest.anxiety_level, colors)}
+            color={colors.textSecondary}
             valueLabel={
               latest.anxiety_level === null
                 ? 'Not logged'
@@ -393,28 +373,33 @@ export const MentalSegment = () => {
             }
           />
         </View>
+      </Panel>
 
-        <Button label="Check in" onPress={() => openAdd('mental')} />
-      </View>
+      <Button label="Check in" onPress={() => openAdd('mental')} />
 
-      <SectionHeader
-        title="Mood trail"
-        caption={
-          points.length
-            ? `${points.length} ${points.length === 1 ? 'day' : 'days'} · ${avgMood.toFixed(1)} average`
-            : undefined
-        }
-        actionNode={
+      <View style={{ gap: space.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <AppText variant="headline" style={{ flex: 1 }}>
+            Mood trail
+          </AppText>
           <SegmentedControl
             label="Mood trail range"
             options={RANGES}
             value={range}
             onChange={setRange}
           />
-        }
-      />
+        </View>
+        {points.length ? (
+          <AppText variant="footnote" tone="tertiary">
+            {`${points.length} ${points.length === 1 ? 'day' : 'days'} · ${avgMood.toFixed(1)} average`}
+          </AppText>
+        ) : null}
+      </View>
+
       {points.length > 0 ? (
-        <MoodTrail points={points} width={chartWidth} height={124} />
+        <Panel>
+          <MoodTrail points={points} width={chartWidth} height={124} />
+        </Panel>
       ) : (
         <AppText variant="footnote" tone="tertiary">
           No check-ins in this range. Try the 30-day view.
@@ -422,9 +407,16 @@ export const MentalSegment = () => {
       )}
 
       {withMood.length >= 2 && bestDayName ? (
-        <>
-          <SectionHeader title="Patterns" caption={`Last ${rangeDays} days`} />
-          <View style={{ borderTopWidth: 1, borderTopColor: colors.separator }}>
+        <View style={{ gap: space.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            <AppText variant="headline" style={{ flex: 1 }}>
+              Patterns
+            </AppText>
+            <AppText variant="footnote" tone="tertiary">
+              Last {rangeDays} days
+            </AppText>
+          </View>
+          <Panel style={{ paddingTop: space.xs, paddingBottom: space.md }}>
             <MetaRow
               label="Best day"
               value={bestDayName}
@@ -441,17 +433,24 @@ export const MentalSegment = () => {
               detail="stress 7 or above"
               last
             />
-          </View>
-          {trendText ? (
-            <AppText variant="footnote" tone="secondary">
-              {trendText}
-            </AppText>
-          ) : null}
-        </>
+            {trendText ? (
+              <AppText variant="footnote" tone="primary" style={{ marginTop: space.md }}>
+                {trendText}
+              </AppText>
+            ) : null}
+          </Panel>
+        </View>
       ) : null}
 
-      <SectionHeader title="Journal" caption={`${data.mental.length} check-ins`} />
-      <View>
+      <View style={{ gap: space.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <AppText variant="headline" style={{ flex: 1 }}>
+            Journal
+          </AppText>
+          <AppText variant="footnote" tone="tertiary">
+            {data.mental.length} check-ins
+          </AppText>
+        </View>
         {journal.map((record, index) => (
           <JournalEntry
             key={record.id}
@@ -462,6 +461,7 @@ export const MentalSegment = () => {
           />
         ))}
       </View>
+
       {data.mental.length > 8 ? (
         <Button
           label={showAll ? 'Show fewer' : 'Show older'}

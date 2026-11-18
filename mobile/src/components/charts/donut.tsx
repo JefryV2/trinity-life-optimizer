@@ -22,18 +22,24 @@ export const Donut = ({
   stroke = 20,
   centerValue,
   centerLabel,
+  max,
+  rounded = false,
 }: {
   segments: DonutSegment[];
   size?: number;
   stroke?: number;
   centerValue?: string;
   centerLabel?: string;
+  /** Denominator for a single progress ring. Defaults to the sum of segments. */
+  max?: number;
+  rounded?: boolean;
 }) => {
   const { colors } = useTheme();
   const mid = size / 2;
   const r = mid - stroke / 2;
   const circumference = 2 * Math.PI * r;
-  const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0) || 1;
+  const total =
+    max ?? (segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0) || 1);
   let offset = 0;
 
   return (
@@ -48,7 +54,7 @@ export const Donut = ({
           fill="none"
         />
         {segments.map((segment) => {
-          const fraction = Math.max(0, segment.value) / total;
+          const fraction = Math.min(1, Math.max(0, segment.value) / total);
           const dash = fraction * circumference;
           const circle = (
             <Circle
@@ -58,7 +64,7 @@ export const Donut = ({
               r={r}
               stroke={segment.color}
               strokeWidth={stroke}
-              strokeLinecap="butt"
+              strokeLinecap={rounded ? 'round' : 'butt'}
               fill="none"
               strokeDasharray={`${dash} ${circumference - dash}`}
               strokeDashoffset={-offset}
@@ -80,7 +86,11 @@ export const Donut = ({
           </AppText>
         ) : null}
         {centerLabel ? (
-          <AppText variant="caption" tone="tertiary" style={{ marginTop: -2 }}>
+          <AppText
+            variant="footnote"
+            tone="tertiary"
+            style={{ marginTop: -2, textTransform: 'none', letterSpacing: 0 }}
+          >
             {centerLabel}
           </AppText>
         ) : null}

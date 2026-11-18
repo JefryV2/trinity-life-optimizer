@@ -86,7 +86,7 @@ export const SwipeSteps = ({
   });
 
   return (
-    <View style={{ gap: 16 }} {...pager.panHandlers}>
+    <View style={{ gap: 12 }} {...pager.panHandlers}>
       {children}
     </View>
   );

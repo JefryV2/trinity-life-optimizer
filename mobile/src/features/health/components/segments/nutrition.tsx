@@ -5,14 +5,10 @@ import { FlatList, Pressable, View } from 'react-native';
 import { Donut } from '@/components/charts/donut';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
-import { DeletableRow } from '@/components/ui/deletable-row';
-import { Icon } from '@/components/ui/icon';
 import { Progress } from '@/components/ui/progress';
-import { SectionHeader } from '@/components/ui/section-header';
+import { Panel } from '@/components/ui/panel';
 import { Sheet } from '@/components/ui/sheet';
-import { Stat, StatRow } from '@/components/ui/stat';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { TextField } from '@/components/ui/text-field';
 import { toast } from '@/components/ui/toast';
@@ -21,6 +17,7 @@ import { useHealth } from '@/features/health/use-health';
 import { useFoodSearch, type FoodSearchResult } from '@/features/health/use-food-search';
 import { useProfile } from '@/features/profile/use-profile';
 import { formatNumber } from '@/lib/format';
+import { confirmDelete } from '@/lib/confirm';
 import { openAdd, openEdit } from '@/lib/navigation';
 import { space, useTheme } from '@/theme';
 
@@ -50,14 +47,16 @@ export const NutritionSegment = () => {
   const sodium = data.food.reduce((sum, entry) => sum + (entry.sodium_mg ?? 0), 0);
 
   const calorieTarget = profileData?.health?.daily_caloric_target ?? 2000;
-  const hasMacroDetail = data.food.some(
-    (entry) => entry.fiber_g != null || entry.sugar_g != null || entry.sodium_mg != null,
-  );
   const weight = profileData?.health?.weight_kg ?? 70;
   const proteinTarget = Math.round(weight * 1.6);
   // One accent, then neutral steps: macros are not pillars, so they must not
   // borrow Wealth amber or People blue.
-  const macroColors = [colors.primary, '#D6D6DB', '#6B6B73'];
+  const macroRows = [
+    { label: 'Protein', value: protein, target: proteinTarget, color: colors.primary },
+    { label: 'Carbs', value: carbs, target: 250, color: colors.textSecondary },
+    { label: 'Fat', value: fat, target: 70, color: colors.textFaint },
+  ];
+  const calorieLeft = calorieTarget - calories;
 
   const runSearch = () => {
     if (query.trim().length >= 2) search.mutate(query.trim());
@@ -98,112 +97,130 @@ export const NutritionSegment = () => {
           actionLabel="Log food"
           onAction={() => setLogMenuVisible(true)}
         />
-      ) : null}
-
-      {data.food.length > 0 ? (
-        <Button
-          label="Log food"
-          icon={<Icon name="food" size={16} color={colors.onPrimary} />}
-          onPress={() => setLogMenuVisible(true)}
-        />
-      ) : null}
-
-      {data.food.length > 0 ? (
+      ) : (
         <>
-      <Card style={{ gap: space.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <AppText variant="headline">Calories</AppText>
-          <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
-            Target {formatNumber(calorieTarget)} kcal
-          </AppText>
-        </View>
-        <Progress
-          value={(calories / calorieTarget) * 100}
-          color={calories > calorieTarget ? colors.danger : undefined}
-        />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg, marginTop: space.xs }}>
-          <Donut
-            size={128}
-            stroke={15}
-            segments={[
-              { key: 'protein', label: 'Protein', value: protein, color: macroColors[0] },
-              { key: 'carbs', label: 'Carbs', value: carbs, color: macroColors[1] },
-              { key: 'fat', label: 'Fat', value: fat, color: macroColors[2] },
-            ]}
-            centerValue={formatNumber(calories)}
-            centerLabel="kcal"
-          />
-          <View style={{ flex: 1, gap: 8 }}>
-            {[
-              { label: 'Protein', value: protein, target: proteinTarget, color: macroColors[0] },
-              { label: 'Carbs', value: carbs, target: 250, color: macroColors[1] },
-              { label: 'Fat', value: fat, target: 70, color: macroColors[2] },
-            ].map((macro) => (
-              <View key={macro.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View
-                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: macro.color }}
-                />
-                <AppText variant="footnote" tone="secondary" style={{ flex: 1 }}>
-                  {macro.label}
-                </AppText>
-                <AppText variant="footnote" style={{ fontVariant: ['tabular-nums'] }}>
-                  {Math.round(macro.value)}
-                  <AppText variant="caption" tone="tertiary">
-                    {` / ${macro.target}g`}
-                  </AppText>
-                </AppText>
-              </View>
-            ))}
-          </View>
-        </View>
-      </Card>
-
-      {hasMacroDetail ? (
-        <Card>
-          <StatRow>
-            <Stat value={`${Math.round(fiber)}g`} label="Fiber / 30g" tone={fiber >= 30 ? 'success' : 'default'} />
-            <Stat value={`${Math.round(sugar)}g`} label="Sugar" />
-            <Stat
-              value={`${formatNumber(sodium)}mg`}
-              label="Sodium / 2,300 mg"
-              tone={sodium > 2300 ? 'danger' : 'default'}
-            />
-          </StatRow>
-        </Card>
-      ) : null}
-
-      <MicronutrientPanel entries={data.food} profile={profileData?.health ?? null} />
-        </>
-      ) : null}
-
-      {data.food.length > 0 ? (
-        MEAL_ORDER.map((meal) => {
-          const entries = data.food.filter((entry) => (entry.meal_type ?? 'snack') === meal);
-          if (entries.length === 0) return null;
-          const mealCalories = entries.reduce((sum, entry) => sum + (entry.total_calories ?? 0), 0);
-          return (
-            <View key={meal} style={{ gap: space.sm }}>
-              <SectionHeader
-                title={meal[0].toUpperCase() + meal.slice(1)}
-                caption={`${formatNumber(mealCalories)} kcal`}
+          <Panel>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
+              <Donut
+                size={128}
+                stroke={14}
+                max={calorieTarget}
+                rounded
+                segments={[
+                  { key: 'calories', label: 'Calories', value: calories, color: colors.primary },
+                ]}
+                centerValue={formatNumber(calories)}
+                centerLabel={`of ${formatNumber(calorieTarget)}`}
               />
-              <Card padded={false} style={{ paddingHorizontal: space.xl }}>
-                {entries.map((entry, index) => (
-                  <DeletableRow
-                    key={entry.id}
-                    title={entry.food_name}
-                    subtitle={`${Math.round(entry.protein_g ?? 0)}P · ${Math.round(entry.carbs_g ?? 0)}C · ${Math.round(entry.fat_g ?? 0)}F`}
-                    value={`${Math.round(entry.total_calories ?? 0)} kcal`}
-                    last={index === entries.length - 1}
-                    onPress={() => openEdit('food', entry.id)}
-                    onDelete={() => deleteRecord.mutate({ table: 'food_entries', id: entry.id })}
-                  />
+              <View style={{ flex: 1, gap: space.md }}>
+                {macroRows.map((macro) => (
+                  <View key={macro.label} style={{ gap: 5 }}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: 6,
+                      }}
+                    >
+                      <AppText variant="footnote" tone="secondary">
+                        {macro.label}
+                      </AppText>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+                        <AppText
+                          variant="callout"
+                          style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}
+                        >
+                          {Math.round(macro.value)}
+                        </AppText>
+                        <AppText variant="footnote" tone="tertiary">
+                          / {macro.target}g
+                        </AppText>
+                      </View>
+                    </View>
+                    <Progress
+                      value={(macro.value / Math.max(1, macro.target)) * 100}
+                      height={4}
+                      color={macro.color}
+                    />
+                  </View>
                 ))}
-              </Card>
+              </View>
             </View>
-          );
-        })
-      ) : null}
+          </Panel>
+
+          <View
+            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}
+          >
+            <AppText variant="footnote" tone="secondary">
+              {calorieLeft >= 0
+                ? `${formatNumber(calorieLeft)} kcal left today`
+                : `${formatNumber(Math.abs(calorieLeft))} kcal over today`}
+            </AppText>
+            <AppText variant="footnote" tone="tertiary">
+              Target {formatNumber(calorieTarget)} kcal
+            </AppText>
+          </View>
+
+          <Button label="Log food" onPress={() => setLogMenuVisible(true)} />
+
+          <View style={{ gap: space.md }}>
+            {MEAL_ORDER.map((meal) => {
+              const entries = data.food.filter((entry) => (entry.meal_type ?? 'snack') === meal);
+              if (entries.length === 0) return null;
+              return entries.map((entry) => (
+                <Pressable
+                  key={entry.id}
+                  accessibilityRole="button"
+                  accessibilityHint="Tap to edit, long press to delete"
+                  onPress={() => openEdit('food', entry.id)}
+                  onLongPress={() =>
+                    confirmDelete(entry.food_name, () =>
+                      deleteRecord.mutate({ table: 'food_entries', id: entry.id }),
+                    )
+                  }
+                  delayLongPress={350}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+                >
+                  <Panel style={{ gap: space.xs }}>
+                    <AppText variant="caption" tone="tertiary">
+                      {meal}
+                    </AppText>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: space.md,
+                      }}
+                    >
+                      <AppText variant="headline" numberOfLines={1} style={{ flex: 1 }}>
+                        {entry.food_name}
+                      </AppText>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+                        <AppText
+                          variant="numeric"
+                          style={{ fontSize: 24, lineHeight: 28, letterSpacing: -1 }}
+                        >
+                          {Math.round(entry.total_calories ?? 0)}
+                        </AppText>
+                        <AppText variant="footnote" tone="secondary">
+                          kcal
+                        </AppText>
+                      </View>
+                    </View>
+                    <AppText variant="footnote" tone="tertiary">
+                      {`${Math.round(entry.protein_g ?? 0)}P · ${Math.round(entry.carbs_g ?? 0)}C · ${Math.round(entry.fat_g ?? 0)}F`}
+                    </AppText>
+                  </Panel>
+                </Pressable>
+              ));
+            })}
+          </View>
+
+          <MicronutrientPanel entries={data.food} profile={profileData?.health ?? null} />
+        </>
+      )}
 
       <Sheet
         compact

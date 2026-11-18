@@ -42,6 +42,7 @@ type DockProps = {
     }) => object;
   };
   navigateToTab: (routeKey: string) => void;
+  quickLogOpen: boolean;
   onQuickLog: () => void;
 };
 
@@ -86,7 +87,13 @@ const BAR_HEIGHT = 64;
  * active one opens into a labelled pill, and a pillar's pages live in a
  * pop-up above it. The bar itself never turns into a second navigation layer.
  */
-export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockProps) => {
+export const UnifiedDock = ({
+  state,
+  emitter,
+  navigateToTab,
+  quickLogOpen,
+  onQuickLog,
+}: DockProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height, fontScale } = useWindowDimensions();
@@ -133,6 +140,10 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
     24,
     (innerWidth - activeWidth - 36 - 20) / Math.max(1, visibleRoutes.length - 1),
   );
+  const quietWidth = Math.max(
+    36,
+    (innerWidth - 36 - 4 * visibleRoutes.length) / Math.max(1, visibleRoutes.length),
+  );
   const barBottom = Math.max(10, insets.bottom + 2);
   const popupLeft = (() => {
     if (!tabLayout) return (width - POPUP_WIDTH) / 2;
@@ -175,6 +186,10 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
     return () => subscription.remove();
   }, [popupOpen]);
 
+  useEffect(() => {
+    if (quickLogOpen) setPopupOpen(false);
+  }, [quickLogOpen]);
+
   const choose = (value: string) => {
     if (routeName === 'health') setHealth(value as HealthTab);
     else setWealth(value as WealthTab);
@@ -198,8 +213,8 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
   const quickLog = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Quick log"
-      accessibilityHint="Opens quick log actions"
+      accessibilityLabel={quickLogOpen ? 'Close quick log' : 'Quick log'}
+      accessibilityHint={quickLogOpen ? 'Closes quick log actions' : 'Opens quick log actions'}
       onPress={onQuickLog}
       style={({ pressed }) => ({
         width: 36,
@@ -220,7 +235,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
           justifyContent: 'center',
         }}
       >
-        <Icon name="plus" size={19} color={colors.onPrimary} />
+        <Icon name={quickLogOpen ? 'close' : 'plus'} size={19} color={colors.onPrimary} />
       </View>
     </Pressable>
   );
@@ -394,6 +409,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
           >
             {visibleRoutes.map((route) => {
               const focused = state.routes[state.index]?.key === route.key;
+              const showFocused = focused && !quickLogOpen;
               const meta = metaFor(route.name, colors);
               return (
                 <Pressable
@@ -401,6 +417,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                   accessibilityRole="button"
                   accessibilityLabel={meta.label}
                   accessibilityState={{ selected: focused }}
+                  disabled={quickLogOpen}
                   onPress={() => pressTab(route, focused)}
                   onLongPress={() =>
                     emitter.emit({ type: 'tabLongPress', target: route.key })
@@ -418,27 +435,27 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                       : undefined
                   }
                   style={({ pressed }) => ({
-                    width: focused ? activeWidth : inactiveWidth,
+                    width: quickLogOpen ? quietWidth : focused ? activeWidth : inactiveWidth,
                     flexGrow: 0,
                     flexShrink: 0,
                     height: 44,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    paddingHorizontal: focused ? 14 : 0,
+                    paddingHorizontal: showFocused ? 14 : 0,
                     borderRadius: 22,
-                    backgroundColor: focused ? colors.primary : 'transparent',
+                    backgroundColor: showFocused ? colors.primary : 'transparent',
                     gap: 6,
-                    opacity: pressed ? 0.75 : 1,
+                    opacity: quickLogOpen ? 0.28 : pressed ? 0.75 : 1,
                     transform: [{ scale: pressed ? 0.97 : 1 }],
                   })}
                 >
                   <Icon
                     name={meta.icon}
-                    size={focused ? 20 : 21}
-                    color={focused ? colors.onPrimary : colors.textSecondary}
+                    size={showFocused ? 20 : 21}
+                    color={showFocused ? colors.onPrimary : colors.textSecondary}
                   />
-                  {focused ? (
+                  {showFocused ? (
                     <AppText
                       variant="callout"
                       numberOfLines={1}
@@ -447,7 +464,7 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
                       {meta.label}
                     </AppText>
                   ) : null}
-                  {focused && hasSections ? (
+                  {showFocused && hasSections ? (
                     <View
                       style={{
                         marginLeft: -2,

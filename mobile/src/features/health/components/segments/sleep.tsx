@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
 import { BarChart } from '@/components/charts/bar-chart';
-import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { DeletableRow } from '@/components/ui/deletable-row';
-import { SectionHeader } from '@/components/ui/section-header';
+import { Panel } from '@/components/ui/panel';
 import { Sheet } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -16,7 +15,7 @@ import { circadianSummary, formatClock } from '@/features/health/circadian';
 import { useHealth } from '@/features/health/use-health';
 import { formatDate } from '@/lib/format';
 import { openAdd, openEdit } from '@/lib/navigation';
-import { space, useTheme } from '@/theme';
+import { fonts, space, useTheme } from '@/theme';
 
 const TIMELINE_HOURS = 24;
 const TIMELINE_START = 18;
@@ -89,6 +88,53 @@ const CircadianTimeline = ({
   );
 };
 
+const RhythmRing = ({ score }: { score: number | null }) => {
+  const { colors } = useTheme();
+  const size = 82;
+  const stroke = 6;
+  const mid = size / 2;
+  const r = mid - stroke / 2;
+  const circumference = 2 * Math.PI * r;
+  const ratio = score === null ? 0 : Math.max(0, Math.min(1, score / 100));
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle
+          cx={mid}
+          cy={mid}
+          r={r}
+          stroke={colors.surfaceSunken}
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <Circle
+          cx={mid}
+          cy={mid}
+          r={r}
+          stroke={colors.primary}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={circumference - ratio * circumference}
+          rotation={-90}
+          origin={`${mid}, ${mid}`}
+        />
+      </Svg>
+      <AppText
+        variant="headline"
+        style={{ fontFamily: fonts.bold, fontVariant: ['tabular-nums'], lineHeight: 22 }}
+      >
+        {score ?? '—'}
+      </AppText>
+      <AppText variant="caption" tone="tertiary" style={{ letterSpacing: 0.8 }}>
+        Rhythm
+      </AppText>
+    </View>
+  );
+};
+
 export const SleepSegment = () => {
   const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, deleteRecord } = useHealth();
@@ -107,11 +153,10 @@ export const SleepSegment = () => {
   const avgQuality = week.length
     ? week.reduce((sum, record) => sum + (record.sleep_quality ?? 0), 0) / week.length
     : 0;
-
-  const chart = [...week]
+  const durationChart = [...week]
     .reverse()
     .map((record) => ({
-      label: formatDate(record.created_at),
+      label: String(new Date(record.created_at).getDate()),
       value: record.sleep_duration_hours ?? 0,
     }));
 
@@ -126,6 +171,8 @@ export const SleepSegment = () => {
   const windDown = targetBedtime - 1;
   const caffeineCutoff = targetBedtime - 8;
   const morningLight = targetWake + 0.5;
+  const avgHoursValue = avgHours > 0 ? avgHours.toFixed(1) : '—';
+  const avgQualityValue = avgQuality > 0 ? avgQuality.toFixed(1) : '—';
 
   const openPlanner = () => {
     if (circadian) {
@@ -139,101 +186,122 @@ export const SleepSegment = () => {
 
   return (
     <>
-      <Card raised style={{ gap: space.lg }}>
+      <Panel style={{ gap: space.lg }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: space.md,
+          }}
+        >
+          <View style={{ flex: 1, gap: space.xs }}>
+            <AppText variant="footnote" tone="secondary">
+              Average, 7 days
+            </AppText>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+              <AppText
+                variant="display"
+                style={{ fontSize: 50, lineHeight: 54, letterSpacing: -2 }}
+              >
+                {avgHoursValue}
+              </AppText>
+              {avgHours > 0 ? (
+                <AppText variant="headline" tone="secondary">
+                  h
+                </AppText>
+              ) : null}
+            </View>
+            <AppText
+              variant="footnote"
+              tone={avgHours >= 7 ? 'primary' : 'secondary'}
+              style={{ marginTop: space.xs }}
+            >
+              {avgHours === 0
+                ? 'Log last night to start the trend.'
+                : avgHours >= 7
+                  ? 'Above the 7-hour target'
+                  : `${(7 - avgHours).toFixed(1)} h below the 7-hour target`}
+            </AppText>
+          </View>
+          <RhythmRing score={circadian?.consistencyScore ?? null} />
+        </View>
+
+        <View style={{ height: 1, backgroundColor: colors.separator }} />
+
         <StatRow>
-          <Stat
-            value={avgHours > 0 ? avgHours.toFixed(1) : '—'}
-            label="Avg hours, 7d"
-            tone={avgHours >= 7 ? 'success' : 'default'}
-          />
-          <Stat value={avgQuality > 0 ? avgQuality.toFixed(1) : '—'} label="Quality, /10" />
+          <Stat value={avgQualityValue} suffix="/10" label="Quality" />
           <Stat value={String(data.sleep.length)} label="Records" />
+          <Stat
+            value={circadian ? `±${circadian.midpointVariationMinutes}` : '—'}
+            suffix={circadian ? 'min' : undefined}
+            label={circadian ? `Midpoint ${formatClock(circadian.midpoint)}` : 'Midpoint'}
+          />
         </StatRow>
-        <AppText variant="footnote" tone="secondary">
-          {avgHours === 0
-            ? 'Log last night to start the trend.'
-            : avgHours >= 7
-              ? 'Above the 7-hour target.'
-              : `${(7 - avgHours).toFixed(1)} hours below the 7-hour target.`}
-        </AppText>
-        <Button label="Log sleep" onPress={() => openAdd('sleep')} />
-      </Card>
+      </Panel>
+
+      <Button label="Log sleep" onPress={() => openAdd('sleep')} />
 
       {circadian ? (
-        <Card style={{ gap: space.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
-            <View style={{ flex: 1, gap: space.xs }}>
-              <AppText variant="caption" tone="tertiary">
-                CIRCADIAN RHYTHM
-              </AppText>
-              <AppText variant="headline">{circadian.consistencyLabel}</AppText>
-              <AppText variant="footnote" tone="secondary">
-                Midpoint {formatClock(circadian.midpoint)} · ±
-                {circadian.midpointVariationMinutes} min across {circadian.sampleSize} nights
-              </AppText>
-            </View>
-            <RingMeter
-              value={circadian.consistencyScore}
-              max={100}
-              size={66}
-              stroke={6}
-              color={colors.primary}
-              center={`${circadian.consistencyScore}`}
-              label="Rhythm"
-            />
+        <Panel style={{ gap: space.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
+            <AppText variant="headline" style={{ flex: 1 }}>
+              {circadian.consistencyLabel}
+            </AppText>
+            <AppText variant="mono" tone="secondary">
+              {formatClock(circadian.avgBedtime)} → {formatClock(circadian.avgWake)}
+            </AppText>
           </View>
 
-          <View style={{ gap: space.sm }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-              <AppText variant="caption" tone="tertiary">
-                SLEEP WINDOW
-              </AppText>
-              <AppText variant="mono" tone="secondary">
-                {formatClock(circadian.avgBedtime)} → {formatClock(circadian.avgWake)}
-              </AppText>
-            </View>
-            <CircadianTimeline
-              bedtime={circadian.avgBedtime}
-              wake={circadian.avgWake}
-              midpoint={circadian.midpoint}
-            />
-          </View>
+          <CircadianTimeline
+            bedtime={circadian.avgBedtime}
+            wake={circadian.avgWake}
+            midpoint={circadian.midpoint}
+          />
 
           <StatRow>
             <Stat value={formatClock(circadian.avgBedtime)} label="Bedtime" />
             <Stat value={formatClock(circadian.avgWake)} label="Wake" />
-            <Stat value={`±${circadian.bedtimeVariationMinutes}m`} label="Drift" />
+            <Stat value={`±${circadian.bedtimeVariationMinutes}`} suffix="m" label="Drift" />
           </StatRow>
 
-          <Button
-            label="Plan a shift"
-            variant="secondary"
-            size="small"
-            onPress={openPlanner}
-          />
-        </Card>
+          <Button label="Plan a shift" variant="secondary" size="small" onPress={openPlanner} />
+        </Panel>
       ) : null}
 
-      {chart.length > 1 ? (
-        <Card style={{ gap: space.md }}>
-          <SectionHeader title="Duration" caption="Target: 7–9 hours" />
-          <BarChart data={chart} maxValue={10} />
-        </Card>
+      {durationChart.length > 1 ? (
+        <View style={{ gap: space.md }}>
+          <View
+            style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}
+          >
+            <AppText variant="headline">Duration</AppText>
+            <AppText variant="footnote" tone="tertiary">
+              Target 7–9 h
+            </AppText>
+          </View>
+          <BarChart data={durationChart} maxValue={10} height={152} highlightLast />
+        </View>
       ) : null}
 
       <View style={{ gap: space.md }}>
-        <SectionHeader title="History" />
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <AppText variant="headline" style={{ flex: 1 }}>
+            History
+          </AppText>
+          <AppText variant="footnote" tone="tertiary">
+            {data.sleep.length} nights
+          </AppText>
+        </View>
         {data.sleep.length === 0 ? (
           <EmptyState
             icon="moon"
             title="No sleep records"
-            message="Log a ni
-ght to start the trend."
+            message="Log a night to start the trend."
             actionLabel="Log last night"
             onAction={() => openAdd('sleep')}
           />
         ) : (
-          <Card padded={false} style={{ paddingHorizontal: space.xl }}>
+          <Panel padded={false} style={{ paddingHorizontal: space.lg }}>
             {data.sleep.map((record, index) => (
               <DeletableRow
                 key={record.id}
@@ -246,7 +314,7 @@ ght to start the trend."
                 onDelete={() => deleteRecord.mutate({ table: 'sleep_records', id: record.id })}
               />
             ))}
-          </Card>
+          </Panel>
         )}
       </View>
 
