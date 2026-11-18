@@ -57,6 +57,10 @@ const GLYPH = {
   phone: 'call-outline',
   message: 'chatbubble-outline',
   video: 'videocam-outline',
+  search: 'search-outline',
+  cart: 'cart-outline',
+  bolt: 'flash-outline',
+  car: 'car-outline',
 } as const;
 
 export type IconName = keyof typeof GLYPH;

@@ -27,7 +27,7 @@ export const healthSections = (female: boolean) =>
 
 export const WEALTH_SECTIONS: Array<{ value: WealthTab; label: string }> = [
   { value: 'overview', label: 'Overview' },
-  { value: 'investments', label: 'Invest' },
+  { value: 'investments', label: 'Investing' },
   { value: 'expenses', label: 'Expenses' },
   { value: 'goals', label: 'Budgets' },
 ];

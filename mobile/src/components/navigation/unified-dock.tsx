@@ -1,11 +1,24 @@
 import { BlurView } from 'expo-blur';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import {
+  Animated,
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/app-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { Sheet } from '@/components/ui/sheet';
 import { useSectionNav } from '@/features/navigation/section-nav';
 import { useProfile } from '@/features/profile/use-profile';
 import { getBlurTarget, isBlurTargetAlive, subscribeBlurTarget } from '@/lib/blur-target';
@@ -15,7 +28,7 @@ import {
   type HealthTab,
   type WealthTab,
 } from '@/lib/navigation';
-import { space, useTheme, type ThemeColors } from '@/theme';
+import { useTheme, type ThemeColors } from '@/theme';
 
 type Route = { key: string; name: string; params?: object };
 
@@ -51,23 +64,41 @@ const metaFor = (route: string, colors: ThemeColors): Meta => {
   }
 };
 
+const SECTION_ICON: Record<string, IconName> = {
+  overview: 'chart',
+  nutrition: 'food',
+  fitness: 'dumbbell',
+  sleep: 'moon',
+  mental: 'brain',
+  heart: 'heart',
+  women: 'female',
+  investments: 'arrowUp',
+  expenses: 'wallet',
+  goals: 'target',
+};
+
+const POPUP_WIDTH = 264;
+const POPUP_GAP = 10;
+const BAR_HEIGHT = 64;
+
 /**
- * One dock for both levels of navigation. On a pillar page its left side is
- * that pillar's sections and its right side keeps every other pillar one tap
- * away. On Today, People and You it is the plain global tab bar.
+ * One dock for the whole app. The five destinations always stay visible; the
+ * active one opens into a labelled pill, and a pillar's pages live in a
+ * pop-up above it. The bar itself never turns into a second navigation layer.
  */
 export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width, fontScale } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
   const { data: profileData } = useProfile();
   const { health, wealth, setHealth, setWealth } = useSectionNav();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [mainNav, setMainNav] = useState(false);
+
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [tabLayout, setTabLayout] = useState<{ x: number; width: number } | null>(null);
+  const popupAnim = useRef(new Animated.Value(0)).current;
 
   const routeName = baseName(state.routes[state.index]?.name ?? 'index');
   const sectionMode = routeName === 'health' || routeName === 'wealth';
-  const showSections = sectionMode && !mainNav;
   const female = profileData?.health?.gender === 'female';
   const options = (
     routeName === 'health' ? healthSections(female) : WEALTH_SECTIONS
@@ -78,51 +109,90 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
         ? 'overview'
         : health
       : wealth;
+  const activeMeta = metaFor(routeName, colors);
+  const hasSections = sectionMode && options.length > 0;
 
-  const barWidth = showSections
-    ? Math.min(Math.max(width - 24, 320), 420)
-    : Math.min(Math.max(width - 56, 256), 336);
-  const narrow = barWidth < 360;
-  const visibleLimit =
-    fontScale > 1.15
-      ? narrow
-        ? 1
-        : 2
-      : narrow
-        ? 2
-        : 3;
-
-  const activeIndex = options.findIndex((option) => option.value === active);
-  const visible = options.slice(0, visibleLimit);
-  if (activeIndex >= visibleLimit && visible.length > 0) {
-    visible[visible.length - 1] = options[activeIndex];
-  }
-  const hasMore = options.length > visible.length;
+  const barWidth = Math.min(width - 32, 380);
+  const innerWidth = barWidth - 28;
+  const activeWidth =
+    barWidth >= 360
+      ? fontScale > 1.15
+        ? 150
+        : 142
+      : barWidth >= 330
+        ? fontScale > 1.15
+          ? 132
+          : 124
+        : 104;
+  const activeRouteKey = state.routes[state.index]?.key;
+  const visibleRoutes = state.routes.filter(
+    (route) => baseName(route.name) !== 'more' || route.key === activeRouteKey,
+  );
+  const hasVisibleActive = visibleRoutes.some((route) => route.key === activeRouteKey);
+  const inactiveWidth = Math.max(
+    24,
+    (innerWidth - activeWidth - 36 - 20) / Math.max(1, visibleRoutes.length - 1),
+  );
+  const barBottom = Math.max(10, insets.bottom + 2);
+  const popupLeft = (() => {
+    if (!tabLayout) return (width - POPUP_WIDTH) / 2;
+    const barLeft = (width - barWidth) / 2;
+    const center = barLeft + 8 + tabLayout.x + tabLayout.width / 2;
+    return Math.min(Math.max(center - POPUP_WIDTH / 2, 12), width - POPUP_WIDTH - 12);
+  })();
+  const tailLeft = (() => {
+    if (!tabLayout) return POPUP_WIDTH / 2 - 7;
+    const barLeft = (width - barWidth) / 2;
+    const center = barLeft + 8 + tabLayout.x + tabLayout.width / 2;
+    return Math.min(Math.max(center - popupLeft - 7, 14), POPUP_WIDTH - 28);
+  })();
 
   const target = useSyncExternalStore(subscribeBlurTarget, getBlurTarget, getBlurTarget);
   const blurTargetAlive = useMemo(() => isBlurTargetAlive(target), [target, fontScale]);
   const blurTarget = useMemo(() => ({ current: target }), [target]);
 
   useEffect(() => {
-    setSheetOpen(false);
-    setMainNav(false);
+    setPopupOpen(false);
+    setTabLayout(null);
   }, [routeName]);
 
-  const go = (name: string) => {
-    const route = state.routes.find((candidate) => baseName(candidate.name) === name);
-    if (!route) return;
+  useEffect(() => {
+    if (!popupOpen) return;
+    popupAnim.setValue(0);
+    Animated.timing(popupAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [popupOpen, popupAnim]);
+
+  useEffect(() => {
+    if (!popupOpen) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setPopupOpen(false);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [popupOpen]);
+
+  const choose = (value: string) => {
+    if (routeName === 'health') setHealth(value as HealthTab);
+    else setWealth(value as WealthTab);
+    setPopupOpen(false);
+  };
+
+  const pressTab = (route: Route, focused: boolean) => {
+    if (focused) {
+      if (hasSections) setPopupOpen((open) => !open);
+      return;
+    }
+    setPopupOpen(false);
     const event = emitter.emit({
       type: 'tabPress',
       target: route.key,
       canPreventDefault: true,
     }) as { defaultPrevented?: boolean };
     if (!event.defaultPrevented) navigateToTab(route.key);
-  };
-
-  const choose = (value: string) => {
-    if (routeName === 'health') setHealth(value as HealthTab);
-    else setWealth(value as WealthTab);
-    setSheetOpen(false);
   };
 
   const quickLog = (
@@ -162,272 +232,239 @@ export const UnifiedDock = ({ state, emitter, navigateToTab, onQuickLog }: DockP
         position: 'absolute',
         left: 0,
         right: 0,
-        bottom: Math.max(10, insets.bottom + 2),
+        bottom: barBottom,
         alignItems: 'center',
       }}
     >
-      <View
-        style={{
-          width: barWidth,
-          height: 64,
-          borderRadius: 999,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.10)',
-          backgroundColor: 'rgba(7, 7, 8, 0.82)',
-        }}
-      >
-        {blurTargetAlive ? (
-          <BlurView
-            tint="systemThickMaterialDark"
-            intensity={90}
-            blurMethod="dimezisBlurViewSdk31Plus"
-            blurTarget={blurTarget}
-            style={StyleSheet.absoluteFill}
-          />
-        ) : null}
+      {popupOpen ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close menu"
+          onPress={() => setPopupOpen(false)}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: BAR_HEIGHT,
+            height,
+            backgroundColor: 'rgba(0, 0, 0, 0.58)',
+            zIndex: 10,
+          }}
+        />
+      ) : null}
 
+      {popupOpen ? (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            left: popupLeft,
+            bottom: BAR_HEIGHT + POPUP_GAP,
+            width: POPUP_WIDTH,
+            zIndex: 20,
+            opacity: popupAnim,
+            transform: [
+              {
+                translateY: popupAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [10, 0],
+                }),
+              },
+              {
+                scale: popupAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.97, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surfaceAlt,
+              borderWidth: 1,
+              borderColor: colors.separator,
+              borderRadius: 22,
+              padding: 8,
+            }}
+          >
+            <View style={{ paddingHorizontal: 10, paddingTop: 4, paddingBottom: 4 }}>
+              <AppText
+                variant="caption"
+                tone="tertiary"
+                style={{ letterSpacing: 0.7, textTransform: 'uppercase' }}
+              >
+                {activeMeta.label}
+              </AppText>
+            </View>
+
+            {options.map((option) => {
+              const selected = option.value === active;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => choose(option.value)}
+                  style={({ pressed }) => ({
+                    height: 52,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingHorizontal: 10,
+                    borderRadius: 16,
+                    backgroundColor: selected ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+                    opacity: pressed ? 0.65 : 1,
+                  })}
+                >
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: selected ? colors.primary : 'rgba(255, 255, 255, 0.06)',
+                    }}
+                  >
+                    <Icon
+                      name={SECTION_ICON[option.value] ?? 'chart'}
+                      size={18}
+                      color={selected ? colors.onPrimary : colors.textSecondary}
+                    />
+                  </View>
+                  <AppText
+                    variant="callout"
+                    style={{ flex: 1, color: selected ? colors.text : colors.textSecondary }}
+                  >
+                    {option.label}
+                  </AppText>
+                  {selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: tailLeft,
+              bottom: -7,
+              width: 14,
+              height: 14,
+              backgroundColor: colors.surfaceAlt,
+              borderRightWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: colors.separator,
+              transform: [{ rotate: '45deg' }],
+            }}
+          />
+        </Animated.View>
+      ) : null}
+
+      <View style={{ width: barWidth, height: BAR_HEIGHT, zIndex: 30 }}>
         <View
           style={{
             flex: 1,
-            paddingHorizontal: 6,
-            flexDirection: 'row',
-            alignItems: 'center',
+            borderRadius: 999,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.10)',
+            backgroundColor: 'rgba(7, 7, 8, 0.96)',
           }}
         >
-          {showSections ? (
-            <>
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  overflow: 'hidden',
-                }}
-              >
-                {visible.map((option) => {
-                  const selected = option.value === active;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      accessibilityRole="tab"
-                      accessibilityState={{ selected }}
-                      accessibilityLabel={option.label}
-                      onPress={() => choose(option.value)}
-                      style={({ pressed }) => ({
-                        height: 44,
-                        justifyContent: 'center',
-                        marginRight: space.sm,
-                        opacity: pressed ? 0.72 : 1,
-                      })}
-                    >
-                      <View
-                        style={{
-                          height: 34,
-                          justifyContent: 'center',
-                          paddingHorizontal: selected ? 8 : 0,
-                          borderRadius: 999,
-                          backgroundColor: selected ? colors.primary : 'transparent',
-                        }}
-                      >
-                        <AppText
-                          variant="footnote"
-                          numberOfLines={1}
-                          style={{
-                            color: selected ? colors.onPrimary : colors.textSecondary,
-                            fontWeight: selected ? '700' : '600',
-                          }}
-                        >
-                          {option.label}
-                        </AppText>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+          {Platform.OS === 'ios' && blurTargetAlive ? (
+            <BlurView
+              tint="systemThickMaterialDark"
+              intensity={90}
+              blurMethod="dimezisBlurViewSdk31Plus"
+              blurTarget={blurTarget}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
 
-                {hasMore ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="More sections"
-                    onPress={() => setSheetOpen(true)}
-                    style={({ pressed }) => ({
-                      width: 28,
-                      height: 44,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: pressed ? 0.6 : 1,
-                    })}
-                  >
-                    <View
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      }}
-                    >
-                      <Icon name="more" size={16} color={colors.textSecondary} />
-                    </View>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              <View
-                style={{
-                  width: 1,
-                  height: 24,
-                  marginHorizontal: 5,
-                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                }}
-              />
-
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            style={{
+              flex: 1,
+              paddingHorizontal: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            {visibleRoutes.map((route) => {
+              const focused = state.routes[state.index]?.key === route.key;
+              const meta = metaFor(route.name, colors);
+              return (
                 <Pressable
+                  key={route.key}
                   accessibilityRole="button"
-                  accessibilityLabel="Main navigation"
-                  accessibilityHint="Shows the main tabs"
-                  onPress={() => setMainNav(true)}
+                  accessibilityLabel={meta.label}
+                  accessibilityState={{ selected: focused }}
+                  onPress={() => pressTab(route, focused)}
+                  onLongPress={() =>
+                    emitter.emit({ type: 'tabLongPress', target: route.key })
+                  }
+                  onLayout={
+                    focused
+                      ? (event) => {
+                          const { x, width: tabWidth } = event.nativeEvent.layout;
+                          setTabLayout((current) =>
+                            current && current.x === x && current.width === tabWidth
+                              ? current
+                              : { x, width: tabWidth },
+                          );
+                        }
+                      : undefined
+                  }
                   style={({ pressed }) => ({
-                    width: 32,
+                    width: focused ? activeWidth : inactiveWidth,
+                    flexGrow: 0,
+                    flexShrink: 0,
                     height: 44,
+                    flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    opacity: pressed ? 0.55 : 1,
+                    paddingHorizontal: focused ? 14 : 0,
+                    borderRadius: 22,
+                    backgroundColor: focused ? colors.primary : 'transparent',
+                    gap: 6,
+                    opacity: pressed ? 0.75 : 1,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
                   })}
                 >
-                  <Icon name="back" size={19} color={colors.textSecondary} />
-                </Pressable>
-                {['relations', 'more'].map((name) => {
-                  const meta = metaFor(name, colors);
-                  return (
-                    <Pressable
-                      key={name}
-                      accessibilityRole="button"
-                      accessibilityLabel={meta.label}
-                      onPress={() => go(name)}
-                      style={({ pressed }) => ({
-                        width: 32,
-                        height: 44,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        opacity: pressed ? 0.55 : 1,
-                      })}
+                  <Icon
+                    name={meta.icon}
+                    size={focused ? 20 : 21}
+                    color={focused ? colors.onPrimary : colors.textSecondary}
+                  />
+                  {focused ? (
+                    <AppText
+                      variant="callout"
+                      numberOfLines={1}
+                      style={{ fontSize: 13, fontWeight: '700', color: colors.onPrimary }}
                     >
-                      <Icon name={meta.icon} size={19} color={colors.textSecondary} />
-                    </Pressable>
-                  );
-                })}
-                {quickLog}
-              </View>
-            </>
-          ) : (
-            <>
-              {state.routes.map((route, index) => {
-                const focused = state.index === index;
-                const name = baseName(route.name);
-                const expandable = name === 'health' || name === 'wealth';
-                const meta = metaFor(route.name, colors);
-                const onPress = () => {
-                  if (focused && expandable) {
-                    setMainNav(false);
-                    return;
-                  }
-                  const event = emitter.emit({
-                    type: 'tabPress',
-                    target: route.key,
-                    canPreventDefault: true,
-                  }) as { defaultPrevented?: boolean };
-                  if (!focused && !event.defaultPrevented) navigateToTab(route.key);
-                };
-
-                return (
-                  <Pressable
-                    key={route.key}
-                    accessibilityRole="button"
-                    accessibilityLabel={meta.label}
-                    accessibilityState={{ selected: focused }}
-                    accessibilityHint={
-                      focused && expandable ? 'Shows this pillar’s sections' : undefined
-                    }
-                    onPress={onPress}
-                    onLongPress={() =>
-                      emitter.emit({ type: 'tabLongPress', target: route.key })
-                    }
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      height: 56,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: pressed ? 0.72 : 1,
-                      transform: [{ scale: pressed ? 0.94 : 1 }],
-                    })}
-                  >
-                    <Icon
-                      name={focused ? meta.activeIcon : meta.icon}
-                      size={focused ? 23 : 21}
-                      color={focused ? meta.color : colors.textTertiary}
-                    />
-                    {focused && expandable ? (
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: 'absolute',
-                          bottom: 5,
-                          transform: [{ rotate: '90deg' }],
-                        }}
-                      >
-                        <Icon name="chevron" size={10} color={meta.color} />
-                      </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-              {quickLog}
-            </>
-          )}
+                      {meta.label}
+                    </AppText>
+                  ) : null}
+                  {focused && hasSections ? (
+                    <View
+                      style={{
+                        marginLeft: -2,
+                        transform: [{ rotate: popupOpen ? '90deg' : '-90deg' }],
+                      }}
+                    >
+                      <Icon name="chevron" size={12} color={colors.onPrimary} />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+            {hasVisibleActive ? null : <View style={{ flex: 1 }} />}
+            {quickLog}
+          </View>
         </View>
       </View>
-
-      <Sheet
-        visible={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        title={routeName === 'health' ? 'Health sections' : 'Wealth sections'}
-        compact
-      >
-        <View>
-          {options.map((option, index) => {
-            const selected = option.value === active;
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                onPress={() => choose(option.value)}
-                style={({ pressed }) => ({
-                  minHeight: 48,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: space.md,
-                  borderTopWidth: index === 0 ? 0 : 1,
-                  borderTopColor: colors.separator,
-                  opacity: pressed ? 0.65 : 1,
-                })}
-              >
-                <AppText
-                  variant="callout"
-                  tone={selected ? 'default' : 'secondary'}
-                  style={{ flex: 1 }}
-                >
-                  {option.label}
-                </AppText>
-                {selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </Sheet>
     </View>
   );
 };

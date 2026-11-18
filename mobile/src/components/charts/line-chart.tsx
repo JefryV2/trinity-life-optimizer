@@ -17,6 +17,8 @@ export const LineChart = ({
   color,
   startLabel,
   endLabel,
+  fill = false,
+  grid = true,
 }: {
   values: number[];
   width: number;
@@ -27,6 +29,8 @@ export const LineChart = ({
   color?: string;
   startLabel?: string;
   endLabel?: string;
+  fill?: boolean;
+  grid?: boolean;
 }) => {
   const { colors } = useTheme();
   const plot = height - 10;
@@ -53,18 +57,27 @@ export const LineChart = ({
   return (
     <View style={{ gap: space.sm }}>
       <Svg width={width} height={height}>
-        {[0.25, 0.5, 0.75].map((ratio) => (
+        {grid
+          ? [0.25, 0.5, 0.75].map((ratio) => (
           <Line
             key={ratio}
             x1={0}
             y1={4 + (plot - 8) * ratio}
             x2={width}
             y2={4 + (plot - 8) * ratio}
-            stroke={colors.separator}
-            strokeWidth={1}
-          />
-        ))}
+              stroke={colors.separator}
+              strokeWidth={1}
+            />
+          ))
+          : null}
         <Line x1={0} y1={height - 1} x2={width} y2={height - 1} stroke={colors.border} strokeWidth={1} />
+        {fill && values.length > 1 ? (
+          <Path
+            d={`M 0,${height - 1} L ${points.join(' L ')} L ${width},${height - 1} Z`}
+            fill={color ?? colors.primary}
+            opacity={0.14}
+          />
+        ) : null}
         {values.length > 1 ? (
           <Path
             d={`M ${points.join(' L ')}`}

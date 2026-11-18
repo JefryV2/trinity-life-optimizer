@@ -32,6 +32,14 @@ export const formatMoney = (value: number, currency = getSettings().currency): s
     maximumFractionDigits: Math.abs(value) >= 1000 ? 0 : 2,
   }).format(value);
 
+export const formatMoneyCents = (value: number, currency = getSettings().currency): string =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
 export const formatCompactMoney = (value: number): string => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;

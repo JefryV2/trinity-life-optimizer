@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
@@ -15,6 +15,8 @@ import { space, useTheme } from '@/theme';
 
 export const OverviewSegment = () => {
   const { colors } = useTheme();
+  const { fontScale } = useWindowDimensions();
+  const stackRow = fontScale > 1.15;
   const { data, isPending, isError, error, refetch } = useHealth();
   const { data: profileData } = useProfile();
 
@@ -118,9 +120,20 @@ export const OverviewSegment = () => {
 
       <Card style={{ gap: space.lg }}>
         <View style={{ gap: space.xs }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
+          <View
+            style={{
+              flexDirection: stackRow ? 'column' : 'row',
+              alignItems: stackRow ? 'flex-start' : 'center',
+              justifyContent: 'space-between',
+              gap: stackRow ? 2 : space.md,
+            }}
+          >
             <AppText variant="callout">Energy balance</AppText>
-            <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
+            <AppText
+              variant="footnote"
+              tone="secondary"
+              style={[{ fontVariant: ['tabular-nums'] }, stackRow ? null : { textAlign: 'right' }]}
+            >
               {formatNumber(caloriesEaten)} / {formatNumber(calorieTarget)} kcal
             </AppText>
           </View>

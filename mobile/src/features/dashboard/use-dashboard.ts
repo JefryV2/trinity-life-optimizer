@@ -15,6 +15,9 @@ import { computeScore, computeStress, type ScoreReport, type StressReport } from
 import { saveDailySnapshot } from '@/lib/snapshots';
 import { useAuth } from '@/providers/auth-provider';
 
+type RoutePoint = { lat: number; lng: number };
+type ExerciseWithRoute = ExerciseRow & { route?: RoutePoint[][] | null };
+
 export interface DashboardData {
   name: string;
   focus: 'health' | 'wealth' | 'relations';
@@ -45,6 +48,7 @@ export interface DashboardData {
     mood: number;
   };
   trinity: number;
+  lastWalkRoute: RoutePoint[][] | null;
   /** The full explanation of the score; Today and /why both read this. */
   score: ScoreReport;
   stress: StressReport;
@@ -103,7 +107,7 @@ export const useDashboard = () => {
           .limit(7),
         supabase
           .from('exercise_records')
-          .select('duration_minutes,calories_burned,completed_at')
+          .select('duration_minutes,calories_burned,completed_at,route')
           .eq('user_id', userId)
           .gte('completed_at', since(7))
           .order('completed_at', { ascending: false }),
@@ -166,7 +170,8 @@ export const useDashboard = () => {
       ]);
 
       const sleepRows = (sleep.data ?? []) as SleepRow[];
-      const exerciseRows = (exercise.data ?? []) as ExerciseRow[];
+      const exerciseRows = (exercise.data ?? []) as ExerciseWithRoute[];
+      const lastWalkRoute = exerciseRows.find((row) => (row.route?.length ?? 0) > 0)?.route ?? null;
       const mentalRows = (mental.data ?? []) as MentalRow[];
       const transactionRows = (transactions.data ?? []) as TransactionRow[];
 
@@ -346,6 +351,7 @@ export const useDashboard = () => {
           : 'health';
 
       return {
+        lastWalkRoute,
         name: profile.data?.first_name?.trim() || 'there',
         focus,
         health: {

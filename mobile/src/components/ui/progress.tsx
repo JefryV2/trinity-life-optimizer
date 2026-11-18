@@ -5,10 +5,12 @@ import { useTheme } from '@/theme';
 export const Progress = ({
   value,
   color,
+  trackColor,
   height = 6,
 }: {
   value: number;
   color?: string;
+  trackColor?: string;
   height?: number;
 }) => {
   const { colors } = useTheme();
@@ -20,7 +22,7 @@ export const Progress = ({
       style={{
         height,
         borderRadius: height / 2,
-        backgroundColor: colors.surfaceSunken,
+        backgroundColor: trackColor ?? colors.surfaceSunken,
         overflow: 'hidden',
       }}
     >

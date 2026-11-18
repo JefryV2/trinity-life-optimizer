@@ -131,7 +131,7 @@ export const Screen = ({
 
         {header ? (
           <View
-            pointerEvents="none"
+            pointerEvents="box-none"
             style={{
               position: 'absolute',
               top: 0,
@@ -145,6 +145,7 @@ export const Screen = ({
           >
             {isFocused && blurTargetAlive ? (
               <BlurView
+                pointerEvents="none"
                 tint="dark"
                 intensity={45}
                 blurMethod="dimezisBlurViewSdk31Plus"
