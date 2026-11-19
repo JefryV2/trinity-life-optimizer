@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, RefreshControl, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { RingMeter } from '@/components/charts/ring-meter';
@@ -12,6 +12,8 @@ import { Panel } from '@/components/ui/panel';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Switch } from '@/components/ui/switch';
+import { useCallSync } from '@/features/relations/call-sync-provider';
 import { useRelations } from '@/features/relations/use-relations';
 import { daysBetween, formatDate, formatNumber, formatStamp, relativeDay } from '@/lib/format';
 import { openAdd, openEdit } from '@/lib/navigation';
@@ -113,6 +115,7 @@ const PersonAvatar = ({
 export default function PeopleScreen() {
   const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, isRefetching, addQualityTime } = useRelations();
+  const callSync = useCallSync();
 
   const people = data?.relationships ?? [];
   const interactions = data?.interactions ?? [];
@@ -316,6 +319,87 @@ export default function PeopleScreen() {
                   />
                 </View>
               </View>
+            </>
+          ) : null}
+
+          {Platform.OS === 'android' ? (
+            <>
+              <Panel style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: radius.inner,
+                    backgroundColor: colors.surfaceSunken,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon
+                    name="phone"
+                    size={20}
+                    color={callSync.enabled ? colors.primary : colors.textSecondary}
+                  />
+                </View>
+                <View style={{ flex: 1, gap: 1 }}>
+                  <AppText variant="callout" style={{ fontFamily: fonts.bold }}>
+                    Auto-log calls
+                  </AppText>
+                  <AppText variant="footnote" tone={callSync.error ? 'danger' : 'tertiary'}>
+                    {callSync.syncing
+                      ? 'Checking calls…'
+                      : callSync.enabled
+                        ? callSync.error
+                          ? 'Call access is needed'
+                          : callSync.lastSync
+                            ? `On · checked ${new Date(callSync.lastSync).toLocaleTimeString(undefined, {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}`
+                            : 'On'
+                        : 'Matches calls to people in your circle'}
+                  </AppText>
+                </View>
+                <Switch
+                  value={callSync.enabled}
+                  onValueChange={(next) => {
+                    void callSync.toggle(next);
+                  }}
+                  disabled={!callSync.ready}
+                  accessibilityLabel="Auto-log phone calls"
+                />
+              </Panel>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Import phone calls"
+                onPress={() => router.push('/call-import' as never)}
+                style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+              >
+                <Panel style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: radius.inner,
+                      backgroundColor: colors.surfaceSunken,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon name="phone" size={20} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1, gap: 1 }}>
+                    <AppText variant="callout" style={{ fontFamily: fonts.bold }}>
+                      Import phone calls
+                    </AppText>
+                    <AppText variant="footnote" tone="tertiary">
+                      Review calls from this Android phone
+                    </AppText>
+                  </View>
+                  <Icon name="chevron" size={18} color={colors.textTertiary} />
+                </Panel>
+              </Pressable>
             </>
           ) : null}
 

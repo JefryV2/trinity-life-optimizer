@@ -196,6 +196,48 @@ export const useRelations = () => {
     onSuccess: () => invalidate(queryClient),
   });
 
+  const importCalls = useMutation({
+    mutationFn: async (
+      calls: Array<{
+        relationshipId: string;
+        durationMinutes: number;
+        occurredAt: string;
+        missed?: boolean;
+      }>,
+    ) => {
+      if (calls.length === 0) return;
+      const rows = calls.map((call) => ({
+        user_id: userId!,
+        relationship_id: call.relationshipId,
+        channel: 'call',
+        duration_minutes: Math.max(1, call.durationMinutes),
+        mood_rating: 7,
+        occurred_at: call.occurredAt,
+        notes: call.missed ? 'Missed call' : null,
+      }));
+      const { error } = await supabase.from('interactions').insert(rows);
+      if (error) throw new Error(error.message);
+
+      const latest = new Map<string, string>();
+      for (const call of calls) {
+        const current = latest.get(call.relationshipId);
+        if (!current || call.occurredAt > current) latest.set(call.relationshipId, call.occurredAt);
+      }
+      await Promise.all(
+        [...latest.entries()].map(async ([relationshipId, occurredAt]) => {
+          const person = query.data?.relationships.find((entry) => entry.id === relationshipId);
+          if (person?.last_contact_at && person.last_contact_at >= occurredAt) return;
+          const { error: updateError } = await supabase
+            .from('relationships')
+            .update({ last_contact_at: occurredAt, updated_at: new Date().toISOString() })
+            .eq('id', relationshipId);
+          if (updateError) throw new Error(updateError.message);
+        }),
+      );
+    },
+    onSuccess: () => invalidate(queryClient),
+  });
+
   const addGratitude = useMutation({
     mutationFn: async (text: string) => {
       const { error } = await supabase.from('gratitude_entries').insert({
@@ -245,6 +287,7 @@ export const useRelations = () => {
     addRelationship,
     updatePerson,
     logInteraction,
+    importCalls,
     updateInteraction,
     addGratitude,
     addQualityTime,

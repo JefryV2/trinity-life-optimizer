@@ -33,7 +33,8 @@
         "RECEIVE_BOOT_COMPLETED",
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_SLEEP",
-        "android.permission.health.READ_HEART_RATE"
+        "android.permission.health.READ_HEART_RATE",
+        "READ_CALL_LOG"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#070708",

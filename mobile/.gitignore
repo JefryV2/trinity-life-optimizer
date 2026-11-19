@@ -45,3 +45,4 @@ example
 # local build artifacts
 *.apk
 *.aab
+modules/*/android/build/
