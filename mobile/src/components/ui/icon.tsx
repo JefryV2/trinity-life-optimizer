@@ -81,6 +81,7 @@ const GLYPH = {
   tender: 'flower-outline',
   dizzy: 'sync-outline',
   constipation: 'reorder-two-outline',
+  backspace: 'backspace-outline',
 } as const;
 
 export type IconName = keyof typeof GLYPH;

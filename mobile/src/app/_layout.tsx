@@ -154,7 +154,7 @@ function RootNavigator() {
         <Stack.Screen name="health-import" options={{ headerShown: false }} />
         <Stack.Screen name="legal" options={{ headerShown: false }} />
         <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Progress calendar' }} />
-        <Stack.Screen name="hydration" options={{ headerShown: true, title: 'Hydration' }} />
+        <Stack.Screen name="hydration" options={{ headerShown: false }} />
         <Stack.Screen name="walk" options={{ headerShown: true, title: 'GPS walk' }} />
         <Stack.Screen
           name="add/[form]"

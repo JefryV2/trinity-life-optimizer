@@ -1,17 +1,21 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { FormFrame } from '@/components/form-frame';
+import { CalendarSheet } from '@/components/ui/calendar-sheet';
+import { Screen } from '@/components/ui/screen';
+import { Sheet } from '@/components/ui/sheet';
 import { AppText } from '@/components/ui/app-text';
+import { Button } from '@/components/ui/button';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Chips } from '@/components/ui/chips';
-import { DateTimeField } from '@/components/ui/date-time-field';
-import { RecentChips } from '@/components/ui/recent-chips';
 import { TextField } from '@/components/ui/text-field';
 import { useSettings } from '@/features/settings/use-settings';
 import { useWealth } from '@/features/wealth/use-wealth';
+import { formatDate, formatNumber } from '@/lib/format';
 import { useFormSubmit } from '@/lib/use-form-submit';
-import { radius, space, useTheme } from '@/theme';
+import { fonts, radius, space, useTheme } from '@/theme';
 
 const parseNumber = (text: string): number => Number(text.replace(',', '.'));
 
@@ -161,6 +165,7 @@ const CATEGORIES = [
 ];
 
 export const TransactionForm = ({ recordId }: { recordId?: string }) => {
+  const { colors } = useTheme();
   const { data, addTransaction, updateTransaction } = useWealth();
   const { saving, error, setError, submit } = useFormSubmit();
   const [amount, setAmount] = useState('');
@@ -169,13 +174,18 @@ export const TransactionForm = ({ recordId }: { recordId?: string }) => {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date());
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [noteVisible, setNoteVisible] = useState(false);
+  const [accountsVisible, setAccountsVisible] = useState(false);
 
   const accounts = data?.accounts ?? [];
   const existing = data?.transactions.find((record) => record.id === recordId);
+  const accountName = accounts.find((account) => account.id === accountId)?.name ?? 'No account';
+  const today = date.toDateString() === new Date().toDateString();
 
   useEffect(() => {
     if (!existing) return;
-    setAmount(String(existing.amount));
+    setAmount(existing.amount.toFixed(2));
     setDirection(existing.direction === 'in' ? 'in' : 'out');
     setCategory(existing.category ?? 'Other');
     setAccountId(existing.account_id);
@@ -190,7 +200,7 @@ export const TransactionForm = ({ recordId }: { recordId?: string }) => {
         entry,
       ]),
     ).values(),
-  ).slice(0, 4);
+  ).slice(0, 6);
 
   const save = () => {
     const value = parseNumber(amount);
@@ -213,79 +223,380 @@ export const TransactionForm = ({ recordId }: { recordId?: string }) => {
     );
   };
 
+  const pressKey = (key: string) => {
+    setError(null);
+    if (key === 'back') {
+      setAmount((current) => (current.length <= 1 ? '' : current.slice(0, -1)));
+      return;
+    }
+    if (key === '.') {
+      setAmount((current) => (current.includes('.') ? current : current ? `${current}.` : '0.'));
+      return;
+    }
+    setAmount((current) => {
+      if (current.includes('.') && current.split('.')[1]?.length >= 2) return current;
+      if (current.replace(/\D/g, '').length >= 7) return current;
+      return current === '0' ? key : `${current}${key}`;
+    });
+  };
+
   return (
-    <FormFrame
-      title={existing ? 'Edit transaction' : 'Add transaction'}
-      submitLabel={existing ? 'Save changes' : 'Save transaction'}
-      loading={saving}
-      error={error}
-      onSubmit={save}
-    >
-      <View style={{ gap: space.xl }}>
-        <RecentChips
-          options={recent.map((entry) => ({
-            key: `${entry.category ?? 'Other'}|${entry.amount}|${entry.note ?? ''}`,
-            label: `${entry.note || entry.category || 'Expense'} · ${entry.amount}`,
-            onPress: () => {
-              setAmount(String(entry.amount));
+    <Screen contentContainerStyle={{ paddingTop: space.lg, paddingBottom: space.xxl, flexGrow: 1 }}>
+      <View
+        style={{
+          alignSelf: 'center',
+          width: 40,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: colors.border,
+          marginBottom: space.sm,
+        }}
+      />
+
+      <AppText style={{ fontSize: 32, lineHeight: 38, fontFamily: fonts.black, letterSpacing: -1.2 }}>
+        {existing ? 'Edit transaction' : 'Add transaction'}
+      </AppText>
+
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: 2,
+          padding: 4,
+          borderRadius: radius.pill,
+          backgroundColor: colors.surfaceAlt,
+        }}
+      >
+        {[
+          { value: 'out' as const, label: 'Expense' },
+          { value: 'in' as const, label: 'Income' },
+        ].map((option) => {
+          const selected = direction === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => setDirection(option.value)}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 48,
+                borderRadius: radius.pill,
+                backgroundColor: selected ? colors.primary : 'transparent',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <AppText
+                tone={selected ? 'onPrimary' : 'secondary'}
+                style={{ fontSize: 15, fontFamily: selected ? fonts.bold : fonts.medium }}
+              >
+                {option.label}
+              </AppText>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={{ alignItems: 'center', gap: 2, paddingVertical: space.sm }}>
+        <AppText variant="caption" tone="tertiary">
+          Amount
+        </AppText>
+        <AppText
+          style={{
+            fontSize: 60,
+            lineHeight: 66,
+            fontFamily: fonts.black,
+            letterSpacing: -3,
+            fontVariant: ['tabular-nums'],
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          selectable
+        >
+          {amount || '0'}
+        </AppText>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: space.sm }}
+      >
+        {recent.map((entry, index) => (
+          <Pressable
+            key={`${entry.id}-${index}`}
+            accessibilityRole="button"
+            onPress={() => {
+              setAmount(entry.amount.toFixed(2));
               setDirection(entry.direction === 'in' ? 'in' : 'out');
               setCategory(entry.category ?? 'Other');
               setAccountId(entry.account_id);
               setNote(entry.note ?? '');
               setDate(new Date());
-            },
-          }))}
-        />
-        <Chips
-          label="Direction"
-          options={[
-            { value: 'out', label: 'Expense' },
-            { value: 'in', label: 'Income' },
-          ]}
-          value={direction}
-          onChange={setDirection}
-        />
-        <TextField
-          label="Amount"
-          value={amount}
-          onChangeText={setAmount}
-          placeholder="24.50"
-          keyboardType="decimal-pad"
-          maxLength={12}
-        />
-        <View style={{ gap: space.sm }}>
-          <TextField
-            label="Category"
-            value={category}
-            onChangeText={setCategory}
-            placeholder="Food, Rent, Freelance…"
-            maxLength={40}
-          />
-          <Chips options={CATEGORIES} value={category} onChange={setCategory} />
-        </View>
-        {accounts.length > 0 ? (
-          <View style={{ gap: space.sm }}>
-            <Chips
-              label="Account"
-              options={[
-                { value: 'none', label: 'No account' },
-                ...accounts.map((account) => ({ value: account.id, label: account.name })),
-              ]}
-              value={accountId ?? 'none'}
-              onChange={(value) => setAccountId(value === 'none' ? null : value)}
-            />
+              setError(null);
+            }}
+            style={({ pressed }) => ({
+              minHeight: 46,
+              borderRadius: radius.pill,
+              backgroundColor: colors.surfaceAlt,
+              paddingHorizontal: space.lg,
+              justifyContent: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <AppText variant="callout" numberOfLines={1}>
+              {entry.note || entry.category || 'Expense'} · {formatNumber(entry.amount)}
+            </AppText>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: space.sm }}
+      >
+        {CATEGORIES.map((option) => {
+          const selected = option.value === category;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => setCategory(option.value)}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                borderRadius: radius.pill,
+                backgroundColor: selected ? colors.primarySoft : colors.surfaceAlt,
+                borderWidth: 1,
+                borderColor: selected ? colors.primary : 'transparent',
+                paddingHorizontal: space.lg,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <AppText
+                tone={selected ? 'primary' : 'secondary'}
+                style={{ fontFamily: selected ? fonts.bold : fonts.medium }}
+              >
+                {option.label}
+              </AppText>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose account"
+          onPress={() => setAccountsVisible(true)}
+          style={({ pressed }) => ({
+            flex: 1,
+            minHeight: 48,
+            borderRadius: radius.pill,
+            backgroundColor: colors.surfaceAlt,
+            paddingHorizontal: space.lg,
+            justifyContent: 'center',
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <AppText variant="callout" numberOfLines={1}>
+            {accountName}
+          </AppText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose date"
+          onPress={() => setCalendarVisible(true)}
+          style={({ pressed }) => ({
+            minHeight: 48,
+            borderRadius: radius.pill,
+            backgroundColor: colors.surfaceAlt,
+            paddingHorizontal: space.lg,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Icon name="calendar" size={16} color={colors.textSecondary} />
+          <AppText variant="callout">{today ? 'Today' : formatDate(date)}</AppText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add a note"
+          onPress={() => setNoteVisible(true)}
+          style={({ pressed }) => ({
+            width: 48,
+            height: 48,
+            borderRadius: radius.pill,
+            backgroundColor: colors.surfaceAlt,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Icon name="edit" size={18} color={colors.primary} />
+        </Pressable>
+      </View>
+
+      <View style={{ gap: space.sm }}>
+        {[
+          ['1', '2', '3'],
+          ['4', '5', '6'],
+          ['7', '8', '9'],
+          ['.', '0', 'back'],
+        ].map((row) => (
+          <View key={row.join('-')} style={{ flexDirection: 'row', gap: space.sm }}>
+            {row.map((key) => (
+              <Pressable
+                key={key}
+                accessibilityRole="button"
+                accessibilityLabel={key === 'back' ? 'Delete' : key}
+                onPress={() => pressKey(key)}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  height: 58,
+                  borderRadius: radius.inner,
+                  backgroundColor: colors.surfaceAlt,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.62 : 1,
+                })}
+              >
+                {key === 'back' ? (
+                  <Icon name="backspace" size={23} color={colors.textSecondary} />
+                ) : (
+                  <AppText style={{ fontSize: 24, lineHeight: 30, fontFamily: fonts.bold }}>
+                    {key}
+                  </AppText>
+                )}
+              </Pressable>
+            ))}
           </View>
-        ) : null}
-        <DateTimeField label="Date" value={date} onChange={setDate} />
+        ))}
+      </View>
+
+      {error ? (
+        <AppText variant="footnote" tone="danger" selectable>
+          {error}
+        </AppText>
+      ) : null}
+
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.md,
+          marginTop: 'auto',
+          paddingTop: space.md,
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cancel"
+          onPress={() => router.back()}
+          style={({ pressed }) => ({
+            width: 54,
+            height: 54,
+            borderRadius: radius.pill,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Icon name="back" size={21} color={colors.textSecondary} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={save}
+          disabled={saving}
+          style={({ pressed }) => ({
+            flex: 1,
+            minHeight: 58,
+            borderRadius: radius.pill,
+            backgroundColor: saving ? colors.surfaceSunken : colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <AppText
+            tone={saving ? 'tertiary' : 'onPrimary'}
+            style={{ fontSize: 17, fontFamily: fonts.bold }}
+          >
+            {existing ? 'Save changes' : 'Save transaction'}
+          </AppText>
+        </Pressable>
+      </View>
+
+      <CalendarSheet
+        visible={calendarVisible}
+        value={date}
+        onClose={() => setCalendarVisible(false)}
+        onSelect={setDate}
+      />
+
+      <Sheet
+        compact
+        visible={noteVisible}
+        title="Note"
+        subtitle="Optional"
+        onClose={() => setNoteVisible(false)}
+        footer={<Button label="Done" onPress={() => setNoteVisible(false)} />}
+      >
         <TextField
-          label="Note (optional)"
+          label="Note"
           value={note}
           onChangeText={setNote}
           placeholder="What was it for?"
           maxLength={140}
         />
-      </View>
-    </FormFrame>
+      </Sheet>
+
+      <Sheet
+        compact
+        visible={accountsVisible}
+        title="Account"
+        subtitle="Where the money moved"
+        onClose={() => setAccountsVisible(false)}
+      >
+        <View>
+          {[{ id: null, name: 'No account' }, ...accounts].map((account, index) => {
+            const selected = account.id === accountId;
+            return (
+              <Pressable
+                key={account.id ?? 'none'}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => {
+                  setAccountId(account.id);
+                  setAccountsVisible(false);
+                }}
+                style={{
+                  minHeight: 54,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  borderBottomWidth: index === accounts.length ? 0 : 1,
+                  borderBottomColor: colors.separator,
+                }}
+              >
+                <AppText variant="callout" style={{ flex: 1 }}>
+                  {account.name}
+                </AppText>
+                {selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </Sheet>
+    </Screen>
   );
 };
 
