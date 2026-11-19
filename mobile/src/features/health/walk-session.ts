@@ -23,6 +23,8 @@ export type WalkSession = {
   distanceM: number;
   segments: WalkPoint[][];
   lastPoint: { lat: number; lng: number; t: number } | null;
+  /** Recent fixes, used to prove movement before distance is credited. */
+  recent: Array<{ lat: number; lng: number; t: number }>;
   accuracy: number | null;
   /** Sensor steps persisted so a killed app can restore the count. */
   steps: number;
@@ -32,12 +34,16 @@ export type WalkSession = {
 };
 
 export const MAX_ACCURACY_M = 25;
-const MIN_SEGMENT_M = 3.5;
-// Anything faster than a sprint is a GPS jump, not a step.
-const MAX_SPEED_MPS = 7;
+const MIN_SEGMENT_M = 8;
+// A brisk walk is under 3 m/s. Anything faster is a jump, not a walk.
+const MAX_SPEED_MPS = 3.2;
 // GPS drift at walking pace is common while standing still. Reject fixes that
 // do not clear a small, accuracy-scaled distance floor.
-const MIN_SPEED_MPS = 0.35;
+const MIN_SPEED_MPS = 0.45;
+// A fix only counts once the recent window shows sustained, direct movement.
+const MOTION_WINDOW_MS = 8_000;
+const MOTION_LOOKBACK_MS = 12_000;
+const MIN_STRAIGHTNESS = 0.55;
 // A long silence means a new segment, never a straight line across the gap.
 const MAX_GAP_MS = 60_000;
 
@@ -70,6 +76,7 @@ export const createSession = (
   distanceM: 0,
   segments: [],
   lastPoint: null,
+  recent: [],
   accuracy: null,
   steps: 0,
   saved: false,
@@ -92,31 +99,60 @@ export const appendFix = (session: WalkSession, fix: WalkFix): WalkSession => {
     return { ...session, accuracy: reading, updatedAt: now };
   }
 
+  const point = { lat: latitude, lng: longitude };
+  const recent = [...(session.recent ?? []), { ...point, t: now }].filter(
+    (entry) => now - entry.t <= MOTION_LOOKBACK_MS,
+  );
   const last = session.lastPoint;
+
   if (!last) {
     return {
       ...session,
       accuracy: reading,
-      lastPoint: { lat: latitude, lng: longitude, t: now },
-      segments: [...session.segments, [{ lat: latitude, lng: longitude }]],
+      lastPoint: { ...point, t: now },
+      recent,
+      segments: [...session.segments, [point]],
       updatedAt: now,
     };
   }
 
-  const segment = haversine(last, { lat: latitude, lng: longitude });
+  const segment = haversine(last, point);
   const seconds = Math.max(0.5, (now - last.t) / 1000);
   const speed = segment / seconds;
-  const floor = Math.max(MIN_SEGMENT_M, Math.min(12, (reading ?? 0) * 0.45));
+  const floor = Math.max(MIN_SEGMENT_M, Math.min(14, (reading ?? 0) * 0.55));
 
   if (
     segment < floor ||
     speed > MAX_SPEED_MPS ||
     (speed < MIN_SPEED_MPS && segment < 12)
   ) {
-    return { ...session, accuracy: reading, updatedAt: now };
+    return { ...session, accuracy: reading, recent, updatedAt: now };
   }
 
-  const point = { lat: latitude, lng: longitude };
+  const first = recent[0];
+  const windowMs = Math.max(0, now - first.t);
+  const net = haversine(first, point);
+  const path = recent
+    .slice(1)
+    .reduce((sum, entry, index) => sum + haversine(recent[index], entry), 0);
+  const straightness = path > 0 ? net / path : 0;
+  const averageSpeed = windowMs > 0 ? net / (windowMs / 1000) : 0;
+  const motionFloor = Math.max(9, Math.min(12, (reading ?? 8) * 0.5));
+
+  // A seated phone still jitters around a point. Real walking covers ground
+  // in one direction, so credit nothing until the window shows a direct,
+  // sustained move — not a pile of random little jumps.
+  if (
+    windowMs < MOTION_WINDOW_MS ||
+    net < motionFloor ||
+    path < motionFloor * 1.1 ||
+    straightness < MIN_STRAIGHTNESS ||
+    averageSpeed < 0.5 ||
+    averageSpeed > MAX_SPEED_MPS
+  ) {
+    return { ...session, accuracy: reading, recent, updatedAt: now };
+  }
+
   const gap = now - last.t > MAX_GAP_MS;
   const segments =
     gap || session.segments.length === 0
@@ -129,10 +165,12 @@ export const appendFix = (session: WalkSession, fix: WalkFix): WalkSession => {
     ...session,
     accuracy: reading,
     lastPoint: { ...point, t: now },
+    recent,
     distanceM: session.distanceM + segment,
     segments,
     updatedAt: now,
   };
+
 };
 
 const roundPoint = (point: WalkPoint): WalkPoint => ({
@@ -169,6 +207,12 @@ export const loadSession = async (): Promise<WalkSession | null> => {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as WalkSession;
     if (!parsed || typeof parsed.startedAt !== 'number' || !Array.isArray(parsed.segments)) {
+      return null;
+    }
+    // Sessions from before the movement-window filter can contain drift that
+    // was already credited. Start clean rather than carrying those numbers in.
+    if (!Array.isArray(parsed.recent)) {
+      await AsyncStorage.removeItem(WALK_SESSION_KEY);
       return null;
     }
     return parsed;

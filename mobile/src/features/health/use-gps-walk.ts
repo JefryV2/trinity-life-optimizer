@@ -274,6 +274,7 @@ export const useGpsWalk = () => {
         pausedAt: at,
         pauses: [...current.pauses, { start: at, end: null }],
         lastPoint: null,
+        recent: [],
         steps,
         updatedAt: at,
       });
@@ -303,6 +304,7 @@ export const useGpsWalk = () => {
         pausedMs: current.pausedMs + Math.max(0, at - pausedAt),
         pauses,
         lastPoint: null,
+        recent: [],
         updatedAt: at,
       });
       setNow(at);
@@ -368,6 +370,7 @@ export const useGpsWalk = () => {
         pauses,
         steps,
         lastPoint: null,
+        recent: [],
         updatedAt: at,
       });
       setSensorSteps(steps);
