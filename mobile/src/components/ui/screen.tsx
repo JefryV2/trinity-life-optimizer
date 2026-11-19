@@ -11,6 +11,13 @@ import {
   View,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SwipeTabs, useIsTabRoute } from '@/components/ui/swipe';
@@ -41,9 +48,48 @@ export const Screen = ({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
+  const topInset = safeAreaTop ? insets.top : 0;
   // The bar grows with the user's text size so the title never clips.
   const headerHeight =
     HEADER_HEIGHT + Math.max(0, fontScale - 1) * 40 + (fontScale > 1.15 ? 22 : 0);
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+  const headerBarStyle = useAnimatedStyle(() => {
+    const progress = interpolate(
+      scrollY.value,
+      [0, 96],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
+    return {
+      height: interpolate(
+        progress,
+        [0, 0.34, 1],
+        [topInset + headerHeight, topInset + 42, topInset],
+        Extrapolation.CLAMP,
+      ),
+    };
+  }, [headerHeight, topInset]);
+  const largeHeaderStyle = useAnimatedStyle(() => {
+    const progress = interpolate(
+      scrollY.value,
+      [0, 82],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
+    return {
+      opacity: interpolate(progress, [0.35, 0.82], [1, 0], Extrapolation.CLAMP),
+      transform: [
+        { translateY: interpolate(progress, [0, 1], [0, -12], Extrapolation.CLAMP) },
+        { scale: interpolate(progress, [0, 1], [1, 0.82], Extrapolation.CLAMP) },
+      ],
+      transformOrigin: 'left center',
+    };
+  });
   const isTab = useIsTabRoute();
   const isFocused = useIsFocused();
   const router = useRouter();
@@ -69,7 +115,6 @@ export const Screen = ({
     [isTab, router],
   );
   const targetRef = useRef<ComponentRef<typeof View>>(null);
-  const topInset = safeAreaTop ? insets.top : 0;
   const blurTargetNode = useSyncExternalStore(
     subscribeBlurTarget,
     getBlurTarget,
@@ -107,8 +152,10 @@ export const Screen = ({
       <GestureDetector gesture={backGesture}>
         <View style={{ flex: 1 }}>
         <BlurTargetView ref={targetRef} style={{ flex: 1 }}>
-          <ScrollView
+          <Animated.ScrollView
             {...rest}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
             style={{ flex: 1, backgroundColor: colors.background }}
             contentInsetAdjustmentBehavior="automatic"
             keyboardShouldPersistTaps="handled"
@@ -126,22 +173,24 @@ export const Screen = ({
             ]}
           >
             {children}
-          </ScrollView>
+          </Animated.ScrollView>
         </BlurTargetView>
 
         {header ? (
-          <View
+          <Animated.View
             pointerEvents="box-none"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              minHeight: topInset + headerHeight,
-              borderBottomWidth: 1,
-              borderBottomColor: 'rgba(255,255,255,0.08)',
-              overflow: 'hidden',
-            }}
+            style={[
+              {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(255,255,255,0.08)',
+                overflow: 'hidden',
+              },
+              headerBarStyle,
+            ]}
           >
             {isFocused && blurTargetAlive ? (
               <BlurView
@@ -157,21 +206,24 @@ export const Screen = ({
               pointerEvents="none"
               style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(7,7,8,0.64)' }]}
             />
-            <View
-              style={{
-                flex: 1,
-                paddingTop: topInset + space.sm,
-                paddingHorizontal: space.xl,
-                paddingBottom: space.sm,
-                justifyContent: 'center',
-                width: '100%',
-                maxWidth: 720,
-                alignSelf: 'center',
-              }}
+            <Animated.View
+              style={[
+                {
+                  flex: 1,
+                  paddingTop: topInset + space.sm,
+                  paddingHorizontal: space.xl,
+                  paddingBottom: space.sm,
+                  justifyContent: 'center',
+                  width: '100%',
+                  maxWidth: 720,
+                  alignSelf: 'center',
+                },
+                largeHeaderStyle,
+              ]}
             >
               {header}
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         ) : null}
         </View>
       </GestureDetector>
