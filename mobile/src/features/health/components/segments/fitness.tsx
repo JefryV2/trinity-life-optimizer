@@ -6,6 +6,7 @@ import { AppText } from '@/components/ui/app-text';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Panel } from '@/components/ui/panel';
 import { Progress } from '@/components/ui/progress';
+import { RouteThumb } from '@/features/health/components/route-thumb';
 import { useHealth } from '@/features/health/use-health';
 import { usePedometer } from '@/features/health/use-pedometer';
 import { confirmDelete } from '@/lib/confirm';
@@ -175,58 +176,73 @@ export const FitnessSegment = () => {
             onAction={() => openAdd('exercise')}
           />
         ) : (
-          data.exercise.map((record) => (
-            <Pressable
-              key={record.id}
-              accessibilityRole="button"
-              accessibilityHint="Tap to edit, long press to delete"
-              onPress={() => openEdit('exercise', record.id)}
-              onLongPress={() =>
-                confirmDelete('workout', () =>
-                  deleteRecord.mutate({ table: 'exercise_records', id: record.id }),
-                )
-              }
-              delayLongPress={350}
-              style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
-            >
-              <Panel style={{ gap: space.xs }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: space.md,
-                  }}
-                >
-                  <View style={{ flex: 1, gap: 1 }}>
-                    <AppText variant="headline" numberOfLines={1}>
-                      {record.exercise_name}
-                    </AppText>
-                    <AppText variant="footnote" tone="tertiary" numberOfLines={1}>
-                      {[
-                        record.completed_at ? formatDate(record.completed_at) : 'Recent',
-                        record.intensity ?? 'moderate',
-                        record.calories_burned ? `${record.calories_burned} kcal` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </AppText>
+          data.exercise.map((record) => {
+            const route = (record.route ?? []).filter((segment) => segment.length > 1);
+            const hasRoute = route.length > 0;
+            return (
+              <Pressable
+                key={record.id}
+                accessibilityRole="button"
+                accessibilityHint={
+                  hasRoute ? 'Tap to view the route, long press to delete' : 'Tap to edit, long press to delete'
+                }
+                onPress={() =>
+                  hasRoute
+                    ? router.push({
+                        pathname: '/walk-detail',
+                        params: { id: record.id },
+                      } as never)
+                    : openEdit('exercise', record.id)
+                }
+                onLongPress={() =>
+                  confirmDelete('workout', () =>
+                    deleteRecord.mutate({ table: 'exercise_records', id: record.id }),
+                  )
+                }
+                delayLongPress={350}
+                style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+              >
+                <Panel style={{ gap: space.xs }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.md,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: 1 }}>
+                      <AppText variant="headline" numberOfLines={1}>
+                        {record.exercise_name}
+                      </AppText>
+                      <AppText variant="footnote" tone="tertiary" numberOfLines={1}>
+                        {[
+                          record.completed_at ? formatDate(record.completed_at) : 'Recent',
+                          record.intensity ?? 'moderate',
+                          record.calories_burned ? `${record.calories_burned} kcal` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </AppText>
+                    </View>
+                    {hasRoute ? (
+                      <RouteThumb segments={route} width={58} height={42} />
+                    ) : null}
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                      <AppText
+                        variant="numeric"
+                        style={{ fontSize: 24, lineHeight: 28, letterSpacing: -1 }}
+                      >
+                        {record.duration_minutes ?? 0}
+                      </AppText>
+                      <AppText variant="footnote" tone="secondary">
+                        min
+                      </AppText>
+                    </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                    <AppText
-                      variant="numeric"
-                      style={{ fontSize: 24, lineHeight: 28, letterSpacing: -1 }}
-                    >
-                      {record.duration_minutes ?? 0}
-                    </AppText>
-                    <AppText variant="footnote" tone="secondary">
-                      min
-                    </AppText>
-                  </View>
-                </View>
-              </Panel>
-            </Pressable>
-          ))
+                </Panel>
+              </Pressable>
+            );
+          })
         )}
       </View>
     </>

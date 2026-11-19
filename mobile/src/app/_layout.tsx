@@ -156,6 +156,7 @@ function RootNavigator() {
         <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Progress calendar' }} />
         <Stack.Screen name="hydration" options={{ headerShown: false }} />
         <Stack.Screen name="walk" options={{ headerShown: true, title: 'GPS walk' }} />
+        <Stack.Screen name="walk-detail" options={{ headerShown: false }} />
         <Stack.Screen
           name="add/[form]"
           options={{ headerShown: false, presentation: 'formSheet', sheetGrabberVisible: true }}

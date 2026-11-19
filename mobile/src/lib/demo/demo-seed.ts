@@ -16,6 +16,38 @@ const id = (table: string, index: number): string => `demo-${table}-${index}`;
 
 const range = (length: number): number[] => Array.from({ length }, (_, index) => index);
 
+/** A deterministic, irregular loop so demo walks show a believable route. */
+const demoRoute = (index: number, radius: number) => {
+  const centerLat = 36.8065 + index * 0.0007;
+  const centerLng = 10.1815 - index * 0.0005;
+  // Normalised waypoints: a lopsided loop, not a perfect circle.
+  const shape: Array<[number, number]> = [
+    [0.05, -0.9],
+    [0.62, -0.82],
+    [0.96, -0.25],
+    [0.84, 0.42],
+    [0.3, 0.78],
+    [-0.2, 0.42],
+    [-0.12, -0.12],
+    [0.05, -0.9],
+  ];
+  const points: Array<{ lat: number; lng: number }> = [];
+  shape.slice(1).forEach((target, segment) => {
+    const [fromX, fromY] = shape[segment];
+    const steps = 7;
+    for (let step = 0; step < steps; step += 1) {
+      const t = step / steps;
+      const wobble = Math.sin((segment + 1) * (step + 1) * 1.7 + index) * 0.018;
+      const x = fromX + (target[0] - fromX) * t + wobble;
+      const y = fromY + (target[1] - fromY) * t - wobble * 0.7;
+      points.push({
+        lat: Number((centerLat + y * radius).toFixed(5)),
+        lng: Number((centerLng + x * radius * 1.18).toFixed(5)),
+      });
+    }
+  });
+  return [points];
+};
 /**
  * A believable 60-day history. Every number is deterministic so the demo looks
  * the same on every launch, and scores are derived from the raw rows the same
@@ -69,6 +101,7 @@ export const buildDemoDatabase = (): Record<string, Row[]> => {
       intensity: names[4],
       completed_at: at(index, 7 + (index % 3), 15),
       notes: null,
+      route: index === 0 ? demoRoute(0, 0.0065) : index === 2 ? demoRoute(2, 0.0042) : index === 6 ? demoRoute(6, 0.0035) : null,
     };
   });
 
@@ -394,7 +427,7 @@ export const buildDemoDatabase = (): Record<string, Row[]> => {
     });
 
   return {
-    __meta: [{ id: 'meta', seeded_on: isoDate(), version: 4 }],
+    __meta: [{ id: 'meta', seeded_on: isoDate(), version: 6 }],
     profiles: [
       {
         id: id('profile', 0),

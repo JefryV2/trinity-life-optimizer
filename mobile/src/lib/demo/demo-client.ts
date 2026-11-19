@@ -41,7 +41,7 @@ const ensureLoaded = async (): Promise<DemoDatabase> => {
     if (raw) {
       const parsed = JSON.parse(raw) as DemoDatabase;
       const meta = parsed.__meta?.[0];
-      if (meta?.seeded_on === isoDate() && meta?.version === 4) database = parsed;
+      if (meta?.seeded_on === isoDate() && meta?.version === 6) database = parsed;
     }
   } catch {
     database = null;
