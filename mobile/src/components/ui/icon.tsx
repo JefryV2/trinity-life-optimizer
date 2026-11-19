@@ -70,6 +70,17 @@ const GLYPH = {
   cash: 'cash-outline',
   card: 'card-outline',
   car: 'car-outline',
+  headache: 'bulb-outline',
+  bloating: 'disc-outline',
+  battery: 'battery-half-outline',
+  acne: 'ellipse-outline',
+  backPain: 'body-outline',
+  fruit: 'nutrition-outline',
+  insomnia: 'moon-outline',
+  nausea: 'sad-outline',
+  tender: 'flower-outline',
+  dizzy: 'sync-outline',
+  constipation: 'reorder-two-outline',
 } as const;
 
 export type IconName = keyof typeof GLYPH;

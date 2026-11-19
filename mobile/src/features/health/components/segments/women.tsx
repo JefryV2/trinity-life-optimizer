@@ -1,18 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Chips, MultiChips } from '@/components/ui/chips';
 import { DeletableRow } from '@/components/ui/deletable-row';
-import { Icon } from '@/components/ui/icon';
-import { SectionHeader } from '@/components/ui/section-header';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { Panel } from '@/components/ui/panel';
 import { Sheet } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
-import { Stat, StatRow } from '@/components/ui/stat';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { ErrorState, LoadingState } from '@/components/ui/states';
 import { TextField } from '@/components/ui/text-field';
 import { toast } from '@/components/ui/toast';
 import {
@@ -29,7 +25,7 @@ import { useWomensDaily } from '@/features/health/womens-daily';
 import { useProfile } from '@/features/profile/use-profile';
 import { daysBetween, formatDate, formatLongDate, isoDate, startOfMonth } from '@/lib/format';
 import { openAdd, openEdit } from '@/lib/navigation';
-import { space, useTheme } from '@/theme';
+import { fonts, radius, space, useTheme } from '@/theme';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -61,6 +57,8 @@ const MOODS = [
   'Tired',
 ];
 
+type FlowValue = 'none' | 'light' | 'moderate' | 'heavy';
+
 const FLOW_OPTIONS: { value: FlowValue; label: string }[] = [
   { value: 'none', label: 'None' },
   { value: 'light', label: 'Light' },
@@ -68,14 +66,10 @@ const FLOW_OPTIONS: { value: FlowValue; label: string }[] = [
   { value: 'heavy', label: 'Heavy' },
 ];
 
-type FlowValue = 'none' | 'light' | 'moderate' | 'heavy';
-
 const canonicalValues = (values: string[], options: string[]) =>
   values.map(
     (value) => options.find((option) => option.toLowerCase() === value.toLowerCase()) ?? value,
   );
-
-const sentenceList = (values: string[]) => values.join(' · ');
 
 const compactRange = (start: string, end: string) => {
   const a = formatDate(start);
@@ -85,14 +79,11 @@ const compactRange = (start: string, end: string) => {
   return aMonth === bMonth ? `${a}–${bDay}` : `${a} – ${b}`;
 };
 
-const topValues = (values: string[], options: string[], limit = 3) => {
-  const counts = new Map<string, number>();
-  for (const value of canonicalValues(values, options)) {
-    counts.set(value, (counts.get(value) ?? 0) + 1);
+const normalizeFlow = (flow: string | null | undefined): FlowValue => {
+  if (flow === 'light' || flow === 'moderate' || flow === 'medium' || flow === 'heavy') {
+    return flow === 'medium' ? 'moderate' : flow;
   }
-  return [...counts.entries()]
-    .sort((left, right) => right[1] - left[1])
-    .slice(0, limit);
+  return 'none';
 };
 
 const flowColor = (
@@ -112,37 +103,339 @@ const flowColor = (
   }
 };
 
-const painColor = (value: number, colors: ReturnType<typeof useTheme>['colors']) => {
-  if (value >= 7) return colors.danger;
-  if (value >= 4) return colors.amber;
-  return colors.success;
-};
-
-const normalizeFlow = (flow: string | null | undefined): FlowValue => {
-  if (flow === 'light' || flow === 'moderate' || flow === 'medium' || flow === 'heavy') {
-    return flow === 'medium' ? 'moderate' : flow;
-  }
-  return 'none';
-};
-
-const phaseColor = (key: string, colors: ReturnType<typeof useTheme>['colors']) => {
-  switch (key) {
-    case 'menstrual':
-      return colors.danger;
-    case 'ovulation':
-      return colors.amber;
-    case 'luteal':
-      return colors.bonds;
-    default:
-      return colors.primary;
-  }
-};
-
 const addMonth = (month: Date, delta: number) => {
   const next = new Date(month);
   next.setMonth(next.getMonth() + delta);
   return startOfMonth(next);
 };
+
+const SectionTitle = ({
+  title,
+  right,
+  onRight,
+}: {
+  title: string;
+  right?: string;
+  onRight?: () => void;
+}) => {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+      <AppText
+        style={{
+          flex: 1,
+          fontSize: 20,
+          lineHeight: 25,
+          fontFamily: fonts.black,
+          letterSpacing: -0.6,
+        }}
+      >
+        {title}
+      </AppText>
+      {right ? (
+        onRight ? (
+          <Pressable accessibilityRole="button" onPress={onRight} hitSlop={10}>
+            <AppText variant="caption" tone="primary">
+              {right}
+            </AppText>
+          </Pressable>
+        ) : (
+          <AppText variant="footnote" tone="tertiary">
+            {right}
+          </AppText>
+        )
+      ) : null}
+    </View>
+  );
+};
+
+const SYMPTOM_META: Record<string, IconName> = {
+  Cramps: 'pulse',
+  Headache: 'headache',
+  Bloating: 'bloating',
+  Fatigue: 'battery',
+  Acne: 'acne',
+  'Back pain': 'backPain',
+  Cravings: 'fruit',
+  Insomnia: 'insomnia',
+  Nausea: 'nausea',
+  'Tender breasts': 'tender',
+  Dizziness: 'dizzy',
+  Constipation: 'constipation',
+};
+
+const CycleStrip = ({
+  cycleDay,
+  cycleLength,
+  periodLength,
+  startDate,
+  endDate,
+  parts,
+}: {
+  cycleDay: number;
+  cycleLength: number;
+  periodLength: number;
+  startDate: string;
+  endDate: string;
+  parts: Array<{ key: string; color: string }>;
+}) => {
+  const { colors } = useTheme();
+  const colorFor = (key: string) =>
+    parts.find((part) => part.key === key)?.color ?? colors.primary;
+  const today = Math.min(cycleDay, cycleLength);
+
+  return (
+    <View style={{ gap: space.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, height: 54 }}>
+        {Array.from({ length: cycleLength }, (_value, index) => {
+          const day = index + 1;
+          const phase = phaseAt(day, cycleLength, periodLength);
+          const current = day === today;
+          return (
+            <View
+              key={day}
+              style={{
+                flex: 1,
+                height: current ? 52 : 44,
+                borderRadius: 6,
+                backgroundColor: colorFor(phase.key),
+                borderWidth: current ? 2 : 0,
+                borderColor: colors.text,
+              }}
+            />
+          );
+        })}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <AppText variant="mono" tone="tertiary">
+          {formatDate(startDate)}
+        </AppText>
+        <AppText variant="mono" tone="secondary">
+          Today · {formatDate(isoDate())}
+        </AppText>
+        <AppText variant="mono" tone="tertiary">
+          {formatDate(endDate)}
+        </AppText>
+      </View>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          columnGap: space.md,
+          rowGap: space.xs,
+        }}
+      >
+        {parts.map((part) => (
+          <View key={part.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: part.color }} />
+            <AppText variant="caption" tone="secondary">
+              {part.key === 'menstrual'
+                ? 'Period'
+                : part.key === 'follicular'
+                  ? 'Follicular'
+                  : part.key === 'ovulation'
+                    ? 'Peak'
+                    : 'Luteal'}
+            </AppText>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const FlowSegment = ({ value, onChange }: { value: FlowValue; onChange: (value: FlowValue) => void }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: space.sm }}>
+      <AppText variant="caption" tone="secondary">
+        Flow
+      </AppText>
+      <View
+        style={{
+          flexDirection: 'row',
+          borderRadius: radius.pill,
+          backgroundColor: colors.surfaceSunken,
+          padding: 4,
+          gap: 2,
+        }}
+      >
+        {FLOW_OPTIONS.map((option) => {
+          const selected = option.value === value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => onChange(option.value)}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 46,
+                borderRadius: radius.pill,
+                backgroundColor: selected ? colors.primary : 'transparent',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <AppText
+                tone={selected ? 'onPrimary' : 'secondary'}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{ fontSize: 13, fontWeight: selected ? '800' : '500' }}
+              >
+                {option.label}
+              </AppText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const SymptomGrid = ({
+  values,
+  onToggle,
+}: {
+  values: string[];
+  onToggle: (value: string) => void;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+      {SYMPTOMS.map((symptom) => {
+        const selected = values.includes(symptom);
+        return (
+          <Pressable
+            key={symptom}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: selected }}
+            onPress={() => onToggle(symptom)}
+            style={({ pressed }) => ({
+              width: '23%',
+              minHeight: 76,
+              borderRadius: radius.inner,
+              backgroundColor: selected ? colors.primary : colors.surfaceSunken,
+              borderWidth: selected ? 0 : 1,
+              borderColor: colors.separator,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              paddingHorizontal: 4,
+              paddingVertical: 8,
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <Icon
+              name={SYMPTOM_META[symptom] ?? 'pulse'}
+              size={22}
+              color={selected ? colors.onPrimary : colors.primary}
+            />
+            <AppText
+              style={{
+                fontSize: 11,
+                lineHeight: 15,
+                textAlign: 'center',
+                color: selected ? colors.onPrimary : colors.textSecondary,
+                fontWeight: selected ? '700' : '500',
+              }}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
+              {symptom}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+};
+
+const MoodChoices = ({
+  values,
+  onToggle,
+}: {
+  values: string[];
+  onToggle: (value: string) => void;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+      {MOODS.map((mood) => {
+        const selected = values.includes(mood);
+        return (
+          <Pressable
+            key={mood}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: selected }}
+            onPress={() => onToggle(mood)}
+            style={({ pressed }) => ({
+              minHeight: 38,
+              paddingHorizontal: space.lg,
+              borderRadius: radius.pill,
+              backgroundColor: selected ? colors.bonds : colors.surfaceSunken,
+              borderWidth: 1,
+              borderColor: selected ? colors.bonds : colors.separator,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <AppText
+              style={{
+                fontSize: 13,
+                fontWeight: selected ? '700' : '500',
+                color: selected ? '#FFFFFF' : colors.textSecondary,
+              }}
+            >
+              {mood}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+};
+
+const PainField = ({ value, onChange }: { value: number; onChange: (value: number) => void }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: space.xs }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <AppText variant="caption" tone="secondary">
+          Pain
+        </AppText>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+          <AppText style={{ fontSize: 26, lineHeight: 30, fontFamily: fonts.black }}>{value}</AppText>
+          <AppText variant="footnote" tone="tertiary">
+            /10
+          </AppText>
+        </View>
+      </View>
+      <Slider value={value} onChange={onChange} min={0} max={10} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <AppText variant="footnote" tone="tertiary">
+          None
+        </AppText>
+        <AppText variant="footnote" tone="tertiary">
+          Severe
+        </AppText>
+      </View>
+    </View>
+  );
+};
+
+const StatCell = ({ value, label }: { value: string; label: string }) => (
+  <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
+    <AppText style={{ fontSize: 26, lineHeight: 30, fontFamily: fonts.black, color: '#C6F24E' }}>
+      {value}
+    </AppText>
+    <AppText variant="footnote" tone="secondary" numberOfLines={1}>
+      {label}
+    </AppText>
+  </View>
+);
 
 export const WomenSegment = () => {
   const { colors } = useTheme();
@@ -152,6 +445,7 @@ export const WomenSegment = () => {
 
   const [selectedDate, setSelectedDate] = useState(() => isoDate());
   const [month, setMonth] = useState(() => startOfMonth());
+  const [monthView, setMonthView] = useState(false);
   const [logVisible, setLogVisible] = useState(false);
   const [logDate, setLogDate] = useState(() => isoDate());
   const [flow, setFlow] = useState<FlowValue>('none');
@@ -192,7 +486,9 @@ export const WomenSegment = () => {
   const periodDates = useMemo(() => {
     const dates = new Set<string>();
     for (const cycle of cycles) {
-      const end = cycle.cycle_end_date ?? shiftIso(cycle.cycle_start_date, periodDaysFor(cycle, effectivePeriodLength) - 1);
+      const end =
+        cycle.cycle_end_date ??
+        shiftIso(cycle.cycle_start_date, periodDaysFor(cycle, effectivePeriodLength) - 1);
       for (const date of isoRange(cycle.cycle_start_date, end)) dates.add(date);
     }
     return dates;
@@ -208,7 +504,9 @@ export const WomenSegment = () => {
       starts.push(shiftIso(expected, effectiveCycleLength * 2));
     }
     for (const start of starts) {
-      for (const date of isoRange(start, shiftIso(start, effectivePeriodLength - 1))) dates.add(date);
+      for (const date of isoRange(start, shiftIso(start, effectivePeriodLength - 1))) {
+        dates.add(date);
+      }
     }
     return dates;
   }, [lastStart, effectiveCycleLength, effectivePeriodLength]);
@@ -222,21 +520,18 @@ export const WomenSegment = () => {
       shiftIso(lastStart, effectiveCycleLength * 2),
     ];
     for (const start of starts) {
-      const ovulation = shiftIso(start, ovulationDayFor(effectiveCycleLength, effectivePeriodLength) - 1);
-      for (const date of isoRange(shiftIso(ovulation, -5), shiftIso(ovulation, 1))) dates.add(date);
+      const ovulation = shiftIso(
+        start,
+        ovulationDayFor(effectiveCycleLength, effectivePeriodLength) - 1,
+      );
+      for (const date of isoRange(shiftIso(ovulation, -5), shiftIso(ovulation, 1))) {
+        dates.add(date);
+      }
     }
     return dates;
   }, [lastStart, effectiveCycleLength, effectivePeriodLength]);
 
   const loggedDates = useMemo(() => new Set(logs.map((entry) => entry.date)), [logs]);
-  const topSymptoms = useMemo(
-    () => topValues(logs.flatMap((entry) => entry.symptoms ?? []), SYMPTOMS),
-    [logs],
-  );
-  const topMoods = useMemo(
-    () => topValues(logs.flatMap((entry) => entry.moods ?? []), MOODS),
-    [logs],
-  );
 
   const monthOffset = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
@@ -245,6 +540,46 @@ export const WomenSegment = () => {
     ...Array.from({ length: daysInMonth }, (_value, index) =>
       isoDate(new Date(month.getFullYear(), month.getMonth(), index + 1, 12)),
     ),
+  ];
+
+  const latestPeriod = cycles[0] ?? null;
+  const latestPeriodEnd = latestPeriod
+    ? latestPeriod.cycle_end_date ??
+      shiftIso(
+        latestPeriod.cycle_start_date,
+        periodDaysFor(latestPeriod, effectivePeriodLength) - 1,
+      )
+    : null;
+  const latestPeriodDays = latestPeriod ? periodDaysFor(latestPeriod, effectivePeriodLength) : 0;
+  const latestPeriodRange =
+    latestPeriod && latestPeriodEnd
+      ? compactRange(latestPeriod.cycle_start_date, latestPeriodEnd)
+      : null;
+
+  const follicularDays = Math.max(
+    1,
+    ovulationDayFor(effectiveCycleLength, effectivePeriodLength) - effectivePeriodLength - 2,
+  );
+  const lutealDays = Math.max(
+    1,
+    effectiveCycleLength - effectivePeriodLength - follicularDays - 3,
+  );
+
+  const phaseParts = [
+    { key: 'menstrual', label: 'Period', days: effectivePeriodLength, color: colors.danger },
+    {
+      key: 'follicular',
+      label: 'Follicular',
+      days: follicularDays,
+      color: colors.primary,
+    },
+    { key: 'ovulation', label: 'Peak', days: 3, color: '#E2F46F' },
+    {
+      key: 'luteal',
+      label: 'Luteal',
+      days: lutealDays,
+      color: 'rgba(198,242,78,0.30)',
+    },
   ];
 
   const openLog = (date: string) => {
@@ -303,401 +638,542 @@ export const WomenSegment = () => {
   if (isError) return <ErrorState message={error.message} onRetry={refetch} />;
   if (!data) return null;
 
-  const phaseParts = [
-    { key: 'menstrual', label: 'Period', days: effectivePeriodLength, color: colors.danger },
-    {
-      key: 'follicular',
-      label: 'Follicular',
-      days: Math.max(1, ovulationDayFor(effectiveCycleLength, effectivePeriodLength) - effectivePeriodLength - 2),
-      color: colors.primary,
-    },
-    { key: 'ovulation', label: 'Peak', days: 3, color: colors.amber },
-    {
-      key: 'luteal',
-      label: 'Luteal',
-      days: Math.max(
-        1,
-        effectiveCycleLength -
-          effectivePeriodLength -
-          Math.max(1, ovulationDayFor(effectiveCycleLength, effectivePeriodLength) - effectivePeriodLength - 2) -
-          3,
-      ),
-      color: colors.bonds,
-    },
-  ];
+  const cycleEnd = lastStart ? shiftIso(lastStart, effectiveCycleLength - 1) : null;
+  const checkinBadge =
+    cycleDay && phase
+      ? phase.key === 'menstrual'
+        ? `Period · day ${cycleDay}`
+        : `${phase.name} · day ${cycleDay}`
+      : undefined;
+
+  const todayPills: Array<{ label: string; color: string; background: string }> = [];
+  if (todayLog) {
+    if (todayLog.flow_intensity && todayLog.flow_intensity !== 'none') {
+      todayPills.push({
+        label: `${flowLabel(todayLog.flow_intensity)} flow`,
+        color: colors.danger,
+        background: 'rgba(255,107,90,0.16)',
+      });
+    }
+    if ((todayLog.pain_level ?? 0) > 0) {
+      todayPills.push({
+        label: `Pain ${todayLog.pain_level}/10`,
+        color: colors.primary,
+        background: 'rgba(198,242,78,0.14)',
+      });
+    }
+    for (const symptom of (todayLog.symptoms ?? []).slice(0, 2)) {
+      todayPills.push({
+        label: symptom,
+        color: colors.textSecondary,
+        background: colors.surfaceSunken,
+      });
+    }
+    for (const mood of (todayLog.moods ?? []).slice(0, 3)) {
+      const calm = mood.toLowerCase() === 'calm' || mood.toLowerCase() === 'happy';
+      todayPills.push({
+        label: mood,
+        color: calm ? colors.primary : colors.textSecondary,
+        background: calm ? 'rgba(198,242,78,0.14)' : colors.surfaceSunken,
+      });
+    }
+  }
+
+  const toggleSymptom = (symptom: string) => {
+    setSymptoms((current) =>
+      current.includes(symptom)
+        ? current.filter((value) => value !== symptom)
+        : [...current, symptom],
+    );
+  };
+
+  const toggleMood = (mood: string) => {
+    setMoods((current) =>
+      current.includes(mood) ? current.filter((value) => value !== mood) : [...current, mood],
+    );
+  };
 
   return (
     <>
-      <SectionHeader
-        title="Cycle"
-        caption={cycles.length > 0 ? `${stats.regularity} · ${cycles.length} logged` : undefined}
-        actionLabel="Settings"
-        onAction={openSettings}
-      />
-
-      {lastStart && cycleDay && phase ? (
-        <Card raised style={{ gap: space.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
-            <RingMeter
-              value={Math.min(cycleDay, effectiveCycleLength)}
-              max={effectiveCycleLength}
-              size={118}
-              stroke={9}
-              color={phaseColor(phase.key, colors)}
-              center={String(cycleDay)}
-              label="Cycle day"
-            />
-            <View style={{ flex: 1, gap: space.xs }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                <View
-                  style={{
-                    width: 9,
-                    height: 9,
-                    borderRadius: 5,
-                    backgroundColor: late ? colors.danger : phaseColor(phase.key, colors),
-                  }}
-                />
-                <AppText variant="headline" style={{ flex: 1 }}>
-                  {late ? 'Period late' : `${phase.name} phase`}
-                </AppText>
-              </View>
-              <AppText variant="footnote" tone="secondary">
-                {late
-                  ? `Expected ${daysUntil !== null ? Math.abs(daysUntil) : 0} days ago. Update your cycle when it starts.`
-                  : phase.note}
-              </AppText>
-              {daysUntil !== null && !late ? (
-                <AppText variant="footnote" tone="primary">
-                  {daysUntil > 0
-                    ? `Next period in ~${daysUntil} day${daysUntil === 1 ? '' : 's'}`
-                    : daysUntil === 0
-                      ? 'Period expected today'
-                      : 'Period expected'}
-                </AppText>
-              ) : null}
-              {fertileStart && fertileEnd ? (
-                <AppText variant="footnote" tone="tertiary">
-                  Fertile: {compactRange(fertileStart, fertileEnd)}
-                </AppText>
-              ) : null}
-            </View>
+      <View style={{ gap: space.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+          <AppText
+            style={{
+              fontSize: 84,
+              lineHeight: 88,
+              fontFamily: fonts.black,
+              letterSpacing: -5,
+              color: colors.primary,
+              minWidth: 56,
+            }}
+          >
+            {cycleDay ?? '—'}
+          </AppText>
+          <View style={{ flex: 1, gap: 2, paddingTop: 8 }}>
+            <AppText variant="caption" tone="tertiary">
+              Cycle day
+            </AppText>
+            <AppText
+              style={{
+                fontSize: 28,
+                lineHeight: 32,
+                fontFamily: fonts.black,
+                letterSpacing: -1,
+              }}
+            >
+              {late ? 'Late' : phase?.name ?? 'No cycle yet'}
+            </AppText>
+            <AppText variant="body" tone="secondary">
+              {late
+                ? `Expected ${daysUntil !== null ? Math.abs(daysUntil) : 0} days ago. Log your cycle when it starts.`
+                : phase?.note ?? 'Log your last period to see your phase.'}
+            </AppText>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cycle settings"
+            onPress={openSettings}
+            hitSlop={8}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: radius.pill,
+              backgroundColor: colors.surfaceAlt,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="settings" size={18} color={colors.textSecondary} />
+          </Pressable>
+        </View>
 
-          <View style={{ flexDirection: 'row', gap: 3 }}>
-            {phaseParts.map((part) => {
-              const active = part.key === phase.key || (late && part.key === 'luteal');
-              return (
-                <View key={part.key} style={{ flex: part.days, gap: 5 }}>
+        {lastStart && cycleDay && phase ? (
+          <>
+            <Panel style={{ gap: space.md }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                }}
+              >
+                <AppText style={{ flex: 1, fontSize: 20, lineHeight: 25, fontFamily: fonts.bold }}>
+                  This cycle
+                </AppText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setMonthView((open) => !open)}
+                  hitSlop={10}
+                >
+                  <AppText variant="caption" tone="primary">
+                    {monthView ? 'Cycle view' : 'Month view'}
+                  </AppText>
+                </Pressable>
+              </View>
+
+              {monthView ? (
+                <View style={{ gap: space.md }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Previous month"
+                      onPress={() => {
+                        const next = addMonth(month, -1);
+                        setMonth(next);
+                        setSelectedDate(isoDate(next));
+                      }}
+                      hitSlop={10}
+                      style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Icon name="back" size={17} color={colors.textSecondary} />
+                    </Pressable>
+                    <AppText variant="callout" style={{ flex: 1, textAlign: 'center' }}>
+                      {month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                    </AppText>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Next month"
+                      onPress={() => {
+                        const next = addMonth(month, 1);
+                        setMonth(next);
+                        setSelectedDate(isoDate(next));
+                      }}
+                      hitSlop={10}
+                      style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Icon name="chevron" size={17} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
+
+                  <View style={{ flexDirection: 'row' }}>
+                    {WEEKDAYS.map((day, index) => (
+                      <AppText
+                        key={`${day}-${index}`}
+                        variant="mono"
+                        tone="tertiary"
+                        style={{ width: '14.2857%', textAlign: 'center' }}
+                      >
+                        {day}
+                      </AppText>
+                    ))}
+                  </View>
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                    {calendarCells.map((date, index) => {
+                      if (!date) {
+                        return (
+                          <View
+                            key={`blank-${index}`}
+                            style={{ width: '14.2857%', height: 44 }}
+                          />
+                        );
+                      }
+                      const selected = date === selectedDate;
+                      const actual = periodDates.has(date);
+                      const predicted = !actual && predictedDates.has(date);
+                      const fertile = fertileDates.has(date);
+                      const logged = loggedDates.has(date);
+                      const today = date === isoDate();
+                      const runStart = actual && !periodDates.has(shiftIso(date, -1));
+                      const runEnd = actual && !periodDates.has(shiftIso(date, 1));
+                      return (
+                        <Pressable
+                          key={date}
+                          accessibilityRole="button"
+                          accessibilityLabel={formatDate(date)}
+                          accessibilityState={{ selected }}
+                          onPress={() => setSelectedDate(date)}
+                          style={{
+                            width: '14.2857%',
+                            height: 44,
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            paddingTop: 3,
+                          }}
+                        >
+                          {actual ? (
+                            <View
+                              style={{
+                                position: 'absolute',
+                                left: runStart ? 4 : 0,
+                                right: runEnd ? 4 : 0,
+                                top: 3,
+                                height: 33,
+                                backgroundColor: colors.danger,
+                                borderTopLeftRadius: runStart ? 17 : 0,
+                                borderBottomLeftRadius: runStart ? 17 : 0,
+                                borderTopRightRadius: runEnd ? 17 : 0,
+                                borderBottomRightRadius: runEnd ? 17 : 0,
+                              }}
+                            />
+                          ) : null}
+                          <View
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: radius.pill,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: selected ? colors.primary : 'transparent',
+                              borderWidth: !selected && predicted ? 1 : 0,
+                              borderColor: colors.danger,
+                            }}
+                          >
+                            <AppText
+                              variant="footnote"
+                              style={{
+                                color: selected
+                                  ? colors.onPrimary
+                                  : actual
+                                    ? colors.onPrimary
+                                    : predicted
+                                      ? colors.danger
+                                      : today
+                                        ? colors.primary
+                                        : undefined,
+                                fontWeight: today || selected ? '800' : '500',
+                              }}
+                            >
+                              {Number(date.slice(-2))}
+                            </AppText>
+                          </View>
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              gap: 3,
+                              height: 7,
+                              alignItems: 'center',
+                            }}
+                          >
+                            {fertile ? (
+                              <View
+                                style={{
+                                  width: 4,
+                                  height: 4,
+                                  borderRadius: 2,
+                                  backgroundColor: colors.amber,
+                                }}
+                              />
+                            ) : null}
+                            {logged ? (
+                              <View
+                                style={{
+                                  width: 4,
+                                  height: 4,
+                                  borderRadius: 2,
+                                  backgroundColor: colors.bonds,
+                                }}
+                              />
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
                   <View
                     style={{
-                      height: 7,
-                      borderRadius: 4,
-                      backgroundColor: part.color,
-                      opacity: active ? 1 : 0.22,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.separator,
+                      paddingTop: space.sm,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.md,
                     }}
-                  />
-                  <AppText variant="caption" tone={active ? 'secondary' : 'tertiary'} numberOfLines={1}>
-                    {part.label}
-                  </AppText>
+                  >
+                    <AppText
+                      variant="footnote"
+                      style={{
+                        flex: 1,
+                        color: colors.danger,
+                        fontFamily: fonts.bold,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {latestPeriodRange ? `Period · ${latestPeriodRange}` : 'No period logged'}
+                    </AppText>
+                    <AppText variant="footnote" tone="tertiary" numberOfLines={1}>
+                      {latestPeriod
+                        ? `${latestPeriodDays} days · ${flowLabel(latestPeriod.flow_intensity)} flow`
+                        : ''}
+                    </AppText>
+                  </View>
                 </View>
-              );
-            })}
-          </View>
-          <AppText variant="caption" tone="tertiary">
-            Estimates only. Cycle dates can shift with stress, sleep and travel.
-          </AppText>
-        </Card>
-      ) : (
-        <EmptyState
-          icon="female"
-          title="Start with your last period"
-          message="Log the first day of your last period. Auxo will estimate your phase, fertile window and next cycle."
-          actionLabel="Log last period"
-          onAction={() => openAdd('cycle')}
-        />
-      )}
+              ) : (
+                <CycleStrip
+                  cycleDay={cycleDay}
+                  cycleLength={effectiveCycleLength}
+                  periodLength={effectivePeriodLength}
+                  startDate={lastStart}
+                  endDate={cycleEnd ?? lastStart}
+                  parts={phaseParts}
+                />
+              )}
+            </Panel>
 
-      <SectionHeader
-        title="Today"
-        caption={todayLog ? 'Logged' : undefined}
-      />
-      {todayLog ? (
-        <Card style={{ gap: space.md }}>
-          <StatRow>
-            <Stat
-              value={flowLabel(todayLog.flow_intensity)}
-              label="Flow"
-              color={flowColor(todayLog.flow_intensity, colors)}
-            />
-            <Stat
-              value={`${todayLog.pain_level ?? 0}/10`}
-              label="Pain"
-              color={painColor(todayLog.pain_level ?? 0, colors)}
-            />
-            <Stat
-              value={String(todayLog.symptoms?.length ?? 0)}
-              label={`Symptom${todayLog.symptoms?.length === 1 ? '' : 's'}`}
-            />
-          </StatRow>
-          {todayLog.symptoms?.length ? (
-            <AppText variant="footnote" tone="secondary">
-              {sentenceList(canonicalValues(todayLog.symptoms, SYMPTOMS))}
-            </AppText>
-          ) : null}
-          {todayLog.moods?.length ? (
-            <AppText variant="footnote" tone="tertiary">
-              Mood: {canonicalValues(todayLog.moods, MOODS).join(', ')}
-            </AppText>
-          ) : null}
-          <Button
-            label="Update today's check-in"
-            variant="secondary"
-            size="small"
-            onPress={() => openLog(isoDate())}
-          />
-        </Card>
-      ) : (
-        <Card style={{ gap: space.md }}>
-          <AppText variant="body" tone="secondary">
-            A quick check-in sharpens predictions and shows patterns in symptoms.
-          </AppText>
-          <Button
-            label="Log today's check-in"
-            variant="secondary"
-            size="small"
-            onPress={() => openLog(isoDate())}
-          />
-        </Card>
-      )}
-
-      <SectionHeader title="Calendar" caption="Tap a day to check in" />
-      <Card style={{ gap: space.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            onPress={() => {
-              const next = addMonth(month, -1);
-              setMonth(next);
-              setSelectedDate(isoDate(next));
-            }}
-            hitSlop={10}
-            style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Icon name="back" size={17} color={colors.textSecondary} />
-          </Pressable>
-          <AppText variant="headline" style={{ flex: 1, textAlign: 'center' }}>
-            {month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
-            onPress={() => {
-              const next = addMonth(month, 1);
-              setMonth(next);
-              setSelectedDate(isoDate(next));
-            }}
-            hitSlop={10}
-            style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Icon name="chevron" size={17} color={colors.textSecondary} />
-          </Pressable>
-        </View>
-
-        <View style={{ flexDirection: 'row' }}>
-          {WEEKDAYS.map((day, index) => (
-            <AppText
-              key={`${day}-${index}`}
-              variant="mono"
-              tone="tertiary"
-              style={{ width: '14.2857%', textAlign: 'center' }}
-            >
-              {day}
-            </AppText>
-          ))}
-        </View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {calendarCells.map((date, index) => {
-            if (!date) {
-              return <View key={`blank-${index}`} style={{ width: '14.2857%', height: 44 }} />;
-            }
-            const selected = date === selectedDate;
-            const actual = periodDates.has(date);
-            const predicted = !actual && predictedDates.has(date);
-            const fertile = fertileDates.has(date);
-            const logged = loggedDates.has(date);
-            const today = date === isoDate();
-            return (
-              <Pressable
-                key={date}
-                accessibilityRole="button"
-                accessibilityLabel={formatDate(date)}
-                accessibilityState={{ selected }}
-                onPress={() => setSelectedDate(date)}
-                style={{ width: '14.2857%', height: 44, alignItems: 'center', justifyContent: 'center' }}
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <View
+                style={{
+                  flex: 1,
+                  borderRadius: radius.group,
+                  backgroundColor: 'rgba(255,107,90,0.14)',
+                  padding: space.md,
+                  gap: 1,
+                }}
               >
-                <View
+                <AppText variant="footnote" tone="secondary">
+                  Next period
+                </AppText>
+                <AppText
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 999,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: selected ? colors.primary : actual ? colors.danger : 'transparent',
-                    borderWidth: !selected && (predicted || today) ? 1 : 0,
-                    borderColor: today ? colors.primary : colors.danger,
+                    fontSize: 20,
+                    lineHeight: 25,
+                    fontFamily: fonts.bold,
+                    color: colors.danger,
+                  }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {late
+                    ? 'Late'
+                    : daysUntil === 0
+                      ? 'Today'
+                      : daysUntil !== null
+                        ? `~${daysUntil} days`
+                        : '—'}
+                </AppText>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  borderRadius: radius.group,
+                  backgroundColor: 'rgba(198,242,78,0.12)',
+                  padding: space.md,
+                  gap: 1,
+                }}
+              >
+                <AppText variant="footnote" tone="secondary">
+                  Fertile window
+                </AppText>
+                <AppText
+                  style={{
+                    fontSize: 20,
+                    lineHeight: 25,
+                    fontFamily: fonts.bold,
+                    color: colors.primary,
+                  }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {fertileStart && fertileEnd ? compactRange(fertileStart, fertileEnd) : '—'}
+                </AppText>
+              </View>
+            </View>
+          </>
+        ) : (
+          <Panel style={{ gap: space.md, alignItems: 'center', paddingVertical: space.xxl }}>
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: radius.pill,
+                backgroundColor: colors.surfaceSunken,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="female" size={24} color={colors.primary} />
+            </View>
+            <AppText variant="headline">Start with your last period</AppText>
+            <AppText variant="body" tone="secondary" style={{ textAlign: 'center' }}>
+              Log the first day of your last period. Auxo will estimate your phase, fertile window
+              and next cycle.
+            </AppText>
+            <Button label="Log last period" onPress={() => openAdd('cycle')} />
+          </Panel>
+        )}
+
+        <Panel style={{ gap: space.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <AppText style={{ flex: 1, fontSize: 20, lineHeight: 25, fontFamily: fonts.bold }}>
+              Today
+            </AppText>
+            <AppText variant="footnote" tone="tertiary">
+              {todayLog ? 'Logged' : ''}
+            </AppText>
+          </View>
+
+          {todayPills.length ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+              {todayPills.map((pill, index) => (
+                <View
+                  key={`${pill.label}-${index}`}
+                  style={{
+                    borderRadius: radius.pill,
+                    backgroundColor: pill.background,
+                    paddingHorizontal: space.md,
+                    paddingVertical: 7,
                   }}
                 >
                   <AppText
-                    variant="footnote"
                     style={{
-                      color: selected || actual ? colors.onPrimary : predicted ? colors.danger : undefined,
+                      fontSize: 13,
+                      lineHeight: 17,
+                      fontWeight: '600',
+                      color: pill.color,
                     }}
-                    tone={selected || actual || predicted || today ? 'default' : 'secondary'}
                   >
-                    {Number(date.slice(-2))}
+                    {pill.label}
                   </AppText>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 3, height: 5, marginTop: 1 }}>
-                  {fertile ? (
-                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.amber }} />
-                  ) : null}
-                  {logged ? (
-                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.bonds }} />
-                  ) : null}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.lg, rowGap: space.xs }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger }} />
-            <AppText variant="caption" tone="tertiary">Period</AppText>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: colors.danger }} />
-            <AppText variant="caption" tone="tertiary">Predicted</AppText>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.amber }} />
-            <AppText variant="caption" tone="tertiary">Fertile</AppText>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.bonds }} />
-            <AppText variant="caption" tone="tertiary">Check-in</AppText>
-          </View>
-        </View>
-
-        {selectedDate !== isoDate() ? (
-          <View style={{ borderTopWidth: 1, borderTopColor: colors.separator, paddingTop: space.md, gap: space.xs }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md }}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <AppText variant="headline">{formatLongDate(selectedDate)}</AppText>
-                <AppText variant="footnote" tone="secondary">
-                  {selectedLog
-                    ? `${flowLabel(selectedLog.flow_intensity)} flow · pain ${selectedLog.pain_level ?? 0}/10${selectedLog.symptoms?.length ? ` · ${selectedLog.symptoms.length} symptom${selectedLog.symptoms.length === 1 ? '' : 's'}` : ''}`
-                    : selectedDate > isoDate()
-                      ? 'Future day'
-                      : 'No check-in yet'}
-                </AppText>
-              </View>
-              {selectedDate < isoDate() ? (
-                <Button
-                  label={selectedLog ? 'Edit' : 'Check in'}
-                  size="small"
-                  variant={selectedLog ? 'secondary' : 'primary'}
-                  onPress={() => openLog(selectedDate)}
-                />
-              ) : null}
+              ))}
             </View>
-          </View>
-        ) : null}
-      </Card>
-
-      {stats.sampleSize >= 2 ? (
-        <>
-          <SectionHeader title="Patterns" caption={`Based on ${stats.sampleSize} completed cycles`} />
-          <Card style={{ gap: space.md }}>
-            <StatRow>
-              <Stat value={`${stats.averageLength}d`} label="Avg cycle" />
-              <Stat value={`${stats.averagePeriod}d`} label="Avg period" />
-              <Stat value={String(cycles.length)} label="Cycles" />
-            </StatRow>
-            <AppText variant="footnote" tone="secondary">
-              {stats.regularity}. Your shortest cycle was {stats.shortest} days and your longest was {stats.longest}.
+          ) : (
+            <AppText variant="callout" tone="tertiary">
+              Nothing logged yet.
             </AppText>
-            {topSymptoms.length > 0 ? (
-              <AppText variant="footnote" tone="secondary">
-                Most logged: {topSymptoms.map(([label, count]) => `${label} (${count})`).join(' · ')}
-              </AppText>
-            ) : null}
-            {topMoods.length > 0 ? (
-              <AppText variant="footnote" tone="tertiary">
-                Moods: {topMoods.map(([label, count]) => `${label} (${count})`).join(' · ')}
-              </AppText>
-            ) : null}
-          </Card>
-        </>
-      ) : null}
+          )}
 
-      <SectionHeader
-        title="Cycle history"
-        caption={cycles.length > 0 ? `${cycles.length} logged` : undefined}
-        actionLabel="Add"
-        onAction={() => openAdd('cycle')}
-      />
-      {cycles.length === 0 ? (
-        <Card>
-          <AppText variant="body" tone="secondary">
-            Log the first day of each period to build a clearer picture.
-          </AppText>
-        </Card>
-      ) : (
-        <Card padded={false} style={{ paddingHorizontal: space.xl }}>
-          {cycles.map((cycle, index) => {
-            const length =
-              index === 0
-                ? null
-                : Math.round(
-                    (new Date(`${cycles[index - 1].cycle_start_date}T12:00:00`).getTime() -
-                      new Date(`${cycle.cycle_start_date}T12:00:00`).getTime()) /
-                      86_400_000,
-                  );
-            return (
-              <DeletableRow
-                key={cycle.id}
-                leading={
-                  <View style={{ width: 24, alignItems: 'center' }}>
-                    <View
-                      style={{
-                        width: 9,
-                        height: 9,
-                        borderRadius: 5,
-                        backgroundColor: flowColor(cycle.flow_intensity, colors),
-                      }}
-                    />
-                  </View>
-                }
-                title={formatDate(cycle.cycle_start_date)}
-                subtitle={`${periodDaysFor(cycle, effectivePeriodLength)} day period · ${flowLabel(cycle.flow_intensity)} flow${cycle.pain_level ? ` · pain ${cycle.pain_level}/10` : ''}`}
-                value={length ? `${length} d cycle` : 'Current'}
-                last={index === cycles.length - 1}
-                onPress={() => openEdit('cycle', cycle.id)}
-                onDelete={() => deleteRecord.mutate({ table: 'menstrual_cycles', id: cycle.id })}
-              />
-            );
-          })}
-        </Card>
-      )}
+          <Button
+            label={todayLog ? "Update today's check-in" : "Log today's check-in"}
+            onPress={() => openLog(isoDate())}
+          />
+        </Panel>
+
+        <Panel padded={false} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <StatCell value={`${stats.averageLength}d`} label="Avg cycle" />
+          <View style={{ width: 1, height: 34, backgroundColor: colors.separator }} />
+          <StatCell value={`${stats.averagePeriod}d`} label="Avg period" />
+          <View style={{ width: 1, height: 34, backgroundColor: colors.separator }} />
+          <StatCell value={String(stats.sampleSize)} label="Cycles tracked" />
+        </Panel>
+
+        <AppText
+          variant="caption"
+          tone="faint"
+          style={{ textAlign: 'center', letterSpacing: 0.6, lineHeight: 17 }}
+        >
+          Estimates only. Dates can shift.
+        </AppText>
+
+        <View style={{ gap: space.sm }}>
+          <SectionTitle title="History" right="Add" onRight={() => openAdd('cycle')} />
+          {cycles.length === 0 ? (
+            <Panel>
+              <AppText variant="body" tone="secondary">
+                Log the first day of each period to build a clearer picture.
+              </AppText>
+            </Panel>
+          ) : (
+            <Panel padded={false} style={{ paddingHorizontal: space.xl }}>
+              {cycles.map((cycle, index) => {
+                const length =
+                  index === 0
+                    ? null
+                    : Math.round(
+                        (new Date(`${cycles[index - 1].cycle_start_date}T12:00:00`).getTime() -
+                          new Date(`${cycle.cycle_start_date}T12:00:00`).getTime()) /
+                          86_400_000,
+                      );
+                return (
+                  <DeletableRow
+                    key={cycle.id}
+                    leading={
+                      <View style={{ width: 24, alignItems: 'center' }}>
+                        <View
+                          style={{
+                            width: 9,
+                            height: 9,
+                            borderRadius: 5,
+                            backgroundColor: flowColor(cycle.flow_intensity, colors),
+                          }}
+                        />
+                      </View>
+                    }
+                    title={formatDate(cycle.cycle_start_date)}
+                    subtitle={`${periodDaysFor(cycle, effectivePeriodLength)} day period · ${flowLabel(cycle.flow_intensity)} flow${cycle.pain_level ? ` · pain ${cycle.pain_level}/10` : ''}`}
+                    value={length ? `${length} d cycle` : 'Current'}
+                    last={index === cycles.length - 1}
+                    onPress={() => openEdit('cycle', cycle.id)}
+                    onDelete={() =>
+                      deleteRecord.mutate({ table: 'menstrual_cycles', id: cycle.id })
+                    }
+                  />
+                );
+              })}
+            </Panel>
+          )}
+        </View>
+      </View>
 
       <Sheet
         compact
+        largeTitle
         visible={logVisible}
         title="Daily check-in"
         subtitle={formatLongDate(logDate)}
+        badge={checkinBadge}
+        badgeTone={phase?.key === 'menstrual' ? 'danger' : 'primary'}
         onClose={() => setLogVisible(false)}
         footer={
           <Button
@@ -708,27 +1184,46 @@ export const WomenSegment = () => {
         }
       >
         <View style={{ gap: space.lg }}>
-          <Chips label="Flow" options={FLOW_OPTIONS} value={flow} onChange={setFlow} />
-          <MultiChips
-            label="Symptoms"
-            options={SYMPTOMS.map((symptom) => ({ value: symptom, label: symptom }))}
-            values={symptoms}
-            onChange={setSymptoms}
-          />
-          <MultiChips
-            label="Mood"
-            options={MOODS.map((mood) => ({ value: mood, label: mood }))}
-            values={moods}
-            onChange={setMoods}
-          />
-          <Slider
-            label="Pain"
-            value={pain}
-            onChange={setPain}
-            min={0}
-            max={10}
-            formatValue={(value) => `${value}/10`}
-          />
+          <FlowSegment value={flow} onChange={setFlow} />
+
+          <View style={{ gap: space.sm }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <AppText variant="caption" tone="secondary">
+                Symptoms
+              </AppText>
+              <AppText variant="footnote" tone="tertiary">
+                {`${symptoms.length} selected`}
+              </AppText>
+            </View>
+            <SymptomGrid values={symptoms} onToggle={toggleSymptom} />
+          </View>
+
+          <View style={{ gap: space.sm }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <AppText variant="caption" tone="secondary">
+                Mood
+              </AppText>
+              <AppText variant="footnote" tone="tertiary">
+                {`${moods.length} selected`}
+              </AppText>
+            </View>
+            <MoodChoices values={moods} onToggle={toggleMood} />
+          </View>
+
+          <PainField value={pain} onChange={setPain} />
+
           <TextField
             label="Notes (optional)"
             value={notes}
