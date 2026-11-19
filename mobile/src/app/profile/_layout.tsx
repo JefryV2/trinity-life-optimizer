@@ -14,7 +14,7 @@ export default function ProfileLayout() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Profile' }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="preferences" options={{ title: 'Preferences' }} />
       <Stack.Screen name="achievements" options={{ title: 'Achievements' }} />
     </Stack>

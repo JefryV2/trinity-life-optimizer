@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { BarChart } from '@/components/charts/bar-chart';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { DeletableRow } from '@/components/ui/deletable-row';
+import { Icon } from '@/components/ui/icon';
 import { Panel } from '@/components/ui/panel';
 import { Sheet } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
@@ -15,7 +16,7 @@ import { circadianSummary, formatClock } from '@/features/health/circadian';
 import { useHealth } from '@/features/health/use-health';
 import { formatDate } from '@/lib/format';
 import { openAdd, openEdit } from '@/lib/navigation';
-import { fonts, space, useTheme } from '@/theme';
+import { fonts, radius, space, useTheme } from '@/theme';
 
 const TIMELINE_HOURS = 24;
 const TIMELINE_START = 18;
@@ -320,62 +321,161 @@ export const SleepSegment = () => {
 
       <Sheet
         compact
+        headerless
         visible={plannerVisible}
         title="Plan a shift"
-        subtitle="Anchor wake time, then move bedtime in small steps"
         onClose={() => setPlannerVisible(false)}
         footer={<Button label="Done" onPress={() => setPlannerVisible(false)} />}
       >
-        <View style={{ gap: space.lg }}>
+        <View
+          style={{
+            alignSelf: 'center',
+            width: 40,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: colors.border,
+            marginTop: -space.sm,
+          }}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <AppText variant="title">Plan a shift</AppText>
+            <AppText variant="callout" tone="secondary">
+              Anchor your wake time, then move bedtime in small steps.
+            </AppText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            onPress={() => setPlannerVisible(false)}
+            style={({ pressed }) => ({
+              width: 48,
+              height: 48,
+              borderRadius: radius.pill,
+              backgroundColor: colors.surfaceAlt,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Icon name="close" size={21} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+
+        <View style={{ gap: space.xs }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <AppText variant="callout" tone="secondary">
+              Target wake
+            </AppText>
+            <AppText variant="title" style={{ fontSize: 34, lineHeight: 38 }}>
+              {formatClock(targetWake)}
+            </AppText>
+          </View>
           <Slider
-            label="Target wake"
             value={targetWake}
             onChange={setTargetWake}
             min={4}
             max={10}
             step={0.25}
-            formatValue={formatClock}
           />
+        </View>
+
+        <View style={{ gap: space.xs }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <AppText variant="callout" tone="secondary">
+              Sleep need
+            </AppText>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+              <AppText variant="title" style={{ fontSize: 34, lineHeight: 38 }}>
+                {targetDuration.toFixed(1)}
+              </AppText>
+              <AppText variant="callout" tone="tertiary">
+                h
+              </AppText>
+            </View>
+          </View>
           <Slider
-            label="Sleep need"
             value={targetDuration}
             onChange={setTargetDuration}
             min={6}
             max={9.5}
             step={0.5}
-            formatValue={(value) => `${value.toFixed(1)} h`}
           />
+        </View>
 
-          <View
-            style={{
-              gap: space.xs,
-              borderTopWidth: 1,
-              borderTopColor: colors.separator,
-              paddingTop: space.lg,
-            }}
-          >
-            <AppText variant="caption" tone="tertiary">
-              TARGET WINDOW
+        <View style={{ gap: space.sm, marginTop: space.sm }}>
+          <AppText variant="caption" tone="tertiary" style={{ letterSpacing: 0.8 }}>
+            TARGET WINDOW
+          </AppText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <AppText variant="display" style={{ fontSize: 42, lineHeight: 46, letterSpacing: -2 }}>
+              {formatClock(targetBedtime)}
             </AppText>
-            <AppText variant="headline">
-              {formatClock(targetBedtime)} → {formatClock(targetWake)}
+            <AppText variant="display" tone="primary" style={{ fontSize: 30, lineHeight: 46 }}>
+              →
             </AppText>
-            <AppText variant="footnote" tone="secondary">
-              {Math.abs(shiftMinutes) < 15
-                ? 'Already within 15 minutes of this window.'
-                : `Move ${Math.abs(shiftMinutes)} min ${shiftMinutes < 0 ? 'earlier' : 'later'} at 15 min a day — about ${shiftDays} day${shiftDays === 1 ? '' : 's'}.`}
+            <AppText variant="display" style={{ fontSize: 42, lineHeight: 46, letterSpacing: -2 }}>
+              {formatClock(targetWake)}
             </AppText>
           </View>
+          <View style={{ height: 12, borderRadius: 6, backgroundColor: colors.surfaceSunken, overflow: 'hidden', marginTop: space.xs }}>
+            <View
+              style={{
+                position: 'absolute',
+                left: `${(hoursFromStart(targetBedtime) / TIMELINE_HOURS) * 100}%`,
+                width: `${(targetDuration / TIMELINE_HOURS) * 100}%`,
+                top: 3,
+                bottom: 3,
+                borderRadius: 3,
+                backgroundColor: '#B9A6FF',
+              }}
+            />
+            {[
+              { at: circadian?.avgBedtime ?? targetBedtime, color: colors.amber },
+              { at: targetBedtime, color: '#B9A6FF' },
+              { at: targetWake, color: colors.primary },
+            ].map((marker, index) => (
+              <View
+                key={index}
+                style={{
+                  position: 'absolute',
+                  left: `${(hoursFromStart(marker.at) / TIMELINE_HOURS) * 100}%`,
+                  top: 4,
+                  width: 4,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: marker.color,
+                }}
+              />
+            ))}
+          </View>
+          <AppText variant="footnote" tone="secondary">
+            {Math.abs(shiftMinutes) < 15
+              ? 'Already within 15 minutes of this window.'
+              : `Move ${Math.abs(shiftMinutes)} min ${shiftMinutes < 0 ? 'earlier' : 'later'} at 15 min a day — about ${shiftDays} day${shiftDays === 1 ? '' : 's'}.`}
+          </AppText>
+        </View>
 
-          <View style={{ gap: space.sm }}>
-            <AppText variant="caption" tone="tertiary">
-              ANCHORS
-            </AppText>
-            <StatRow>
-              <Stat value={formatClock(windDown)} label="Wind down" />
-              <Stat value={formatClock(caffeineCutoff)} label="Caffeine off" />
-              <Stat value={formatClock(morningLight)} label="Morning light" />
-            </StatRow>
+        <View style={{ gap: space.md, marginTop: space.sm }}>
+          <AppText variant="caption" tone="tertiary" style={{ letterSpacing: 0.8 }}>
+            ANCHORS
+          </AppText>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
+            {[
+              { icon: 'moon' as const, color: '#B9A6FF', value: formatClock(windDown), label: 'Wind down' },
+              { icon: 'cafe' as const, color: colors.amber, value: formatClock(caffeineCutoff), label: 'Caffeine off' },
+              { icon: 'sun' as const, color: colors.primary, value: formatClock(morningLight), label: 'Morning light' },
+            ].map((anchor) => (
+              <View key={anchor.label} style={{ flex: 1, gap: 2 }}>
+                <Icon name={anchor.icon} size={24} color={anchor.color} />
+                <AppText variant="title" style={{ fontSize: 28, lineHeight: 32 }}>
+                  {anchor.value}
+                </AppText>
+                <AppText variant="footnote" tone="tertiary">
+                  {anchor.label}
+                </AppText>
+              </View>
+            ))}
           </View>
         </View>
       </Sheet>

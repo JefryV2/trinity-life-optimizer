@@ -4,14 +4,14 @@ import { View } from 'react-native';
 import { AppText } from '@/components/ui/app-text';
 import {
   CycleForm,
-  ExerciseForm,
-  FoodForm,
   GoalForm,
   HeartManualForm,
-  MentalForm,
-  SleepForm,
   StepsForm,
 } from '@/features/health/components/health-forms';
+import { ExerciseForm } from '@/features/health/components/exercise-form';
+import { MentalForm } from '@/features/health/components/mental-form';
+import { SleepForm } from '@/features/health/components/sleep-form';
+import { FoodForm } from '@/features/health/components/food-form';
 import {
   GratitudeForm,
   InteractionForm,
@@ -35,7 +35,7 @@ export default function AddFormRoute() {
     exercise: <ExerciseForm recordId={id} />,
     steps: <StepsForm />,
     food: <FoodForm recordId={id} />,
-    meal: <FoodForm meal recordId={id} />,
+    meal: <FoodForm recordId={id} />,
     mental: <MentalForm recordId={id} initialMood={mood} />,
     cycle: <CycleForm recordId={id} />,
     goal: <GoalForm />,

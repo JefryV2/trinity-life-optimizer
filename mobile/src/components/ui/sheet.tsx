@@ -20,6 +20,8 @@ interface SheetProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   compact?: boolean;
+  /** The caller renders its own title so the sheet can open like a full page. */
+  headerless?: boolean;
 }
 
 /** Native page sheet on iOS, full-height slide on Android. */
@@ -31,12 +33,14 @@ export const Sheet = ({
   children,
   footer,
   compact = false,
+  headerless = false,
 }: SheetProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   const body = (
     <>
+      {headerless ? null : (
       <View
         style={{
           paddingTop: space.lg,
@@ -72,6 +76,7 @@ export const Sheet = ({
           <Icon name="close" size={20} color={colors.textSecondary} />
         </Pressable>
       </View>
+      )}
 
       <ScrollView
         keyboardShouldPersistTaps="handled"

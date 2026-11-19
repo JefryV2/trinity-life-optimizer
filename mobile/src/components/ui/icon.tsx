@@ -60,6 +60,15 @@ const GLYPH = {
   search: 'search-outline',
   cart: 'cart-outline',
   bolt: 'flash-outline',
+  barcode: 'barcode-outline',
+  scan: 'scan-outline',
+  pulse: 'pulse-outline',
+  body: 'body-outline',
+  globe: 'globe-outline',
+  cafe: 'cafe-outline',
+  bank: 'business-outline',
+  cash: 'cash-outline',
+  card: 'card-outline',
   car: 'car-outline',
 } as const;
 

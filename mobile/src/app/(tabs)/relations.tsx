@@ -1,21 +1,21 @@
 import { router } from 'expo-router';
 import { Pressable, RefreshControl, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
 import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import type { IconName } from '@/components/ui/icon';
-import { ListRow } from '@/components/ui/list-row';
+import { Icon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
+import { Panel } from '@/components/ui/panel';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { useRelations } from '@/features/relations/use-relations';
 import { daysBetween, formatDate, formatNumber, formatStamp, relativeDay } from '@/lib/format';
 import { openAdd, openEdit } from '@/lib/navigation';
-import { space, useTheme } from '@/theme';
+import { fonts, radius, space, useTheme } from '@/theme';
 
 const channelIcon = (channel: string | null): IconName => {
   if (channel === 'call') return 'phone';
@@ -24,21 +24,112 @@ const channelIcon = (channel: string | null): IconName => {
   return 'people';
 };
 
+const channelLabel = (channel: string | null) => {
+  if (channel === 'in_person') return 'In person';
+  if (!channel) return 'Contact';
+  return channel.charAt(0).toUpperCase() + channel.slice(1);
+};
+
+const personInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || '?';
+
+const PersonAvatar = ({
+  name,
+  days,
+  cadence,
+  color,
+  size = 52,
+}: {
+  name: string;
+  days: number | null;
+  cadence: number;
+  color: string;
+  size?: number;
+}) => {
+  const { colors } = useTheme();
+  const stroke = 2.5;
+  const mid = size / 2;
+  const radiusValue = mid - stroke;
+  const circumference = 2 * Math.PI * radiusValue;
+  const ratio =
+    days === null ? 0 : days === 0 ? 0.035 : Math.max(0, Math.min(1, days / Math.max(1, cadence)));
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle
+          cx={mid}
+          cy={mid}
+          r={radiusValue}
+          stroke={colors.surfaceSunken}
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <Circle
+          cx={mid}
+          cy={mid}
+          r={radiusValue}
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={circumference - ratio * circumference}
+          rotation={-90}
+          origin={`${mid}, ${mid}`}
+        />
+      </Svg>
+      <View
+        style={{
+          width: size - 13,
+          height: size - 13,
+          borderRadius: radius.pill,
+          backgroundColor: colors.surfaceSunken,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <AppText
+          style={{
+            fontFamily: fonts.semibold,
+            fontSize: 17,
+            lineHeight: 20,
+            letterSpacing: -0.3,
+            color: colors.textSecondary,
+          }}
+        >
+          {personInitials(name)}
+        </AppText>
+      </View>
+    </View>
+  );
+};
+
 export default function PeopleScreen() {
   const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, isRefetching, addQualityTime } = useRelations();
 
   const people = data?.relationships ?? [];
   const interactions = data?.interactions ?? [];
-  const gratitude = data?.gratitude ?? [];
   const qualityTarget = data?.qualityTime?.target_minutes_per_week ?? 300;
   const qualityDone = data?.qualityTime?.completed_minutes ?? 0;
   const qualityPct = qualityTarget > 0 ? (qualityDone / qualityTarget) * 100 : 0;
-  const recentMinutes = interactions.reduce((total, interaction) => total + Number(interaction.duration_minutes ?? 0), 0);
+  const qualityLeft = Math.max(0, qualityTarget - qualityDone);
+  const recentMinutes = interactions.reduce(
+    (total, interaction) => total + Number(interaction.duration_minutes ?? 0),
+    0,
+  );
   const averageMood = interactions.length
-    ? interactions.reduce((total, interaction) => total + Number(interaction.mood_rating ?? 0), 0) / interactions.length
+    ? interactions.reduce(
+        (total, interaction) => total + Number(interaction.mood_rating ?? 0),
+        0,
+      ) / interactions.length
     : 0;
-  const personName = new Map(people.map((person) => [person.id, person.name]));
 
   const cadenceFor = (personId: string) => {
     const times = interactions
@@ -51,29 +142,45 @@ export default function PeopleScreen() {
     return Math.max(3, Math.round(average));
   };
 
-  const circle = people.map((person) => {
-    const cadence = cadenceFor(person.id);
-    const days = person.last_contact_at ? daysBetween(person.last_contact_at) : null;
-    return {
-      id: person.id,
-      name: person.name,
-      cadence,
-      days,
-      lastContactAt: person.last_contact_at,
-      overdue: days !== null && days > cadence,
-    };
-  });
+  const circle = people
+    .map((person) => {
+      const cadence = cadenceFor(person.id);
+      const days = person.last_contact_at ? daysBetween(person.last_contact_at) : null;
+      const remaining = days === null ? null : cadence - days;
+      const overdue = remaining !== null && remaining < 0;
+      const tint =
+        days === 0
+          ? colors.primary
+          : remaining !== null && remaining <= 1
+            ? colors.amber
+            : colors.bonds;
+      return {
+        id: person.id,
+        name: person.name,
+        cadence,
+        days,
+        remaining,
+        overdue,
+        tint,
+        lastContactAt: person.last_contact_at,
+      };
+    })
+    .sort((a, b) => {
+      if (a.remaining === null && b.remaining === null) return a.name.localeCompare(b.name);
+      if (a.remaining === null) return 1;
+      if (b.remaining === null) return -1;
+      return a.remaining - b.remaining;
+    });
+
   const inTouch = circle.filter((person) => !person.overdue).length;
-  const overdue = circle.filter((person) => person.overdue);
-  const latest = circle
-    .filter((person) => person.days !== null)
-    .sort((a, b) => Number(a.days) - Number(b.days))[0];
+  const featured =
+    circle.find(
+      (person) => person.id === interactions[0]?.relationship_id,
+    ) ?? circle[0] ?? null;
+  const personName = new Map(people.map((person) => [person.id, person.name]));
 
   const addQuickTime = () => {
-    addQualityTime.mutate(30, {
-      onSuccess: () => {
-      },
-    });
+    addQualityTime.mutate(30);
   };
 
   return (
@@ -94,78 +201,151 @@ export default function PeopleScreen() {
 
       {data ? (
         <>
-          <Card raised style={{ gap: space.lg }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
-              <RingMeter
-                value={inTouch}
-                max={circle.length}
-                size={96}
-                stroke={8}
-                color={colors.bonds}
-                center={`${inTouch}/${circle.length}`}
-                label="In touch"
-              />
-              <View style={{ flex: 1, gap: 3 }}>
-                {overdue.length > 0 ? (
-                  <>
-                    <AppText variant="headline">{`${overdue.length} overdue`}</AppText>
+          {featured ? (
+            <>
+              <Panel style={{ gap: space.lg }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
+                  <RingMeter
+                    value={inTouch}
+                    max={Math.max(1, circle.length)}
+                    size={100}
+                    stroke={8}
+                    color={colors.bonds}
+                    center={`${inTouch}/${circle.length}`}
+                    centerSize={22}
+                    label="In touch"
+                  />
+                  <View style={{ flex: 1, gap: 2 }}>
                     <AppText variant="footnote" tone="secondary">
-                      {`${overdue
-                        .slice(0, 3)
-                        .map((person) => person.name)
-                        .join(', ')}${
-                        overdue.length > 3 ? ` and ${overdue.length - 3} more` : ''
-                      } — worth a message.`}
+                      {`Last spoke ${relativeDay(featured.lastContactAt).toLowerCase()}`}
                     </AppText>
-                  </>
-                ) : latest ? (
-                  <>
-                    <AppText variant="headline">{latest.name}</AppText>
+                    <AppText
+                      variant="title"
+                      numberOfLines={1}
+                      style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1.8 }}
+                    >
+                      {featured.name}
+                    </AppText>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: space.md }}>
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: colors.surfaceSunken,
+                      borderRadius: radius.inner,
+                      padding: space.md,
+                      gap: 2,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                      <AppText
+                        variant="title"
+                        style={{ fontSize: 27, lineHeight: 31, letterSpacing: -1.3 }}
+                      >
+                        {formatNumber(recentMinutes)}
+                      </AppText>
+                      <AppText variant="footnote" tone="secondary">
+                        min
+                      </AppText>
+                    </View>
                     <AppText variant="footnote" tone="secondary">
-                      Last spoke {(latest.lastContactAt ? relativeDay(latest.lastContactAt) : '').toLowerCase()}
+                      Time together
                     </AppText>
-                  </>
-                ) : (
-                  <AppText variant="body" tone="secondary">
-                    Log a first conversation to start the cadence.
+                  </View>
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: colors.surfaceSunken,
+                      borderRadius: radius.inner,
+                      padding: space.md,
+                      gap: 2,
+                    }}
+                  >
+                    <AppText
+                      variant="title"
+                      tone="primary"
+                      style={{ fontSize: 27, lineHeight: 31, letterSpacing: -1.3 }}
+                    >
+                      {averageMood ? averageMood.toFixed(1) : '—'}
+                    </AppText>
+                    <AppText variant="footnote" tone="secondary">
+                      Avg feeling
+                    </AppText>
+                  </View>
+                </View>
+
+                <View style={{ gap: space.sm }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      gap: space.md,
+                    }}
+                  >
+                    <AppText variant="callout" style={{ fontWeight: '700' }}>
+                      Quality time
+                    </AppText>
+                    <AppText
+                      variant="callout"
+                      style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}
+                    >
+                      {`${formatNumber(qualityDone)} / ${formatNumber(qualityTarget)} min`}
+                    </AppText>
+                  </View>
+                  <Progress value={qualityPct} color={colors.bonds} height={6} />
+                  <AppText variant="footnote" tone="tertiary">
+                    {qualityLeft > 0
+                      ? `${formatNumber(qualityLeft)} min to reach this week’s goal`
+                      : 'This week’s goal is met.'}
                   </AppText>
-                )}
-                <AppText variant="footnote" tone="tertiary" style={{ marginTop: 2 }}>
-                  {`${formatNumber(recentMinutes)} min · ${averageMood ? averageMood.toFixed(1) : '—'} avg feeling`}
-                </AppText>
-              </View>
-            </View>
+                </View>
+              </Panel>
 
-            <View style={{ gap: space.xs }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-                <AppText variant="callout">Quality time</AppText>
-                <AppText variant="footnote" tone="secondary" style={{ fontVariant: ['tabular-nums'] }}>
-                  {formatNumber(qualityDone)} / {formatNumber(qualityTarget)} min
-                </AppText>
+              <View style={{ flexDirection: 'row', gap: space.md }}>
+                <View style={{ flex: 1.35 }}>
+                  <Button label="Log contact" onPress={() => openAdd('interaction')} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label="Add 30 min"
+                    variant="secondary"
+                    onPress={addQuickTime}
+                    loading={addQualityTime.isPending}
+                  />
+                </View>
               </View>
-              <Progress value={qualityPct} color={colors.bonds} />
-            </View>
+            </>
+          ) : null}
 
-            <View style={{ flexDirection: 'row', gap: space.md }}>
-              <View style={{ flex: 1 }}>
-                <Button label="Log contact" onPress={() => openAdd('interaction')} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  label="Add 30 min"
-                  variant="secondary"
-                  onPress={addQuickTime}
-                  loading={addQualityTime.isPending}
-                />
-              </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              marginTop: space.sm,
+            }}
+          >
+            <View style={{ gap: 2 }}>
+              <AppText variant="title">Your circle</AppText>
+              <AppText variant="footnote" tone="tertiary">
+                Closest to due first
+              </AppText>
             </View>
-          </Card>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add a person"
+              hitSlop={10}
+              onPress={() => openAdd('person')}
+              style={({ pressed }) => ({ opacity: pressed ? 0.55 : 1 })}
+            >
+              <AppText variant="caption" tone="primary" style={{ letterSpacing: 0.8 }}>
+                + ADD
+              </AppText>
+            </Pressable>
+          </View>
 
-          <SectionHeader
-            title="Your circle"
-            actionLabel="Add"
-            onAction={() => openAdd('person')}
-          />
           {people.length === 0 ? (
             <EmptyState
               icon="people"
@@ -175,50 +355,102 @@ export default function PeopleScreen() {
               onAction={() => openAdd('person')}
             />
           ) : (
-            <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              {people.map((person, index) => {
-                const cadence = cadenceFor(person.id);
-                const days = person.last_contact_at ? daysBetween(person.last_contact_at) : null;
-                const overdue = days !== null && days > cadence;
-                const progress = days === null ? 0 : Math.min(100, (days / cadence) * 100);
-                return (
+            <View>
+              {circle.map((person, index) => (
+                <View
+                  key={person.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: space.md,
+                    paddingVertical: space.md,
+                    borderTopWidth: index === 0 ? 0 : 1,
+                    borderTopColor: colors.separator,
+                  }}
+                >
                   <Pressable
-                    key={person.id}
                     accessibilityRole="button"
+                    accessibilityLabel={`${person.name}, ${person.remaining === null ? 'no contact yet' : `${Math.abs(person.remaining)} days ${person.remaining < 0 ? 'overdue' : 'left'}`}`}
                     onPress={() => router.push(`/person/${person.id}` as never)}
                     style={({ pressed }) => ({
-                      gap: 7,
-                      paddingVertical: space.md,
-                      borderTopWidth: index === 0 ? 0 : 1,
-                      borderTopColor: colors.separator,
-                      opacity: pressed ? 0.6 : 1,
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.md,
+                      opacity: pressed ? 0.62 : 1,
                     })}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
-                      <AppText variant="callout" style={{ flex: 1 }}>
+                    <PersonAvatar
+                      name={person.name}
+                      days={person.days}
+                      cadence={person.cadence}
+                      color={person.tint}
+                    />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <AppText variant="headline" numberOfLines={1}>
                         {person.name}
                       </AppText>
-                      <AppText variant="footnote" tone={overdue ? 'danger' : 'secondary'}>
-                        {relativeDay(person.last_contact_at)}
+                      <AppText
+                        variant="footnote"
+                        style={{ color: person.tint, fontWeight: '600' }}
+                        numberOfLines={1}
+                      >
+                        {person.days === null
+                          ? `No contact yet · every ~${person.cadence} days`
+                          : person.overdue
+                            ? `${Math.abs(person.remaining ?? 0)} ${Math.abs(person.remaining ?? 0) === 1 ? 'day' : 'days'} over · every ~${person.cadence} days`
+                            : `${person.remaining} ${person.remaining === 1 ? 'day' : 'days'} left · every ~${person.cadence} days`}
                       </AppText>
                     </View>
-                    <Progress value={progress} color={overdue ? colors.danger : colors.bonds} />
-                    <AppText variant="footnote" tone="tertiary">
-                      {`Every ~${cadence} days${
-                        days === null
-                          ? ''
-                          : overdue
-                            ? ` · ${days - cadence} ${days - cadence === 1 ? 'day' : 'days'} over`
-                            : ` · ${Math.max(0, cadence - days)} ${cadence - days === 1 ? 'day' : 'days'} left`
-                      }`}
-                    </AppText>
                   </Pressable>
-                );
-              })}
-            </Card>
+                  <AppText
+                    variant="footnote"
+                    tone="secondary"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    {relativeDay(person.lastContactAt)}
+                  </AppText>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Log contact with ${person.name}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/add/[form]',
+                        params: { form: 'interaction', person: person.id },
+                      })
+                    }
+                    style={({ pressed }) => ({
+                      width: 42,
+                      height: 42,
+                      borderRadius: radius.pill,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.55 : 1,
+                    })}
+                  >
+                    <Icon name="plus" size={19} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
           )}
 
-          <SectionHeader title="Recent contact" caption="Last 30 days" />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              marginTop: space.sm,
+            }}
+          >
+            <AppText variant="title">Recent contact</AppText>
+            <AppText variant="footnote" tone="tertiary">
+              Last 30 days
+            </AppText>
+          </View>
+
           {interactions.length === 0 ? (
             <EmptyState
               icon="message"
@@ -228,45 +460,52 @@ export default function PeopleScreen() {
               onAction={() => openAdd('interaction')}
             />
           ) : (
-            <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              {interactions.slice(0, 12).map((interaction, index) => (
-                <ListRow
+            <View>
+              {interactions.slice(0, 6).map((interaction, index) => (
+                <Pressable
                   key={interaction.id}
-                  icon={channelIcon(interaction.channel)}
-                  title={personName.get(interaction.relationship_id) ?? 'Someone'}
-                  subtitle={`${interaction.channel ?? 'Contact'} · ${formatDate(interaction.occurred_at)}${interaction.notes ? ` · ${interaction.notes}` : ''}`}
-                  value={`${formatNumber(Number(interaction.duration_minutes ?? 0))} min`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${personName.get(interaction.relationship_id) ?? 'Someone'}, ${channelLabel(interaction.channel)}, ${formatDate(interaction.occurred_at)}, ${interaction.duration_minutes ?? 0} minutes`}
                   onPress={() => openEdit('interaction', interaction.id)}
-                  last={index === Math.min(interactions.length, 12) - 1}
-                />
-              ))}
-            </Card>
-          )}
-
-          <SectionHeader
-            title="Gratitude"
-            actionLabel="Add"
-            onAction={() => openAdd('gratitude')}
-          />
-          {gratitude.length === 0 ? (
-            <EmptyState
-              icon="gift"
-              title="No gratitude entries"
-              message="Write one good thing from today to strengthen the People pillar."
-              actionLabel="Add gratitude"
-              onAction={() => openAdd('gratitude')}
-            />
-          ) : (
-            <Card style={{ gap: space.md }}>
-              {gratitude.slice(0, 5).map((entry) => (
-                <View key={entry.id} style={{ gap: 2 }}>
-                  <AppText variant="callout">{entry.text}</AppText>
-                  <AppText variant="footnote" tone="tertiary">
-                    {formatDate(entry.created_at)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: space.md,
+                    paddingVertical: space.md,
+                    borderTopWidth: index === 0 ? 0 : 1,
+                    borderTopColor: colors.separator,
+                    opacity: pressed ? 0.62 : 1,
+                  })}
+                >
+                  <View
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: radius.pill,
+                      backgroundColor: colors.surfaceAlt,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon name={channelIcon(interaction.channel)} size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1, gap: 1 }}>
+                    <AppText variant="headline" numberOfLines={1}>
+                      {personName.get(interaction.relationship_id) ?? 'Someone'}
+                    </AppText>
+                    <AppText variant="footnote" tone="tertiary">
+                      {`${channelLabel(interaction.channel)} · ${formatDate(interaction.occurred_at)}`}
+                    </AppText>
+                  </View>
+                  <AppText
+                    variant="callout"
+                    style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}
+                  >
+                    {`${formatNumber(Number(interaction.duration_minutes ?? 0))} min`}
                   </AppText>
-                </View>
+                </Pressable>
               ))}
-            </Card>
+            </View>
           )}
         </>
       ) : null}

@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { FlatList, Pressable, Switch, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { BackLink } from '@/components/ui/back-link';
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { Icon } from '@/components/ui/icon';
+import { Panel } from '@/components/ui/panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
@@ -28,7 +29,7 @@ import {
   formatNutrientValue,
   type Micronutrients,
 } from '@/lib/nutrition';
-import { radius, space, useTheme } from '@/theme';
+import { fonts, radius, space, useTheme } from '@/theme';
 
 const MEALS = [
   { value: 'breakfast', label: 'Breakfast' },
@@ -114,6 +115,7 @@ export default function MealBuilderScreen() {
   const [name, setName] = useState('');
   const [meal, setMeal] = useState('lunch');
   const [date, setDate] = useState(new Date());
+  const [saveAsTemplate, setSaveAsTemplate] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -285,7 +287,7 @@ export default function MealBuilderScreen() {
           per100,
           portion,
         })),
-        notes: `Built from: ${components
+        notes: `${saveAsTemplate ? 'Template. ' : ''}Built from: ${components
           .map((component) =>
             component.per100
               ? `${component.name} ${component.grams} g`
@@ -304,250 +306,358 @@ export default function MealBuilderScreen() {
   };
 
   return (
-    <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <BackLink />
-      <PageHeader title="Build a meal" date={formatStamp()} />
+    <Screen contentContainerStyle={{ paddingTop: space.xl, flexGrow: 1 }}>
+      <View
+        style={{
+          alignSelf: 'center',
+          width: 40,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: colors.border,
+          marginTop: -space.md,
+        }}
+      />
+      <AppText variant="title">Build a meal</AppText>
 
-      {recentMeals.length > 0 ? (
-        <View style={{ gap: space.sm }}>
-          <SectionHeader title="Repeat a meal" caption="Same components, new day" />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {recentMeals.map((entry) => (
-              <Pressable
-                key={`${entry.food_name}-${entry.consumed_at}`}
-                accessibilityRole="button"
-                onPress={() => repeatMeal(entry)}
-                style={({ pressed }) => ({
-                  paddingHorizontal: space.md,
-                  paddingVertical: 8,
-                  borderRadius: radius.pill,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  backgroundColor: colors.surface,
-                  opacity: pressed ? 0.6 : 1,
-                  maxWidth: '100%',
-                })}
+      <TextInput
+        accessibilityLabel="Meal name"
+        value={name}
+        onChangeText={setName}
+        placeholder="Name this meal"
+        placeholderTextColor={colors.textFaint}
+        maxLength={100}
+        style={{
+          minHeight: 58,
+          borderRadius: radius.pill,
+          backgroundColor: colors.surfaceAlt,
+          paddingHorizontal: space.lg,
+          color: colors.text,
+          fontFamily: fonts.medium,
+          fontSize: 20,
+          letterSpacing: -0.3,
+        }}
+      />
+
+      {components.length > 0 ? (
+        <View>
+          {components.map((component, index) => {
+            const value = componentTotals(component);
+            return (
+              <View
+                key={component.id}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  paddingVertical: space.md,
+                  borderTopWidth: index === 0 ? 0 : 1,
+                  borderTopColor: colors.separator,
+                }}
               >
-                <AppText variant="footnote" numberOfLines={1}>
-                  {entry.food_name}
-                </AppText>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      <Card style={{ gap: space.lg }}>
-        <TextField
-          label="Meal name"
-          value={name}
-          onChangeText={setName}
-          placeholder="Chicken rice bowl"
-          maxLength={100}
-        />
-        <Chips label="Meal" options={MEALS} value={meal} onChange={setMeal} />
-        <DateTimeField label="When" value={date} onChange={setDate} />
-      </Card>
-
-      <View style={{ gap: space.md }}>
-        <SectionHeader
-          title="Components"
-          actionLabel="Add component"
-          onAction={() => setSearchVisible(true)}
-        />
-
-        {components.length === 0 ? (
-          <Card style={{ gap: space.md }}>
-            <AppText variant="callout">A meal is only as good as its parts.</AppText>
-            <AppText variant="footnote" tone="secondary">
-              Search a food or add a custom component. Auxo combines the macros and
-              micronutrients, and logs the result as one meal.
-            </AppText>
-            <Button label="Find a food" onPress={() => setSearchVisible(true)} />
-            <Button
-              label="Scan a barcode"
-              variant="secondary"
-              onPress={() => router.push('/scan-food?component=1' as never)}
-            />
-            <Button
-              label="Add a custom component"
-              variant="secondary"
-              onPress={() => setManualVisible(true)}
-            />
-          </Card>
-        ) : (
-          <View style={{ gap: space.md }}>
-            {components.map((component) => {
-              const value = componentTotals(component);
-              return (
-                <Card key={component.id} style={{ gap: space.md }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <AppText variant="callout">{component.name}</AppText>
-                      <AppText variant="footnote" tone="tertiary">
-                        {component.per100
-                          ? `${component.grams} g`
-                          : '1 portion'}{' '}
-                        · {value.calories} kcal
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add another component before ${component.name}`}
+                  onPress={() => setSearchVisible(true)}
+                  style={({ pressed }) => ({
+                    width: 46,
+                    height: 46,
+                    borderRadius: radius.pill,
+                    backgroundColor: colors.surfaceAlt,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <Icon name="plus" size={21} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Long press to remove"
+                  onPress={() => setSearchVisible(true)}
+                  onLongPress={() =>
+                    setComponents((current) => current.filter((item) => item.id !== component.id))
+                  }
+                  delayLongPress={400}
+                  style={{ flex: 1, gap: 1 }}
+                >
+                  <AppText variant="headline" numberOfLines={1}>
+                    {component.name}
+                  </AppText>
+                  <AppText variant="footnote" tone="tertiary" numberOfLines={1}>
+                    {component.per100
+                      ? `${component.grams} g · ${value.calories} kcal`
+                      : `1 portion · ${value.calories} kcal`}
+                  </AppText>
+                </Pressable>
+                {component.per100 ? (
+                  <>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Decrease ${component.name}`}
+                      onPress={() =>
+                        setComponents((current) =>
+                          current.map((item) =>
+                            item.id === component.id
+                              ? { ...item, grams: Math.max(0, item.grams - 10) }
+                              : item,
+                          ),
+                        )
+                      }
+                      style={({ pressed }) => ({
+                        width: 44,
+                        height: 44,
+                        borderRadius: radius.pill,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: pressed ? 0.55 : 1,
+                      })}
+                    >
+                      <AppText variant="headline" tone="secondary" style={{ fontSize: 23 }}>
+                        −
+                      </AppText>
+                    </Pressable>
+                    <View style={{ width: 58, alignItems: 'center' }}>
+                      <AppText variant="headline" style={{ fontVariant: ['tabular-nums'] }}>
+                        {component.grams} g
                       </AppText>
                     </View>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`Remove ${component.name}`}
-                      hitSlop={10}
+                      accessibilityLabel={`Increase ${component.name}`}
                       onPress={() =>
                         setComponents((current) =>
-                          current.filter((item) => item.id !== component.id),
+                          current.map((item) =>
+                            item.id === component.id ? { ...item, grams: item.grams + 10 } : item,
+                          ),
                         )
                       }
+                      style={({ pressed }) => ({
+                        width: 44,
+                        height: 44,
+                        borderRadius: radius.pill,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: pressed ? 0.55 : 1,
+                      })}
                     >
-                      <Icon name="close" size={17} color={colors.textSecondary} />
+                      <Icon name="plus" size={20} color={colors.text} />
                     </Pressable>
-                  </View>
-
-                  {component.per100 ? (
-                    <TextField
-                      label="Amount (g)"
-                      value={String(component.grams)}
-                      onChangeText={(text) => {
-                        const grams = Number(text.replace(',', '.'));
-                        setComponents((current) =>
-                          current.map((item) =>
-                            item.id === component.id
-                              ? { ...item, grams: Number.isFinite(grams) ? grams : 0 }
-                              : item,
-                          ),
-                        );
-                      }}
-                      keyboardType="decimal-pad"
-                      maxLength={5}
-                    />
-                  ) : null}
-
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <AppText variant="caption" tone="tertiary">
-                      {value.protein}P · {value.carbs}C · {value.fat}F
-                    </AppText>
-                    <AppText variant="caption" tone="tertiary">
-                      {Object.keys(value.micros).length} micronutrients
-                    </AppText>
-                  </View>
-                </Card>
-              );
-            })}
-            <Button
-              label="Add another component"
-              variant="secondary"
-              onPress={() => setSearchVisible(true)}
-            />
-          </View>
-        )}
-      </View>
-
-      {components.length > 0 ? (
-        <>
-          <SectionHeader title="Macros" caption="For the whole meal" />
-          <Card style={{ gap: space.lg }}>
-            <View style={{ flexDirection: 'row', gap: space.md }}>
-              {[
-                { label: 'Calories', value: totals.calories, target: calorieTarget, unit: 'kcal' },
-                { label: 'Protein', value: totals.protein, target: proteinTarget, unit: 'g' },
-                { label: 'Carbs', value: totals.carbs, target: 250, unit: 'g' },
-                { label: 'Fat', value: totals.fat, target: 70, unit: 'g' },
-              ].map((macro) => (
-                <View key={macro.label} style={{ flex: 1, gap: 4 }}>
-                  <AppText variant="caption" tone="tertiary">
-                    {macro.label.toUpperCase()}
-                  </AppText>
-                  <AppText variant="headline" style={{ fontVariant: ['tabular-nums'] }}>
-                    {Math.round(macro.value)}
-                  </AppText>
-                  <AppText variant="caption" tone="tertiary">
-                    / {macro.target} {macro.unit}
-                  </AppText>
-                  <Progress value={(macro.value / macro.target) * 100} height={3} />
-                </View>
-              ))}
-            </View>
-          </Card>
-
-          <Card>
-            <StatRow>
-              <Stat value={`${Math.round(totals.fiber)}g`} label="Fiber / 30g" tone={totals.fiber >= 30 ? 'success' : 'default'} />
-              <Stat value={`${Math.round(totals.sugar)}g`} label="Sugar" />
-              <Stat value={formatNumber(totals.sodium)} label="Sodium mg / 2300" tone={totals.sodium > 2300 ? 'danger' : 'default'} />
-            </StatRow>
-          </Card>
-
-          <SectionHeader
-            title="Vitamins & minerals"
-            caption={hasMicros ? 'All values in this meal' : 'No micronutrient data yet'}
-          />
-          <Card style={{ gap: space.lg }}>
+                  </>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        <View>
+          {[0, 1, 2].map((index) => (
             <View
+              key={`placeholder-${index}`}
               style={{
                 flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                rowGap: space.lg,
+                alignItems: 'center',
+                gap: space.md,
+                paddingVertical: space.md,
+                borderTopWidth: index === 0 ? 0 : 1,
+                borderTopColor: colors.separator,
               }}
             >
-              {needs.items.map((nutrient) => {
-                const value = micros[nutrient.key] ?? 0;
-                const percent = nutrient.target > 0 ? Math.round((value / nutrient.target) * 100) : 0;
-                return (
-                  <View key={nutrient.key} style={{ width: '48%', gap: 3 }}>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'baseline',
-                        justifyContent: 'space-between',
-                        gap: 4,
-                      }}
-                    >
-                      <AppText variant="footnote" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
-                        {nutrient.label}
-                      </AppText>
-                      <AppText
-                        variant="footnote"
-                        style={{
-                          fontVariant: ['tabular-nums'],
-                          color: percent >= 100 ? colors.success : colors.text,
-                        }}
-                      >
-                        {percent}%
-                      </AppText>
-                    </View>
-                    <Progress value={percent} height={3} />
-                    <AppText variant="caption" tone="tertiary" style={{ fontVariant: ['tabular-nums'], textTransform: 'none', letterSpacing: 0 }}>
-                      {formatNutrientValue(value)} / {formatNutrientValue(nutrient.target)}{' '}
-                      {nutrient.unit}
-                    </AppText>
-                  </View>
-                );
-              })}
-            </View>
-            {!hasMicros ? (
-              <AppText variant="footnote" tone="tertiary">
-                Search results from Open Food Facts include vitamins and minerals when the
-                package lists them. Custom components contribute macros only.
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Choose a component"
+                onPress={() => setSearchVisible(true)}
+                style={({ pressed }) => ({
+                  width: 46,
+                  height: 46,
+                  borderRadius: radius.pill,
+                  backgroundColor: colors.surfaceAlt,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Icon name="plus" size={21} color={colors.primary} />
+              </Pressable>
+              <View style={{ flex: 1, gap: 1 }}>
+                <AppText variant="headline" tone="secondary">
+                  Component
+                </AppText>
+                <AppText variant="footnote" tone="faint">
+                  0 g · 0 kcal
+                </AppText>
+              </View>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: colors.separator,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppText variant="headline" tone="faint" style={{ fontSize: 23 }}>
+                  −
+                </AppText>
+              </View>
+              <AppText variant="headline" tone="faint" style={{ width: 58, textAlign: 'center' }}>
+                0 g
               </AppText>
-            ) : null}
-          </Card>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: colors.separator,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="plus" size={20} color={colors.textFaint} />
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
 
-          {error ? (
-            <AppText variant="footnote" tone="danger" selectable>
-              {error}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add component"
+        onPress={() => setSearchVisible(true)}
+        style={({ pressed }) => ({
+          minHeight: 62,
+          borderRadius: radius.inner,
+          borderWidth: 1,
+          borderStyle: 'dashed',
+          borderColor: colors.border,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          opacity: pressed ? 0.65 : 1,
+        })}
+      >
+        <Icon name="plus" size={20} color={colors.primary} />
+        <AppText variant="headline" tone="primary">
+          Add component
+        </AppText>
+      </Pressable>
+
+      <Panel style={{ gap: space.md }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: space.md,
+          }}
+        >
+          <AppText variant="headline" tone="secondary">
+            Meal total
+          </AppText>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+            <AppText
+              variant="display"
+              style={{ fontSize: 46, lineHeight: 50, letterSpacing: -2.5 }}
+            >
+              {Math.round(totals.calories)}
             </AppText>
-          ) : null}
+            <AppText variant="footnote" tone="tertiary">
+              kcal
+            </AppText>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          {[
+            { label: 'Protein', value: totals.protein, color: colors.primary },
+            { label: 'Carbs', value: totals.carbs, color: colors.bonds },
+            { label: 'Fat', value: totals.fat, color: colors.wealth },
+          ].map((macro) => (
+            <View
+              key={macro.label}
+              style={{
+                flex: 1,
+                backgroundColor: colors.surfaceSunken,
+                borderRadius: radius.inner,
+                padding: space.md,
+                gap: 1,
+              }}
+            >
+              <AppText variant="callout" style={{ color: macro.color, fontWeight: '700' }}>
+                {macro.label}
+              </AppText>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                <AppText
+                  variant="headline"
+                  style={{ fontSize: 24, lineHeight: 28, letterSpacing: -0.8 }}
+                >
+                  {Math.round(macro.value)}
+                </AppText>
+                <AppText variant="footnote" tone="tertiary">
+                  g
+                </AppText>
+              </View>
+            </View>
+          ))}
+        </View>
+      </Panel>
 
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: space.md,
+        }}
+      >
+        <AppText variant="headline">Save as a template</AppText>
+        <Switch
+          accessibilityLabel="Save as a template"
+          value={saveAsTemplate}
+          onValueChange={setSaveAsTemplate}
+          trackColor={{ false: colors.surfaceSunken, true: colors.primary }}
+          thumbColor={saveAsTemplate ? colors.onPrimary : colors.textTertiary}
+        />
+      </View>
+
+      {error ? (
+        <AppText variant="footnote" tone="danger" selectable>
+          {error}
+        </AppText>
+      ) : null}
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: 'auto', paddingTop: space.xl }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+          style={({ pressed }) => ({
+            width: 56,
+            height: 56,
+            borderRadius: radius.pill,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Icon name="back" size={20} color={colors.text} />
+        </Pressable>
+        <View style={{ flex: 1 }}>
           <Button
-            label={`Log meal · ${Math.round(totals.calories)} kcal`}
+            label="Log meal"
             loading={saving || addFood.isPending}
             onPress={() => void save()}
           />
-        </>
-      ) : null}
+        </View>
+      </View>
 
       <Sheet
         visible={searchVisible}

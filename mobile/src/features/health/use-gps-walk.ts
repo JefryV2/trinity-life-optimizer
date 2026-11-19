@@ -93,7 +93,9 @@ export const useGpsWalk = () => {
     try {
       pedometerRef.current = Pedometer.watchStepCount(({ steps }) => {
         liveStepsRef.current = steps;
-        setSensorSteps(carryStepsRef.current + steps);
+        const next = carryStepsRef.current + steps;
+        stepsRef.current = next;
+        setSensorSteps(next);
       });
     } catch {
       // No step sensor: the GPS distance / stride estimate is the fallback.
@@ -329,7 +331,10 @@ export const useGpsWalk = () => {
       );
 
       const gpsFallback = Math.round(current.distanceM / strideM);
-      let steps = stepsRef.current < gpsFallback * 0.5 ? gpsFallback : stepsRef.current;
+      // If the hardware sensor produced a count, trust it. GPS distance is
+      // only a fallback for devices without a step counter; using it whenever
+      // it is larger turns drift into imaginary steps.
+      let steps = stepsRef.current > 0 ? stepsRef.current : gpsFallback;
       stopPedometer();
 
       // iOS can query the pedometer for the whole period, including the time
@@ -391,7 +396,7 @@ export const useGpsWalk = () => {
   const distanceM = session?.distanceM ?? 0;
   const durationS = session ? Math.round(sessionDurationMs(session, now) / 1000) : 0;
   const gpsSteps = distanceM > 0 ? Math.round(distanceM / strideM) : 0;
-  const steps = sensorSteps >= Math.max(1, gpsSteps * 0.5) ? sensorSteps : gpsSteps;
+  const steps = sensorSteps > 0 ? sensorSteps : gpsSteps;
   stepsRef.current = steps;
   const paceSPerKm = distanceM > 30 && durationS > 0 ? durationS / (distanceM / 1000) : 0;
   const calories = Math.round(0.53 * weightKg * (distanceM / 1000));

@@ -36,7 +36,18 @@ export const FormFrame = ({
   const router = useRouter();
 
   return (
-    <Screen contentContainerStyle={{ paddingTop: space.lg }}>
+    <Screen contentContainerStyle={{ paddingTop: space.lg, flexGrow: 1 }}>
+      <View
+        style={{
+          alignSelf: 'center',
+          width: 40,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: colors.border,
+          marginTop: -space.sm,
+          marginBottom: space.sm,
+        }}
+      />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <AppText variant="caption" tone="primary" style={{ letterSpacing: 1.2 }}>
           LOG
@@ -45,10 +56,17 @@ export const FormFrame = ({
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={() => router.back()}
-          hitSlop={12}
-          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+          hitSlop={8}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 999,
+            backgroundColor: colors.surfaceAlt,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Icon name="close" size={20} color={colors.textSecondary} />
+          <Icon name="close" size={21} color={colors.textSecondary} />
         </Pressable>
       </View>
 
@@ -69,7 +87,9 @@ export const FormFrame = ({
         </AppText>
       ) : null}
 
-      <Button label={submitLabel} loading={loading} disabled={disabled} onPress={onSubmit} />
+      <View style={{ marginTop: 'auto', paddingTop: space.xl }}>
+        <Button label={submitLabel} loading={loading} disabled={disabled} onPress={onSubmit} />
+      </View>
     </Screen>
   );
 };

@@ -31,10 +31,13 @@ export type WalkSession = {
   updatedAt: number;
 };
 
-export const MAX_ACCURACY_M = 35;
-const MIN_SEGMENT_M = 1.5;
+export const MAX_ACCURACY_M = 25;
+const MIN_SEGMENT_M = 3.5;
 // Anything faster than a sprint is a GPS jump, not a step.
 const MAX_SPEED_MPS = 7;
+// GPS drift at walking pace is common while standing still. Reject fixes that
+// do not clear a small, accuracy-scaled distance floor.
+const MIN_SPEED_MPS = 0.35;
 // A long silence means a new segment, never a straight line across the gap.
 const MAX_GAP_MS = 60_000;
 
@@ -102,8 +105,14 @@ export const appendFix = (session: WalkSession, fix: WalkFix): WalkSession => {
 
   const segment = haversine(last, { lat: latitude, lng: longitude });
   const seconds = Math.max(0.5, (now - last.t) / 1000);
+  const speed = segment / seconds;
+  const floor = Math.max(MIN_SEGMENT_M, Math.min(12, (reading ?? 0) * 0.45));
 
-  if (segment < MIN_SEGMENT_M || segment / seconds > MAX_SPEED_MPS) {
+  if (
+    segment < floor ||
+    speed > MAX_SPEED_MPS ||
+    (speed < MIN_SPEED_MPS && segment < 12)
+  ) {
     return { ...session, accuracy: reading, updatedAt: now };
   }
 

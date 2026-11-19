@@ -99,7 +99,13 @@ export const FitnessSegment = () => {
           <ActionPill
             label="Walk with GPS"
             primary
-            onPress={() => router.push('/walk' as never)}
+            onPress={() => {
+              // The walk owns its own sensor subscription. Leaving the
+              // background counter running here would count the same steps
+              // twice when the walk is saved.
+              if (pedometer.tracking) pedometer.stop();
+              router.push('/walk' as never);
+            }}
           />
           <ActionPill label="Log workout" onPress={() => openAdd('exercise')} />
           <ActionPill

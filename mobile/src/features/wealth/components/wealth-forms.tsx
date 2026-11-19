@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 import { FormFrame } from '@/components/form-frame';
+import { AppText } from '@/components/ui/app-text';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { Chips } from '@/components/ui/chips';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { RecentChips } from '@/components/ui/recent-chips';
@@ -9,19 +11,20 @@ import { TextField } from '@/components/ui/text-field';
 import { useSettings } from '@/features/settings/use-settings';
 import { useWealth } from '@/features/wealth/use-wealth';
 import { useFormSubmit } from '@/lib/use-form-submit';
-import { space } from '@/theme';
+import { radius, space, useTheme } from '@/theme';
 
 const parseNumber = (text: string): number => Number(text.replace(',', '.'));
 
-const ACCOUNT_TYPES = [
-  { value: 'checking', label: 'Checking' },
-  { value: 'savings', label: 'Savings' },
-  { value: 'cash', label: 'Cash' },
-  { value: 'credit', label: 'Credit' },
-  { value: 'investment', label: 'Investment' },
+const ACCOUNT_TYPES: Array<{ value: string; label: string; icon: IconName }> = [
+  { value: 'checking', label: 'Checking', icon: 'bank' },
+  { value: 'savings', label: 'Savings', icon: 'wallet' },
+  { value: 'cash', label: 'Cash', icon: 'cash' },
+  { value: 'credit', label: 'Credit', icon: 'card' },
+  { value: 'investment', label: 'Invest', icon: 'arrowUp' },
 ];
 
 export const AccountForm = () => {
+  const { colors } = useTheme();
   const { addAccount } = useWealth();
   const { currency: preferredCurrency } = useSettings();
   const { saving, error, setError, submit } = useFormSubmit();
@@ -66,7 +69,59 @@ export const AccountForm = () => {
           placeholder="Main checking, emergency fund…"
           maxLength={60}
         />
-        <Chips label="Type" options={ACCOUNT_TYPES} value={type} onChange={setType} />
+
+        <View style={{ gap: space.sm }}>
+          <AppText variant="caption" tone="secondary" style={{ letterSpacing: 0.8 }}>
+            TYPE
+          </AppText>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            {ACCOUNT_TYPES.map((option) => {
+              const selected = type === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  onPress={() => setType(option.value)}
+                  style={({ pressed }) => ({
+                    width: 64,
+                    alignItems: 'center',
+                    gap: 6,
+                    opacity: pressed ? 0.65 : 1,
+                  })}
+                >
+                  <View
+                    style={{
+                      width: 62,
+                      height: 62,
+                      borderRadius: radius.pill,
+                      backgroundColor: selected ? colors.primary : colors.surfaceAlt,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon
+                      name={option.icon}
+                      size={26}
+                      color={selected ? colors.onPrimary : colors.textSecondary}
+                    />
+                  </View>
+                  <AppText
+                    variant="footnote"
+                    tone={selected ? 'primary' : 'secondary'}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                    style={{ fontWeight: selected ? '800' : '500', textAlign: 'center' }}
+                  >
+                    {option.label}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={{ flexDirection: 'row', gap: space.md }}>
           <View style={{ flex: 2 }}>
             <TextField
@@ -293,6 +348,7 @@ export const BudgetForm = () => {
 };
 
 export const InvestmentForm = () => {
+  const { colors } = useTheme();
   const { addInvestment } = useWealth();
   const { saving, error, setError, submit } = useFormSubmit();
   const [instrument, setInstrument] = useState('');
@@ -331,20 +387,44 @@ export const InvestmentForm = () => {
       onSubmit={save}
     >
       <View style={{ gap: space.xl }}>
-        <TextField
-          label="Instrument"
-          value={instrument}
-          onChangeText={setInstrument}
-          placeholder="VWCE, AAPL, Bitcoin…"
-          maxLength={40}
-        />
-        <View style={{ flexDirection: 'row', gap: space.md }}>
+        <View style={{ gap: 6 }}>
+          <AppText variant="caption" tone="secondary" style={{ letterSpacing: 0.8 }}>
+            INSTRUMENT
+          </AppText>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space.sm,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+              paddingBottom: space.sm,
+            }}
+          >
+            <TextInput
+              value={instrument}
+              onChangeText={setInstrument}
+              placeholder="VWCE, AAPL, Bitcoin…"
+              placeholderTextColor={colors.textFaint}
+              maxLength={40}
+              style={{
+                flex: 1,
+                color: colors.text,
+                fontSize: 24,
+                padding: 0,
+              }}
+            />
+            <Icon name="search" size={21} color={colors.textTertiary} />
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: space.lg }}>
           <View style={{ flex: 1 }}>
             <TextField
               label="Units"
               value={units}
               onChangeText={setUnits}
-              placeholder="10"
+              placeholder="0"
               keyboardType="decimal-pad"
               maxLength={10}
             />
@@ -354,12 +434,33 @@ export const InvestmentForm = () => {
               label="Avg cost / unit"
               value={avgCost}
               onChangeText={setAvgCost}
-              placeholder="95.20"
+              placeholder="0.00"
               keyboardType="decimal-pad"
               maxLength={12}
             />
           </View>
         </View>
+
+        <View
+          style={{
+            backgroundColor: colors.surfaceAlt,
+            borderRadius: radius.inner,
+            paddingHorizontal: space.lg,
+            paddingVertical: space.md,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: space.md,
+          }}
+        >
+          <AppText variant="callout" tone="secondary">
+            {`Cost basis · ${units || 0} × ${avgCost || 0}`}
+          </AppText>
+          <AppText variant="headline" tone="primary" style={{ fontVariant: ['tabular-nums'] }}>
+            {(parseNumber(units) * parseNumber(avgCost) || 0).toFixed(2)}
+          </AppText>
+        </View>
+
         <TextField
           label="Current market value (optional)"
           value={marketValue}
