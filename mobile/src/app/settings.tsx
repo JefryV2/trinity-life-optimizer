@@ -126,7 +126,7 @@ export default function SettingsScreen() {
         rule={false}
       />
 
-      <SectionTitle icon="cash" title="Money" />
+      <SectionTitle icon="currency" title="Money" />
 
       <View style={{ gap: space.sm }}>
         <AppText variant="caption" tone="secondary" style={{ letterSpacing: 1.2 }}>
@@ -236,7 +236,7 @@ export default function SettingsScreen() {
         </AppText>
       ) : null}
 
-      <SectionTitle icon="body" title="Body" />
+      <SectionTitle icon="run" title="Body" />
 
       <View style={{ gap: space.sm }}>
         <AppText variant="headline" style={{ fontSize: 20, lineHeight: 24 }}>

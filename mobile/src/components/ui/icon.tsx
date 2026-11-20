@@ -68,6 +68,7 @@ const GLYPH = {
   cafe: 'cafe-outline',
   bank: 'business-outline',
   cash: 'cash-outline',
+  currency: 'logo-usd',
   card: 'card-outline',
   car: 'car-outline',
   headache: 'bulb-outline',
