@@ -5,6 +5,7 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { FormFrame } from '@/components/form-frame';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
+import { FooterBackButton } from '@/components/ui/detail-header';
 import { CalendarSheet } from '@/components/ui/calendar-sheet';
 import { Chips } from '@/components/ui/chips';
 import { Icon } from '@/components/ui/icon';
@@ -663,23 +664,7 @@ export const InteractionForm = ({ personId, recordId }: { personId?: string; rec
       ) : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: 'auto', paddingTop: space.xl }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({
-            width: 56,
-            height: 56,
-            borderRadius: radius.pill,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Icon name="back" size={20} color={colors.text} />
-        </Pressable>
+        <FooterBackButton fallback="/(tabs)/health" />
         <View style={{ flex: 1 }}>
           <Button
             label={existing ? 'Save changes' : 'Save contact'}

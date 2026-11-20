@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -112,8 +111,7 @@ export default function DataPrivacyScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <BackLink />
-      <PageHeader title="Data & privacy" date={formatStamp()} />
+      <PageHeader back="/(tabs)/more" title="Data & privacy" date={formatStamp()} />
 
       <SectionHeader title="On this device" />
       <Card style={{ gap: space.sm }}>

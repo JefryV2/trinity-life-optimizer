@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { track } from '@/lib/analytics';
 
@@ -35,6 +35,14 @@ export class ErrorBoundary extends Component<
               {this.state.message}
             </Text>
           </ScrollView>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            onPress={() => this.setState({ message: null })}
+            style={{ marginTop: 16, alignSelf: 'flex-start', paddingVertical: 10 }}
+          >
+            <Text style={{ color: '#C6F24E', fontSize: 14 }}>Try again</Text>
+          </Pressable>
         </View>
       );
     }

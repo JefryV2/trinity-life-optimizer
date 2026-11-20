@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GrowBar } from '@/components/ui/grow-bar';
@@ -25,8 +24,7 @@ export default function Why() {
 
   return (
     <Screen>
-      <BackLink fallback="/(tabs)" />
-      <PageHeader title="Why" date={formatStamp()} />
+      <PageHeader back="/(tabs)" title="Why" date={formatStamp()} />
 
       {isPending || !report ? <LoadingState rows={4} /> : null}
 

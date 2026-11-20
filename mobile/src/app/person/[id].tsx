@@ -73,8 +73,7 @@ export default function PersonDetail() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <BackLink fallback="/(tabs)/relations" />
-      <PageHeader title={person.name} date={person.relation_type ? humanise(person.relation_type) : 'Person'} />
+      <PageHeader back="/(tabs)/relations" title={person.name} date={person.relation_type ? humanise(person.relation_type) : 'Person'} />
 
       <Card style={{ gap: space.lg }}>
         <StatRow>

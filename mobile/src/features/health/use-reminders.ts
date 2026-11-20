@@ -25,8 +25,15 @@ export const useReminders = () => {
 
   const cancel = useCallback(async () => {
     const stored = await AsyncStorage.getItem(IDS_KEY);
-    const ids = stored ? (JSON.parse(stored) as string[]) : [];
-    await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
+    let ids: string[] = [];
+    try {
+      ids = stored ? (JSON.parse(stored) as string[]) : [];
+    } catch {
+      ids = [];
+    }
+    await Promise.all(
+      ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)),
+    );
     await AsyncStorage.removeItem(IDS_KEY);
   }, []);
 

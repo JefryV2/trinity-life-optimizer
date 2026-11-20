@@ -5,6 +5,7 @@ import { Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { Icon } from '@/components/ui/icon';
 import { Panel } from '@/components/ui/panel';
 import { Screen } from '@/components/ui/screen';
@@ -13,7 +14,11 @@ import { useHealth } from '@/features/health/use-health';
 import { setPendingMealComponent } from '@/features/health/pending-component';
 import { track } from '@/lib/analytics';
 import { getFoodByBarcode, type FoodResult } from '@/lib/food-api';
-import type { Micronutrients } from '@/lib/nutrition';
+import {
+  formatNutrientValue,
+  NUTRIENTS,
+  type Micronutrients,
+} from '@/lib/nutrition';
 import { radius, space, useTheme } from '@/theme';
 
 const mealForNow = () => {
@@ -114,6 +119,10 @@ export default function ScanFoodScreen() {
   const protein = product ? Math.round(product.protein * factor) : 0;
   const carbs = product ? Math.round(product.carbs * factor) : 0;
   const fat = product ? Math.round(product.fat * factor) : 0;
+  const microRows = product?.micros
+    ? NUTRIENTS.filter((nutrient) => (product.micros?.[nutrient.key] ?? 0) > 0)
+    : [];
+  const servingLabel = servings === 1 ? 'per 100 g' : `per ${servings} × 100 g`;
 
   const save = () => {
     if (!product) return;
@@ -170,7 +179,7 @@ export default function ScanFoodScreen() {
   if (permission && !permission.granted) {
     return (
       <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-        <AppText variant="title">Scan food</AppText>
+        <DetailHeader title="Scan food" fallback="/(tabs)/health" />
         <AppText variant="callout" tone="secondary">
           Camera access is off. Turn it on in device settings, or use search and manual entry
           instead.
@@ -184,7 +193,7 @@ export default function ScanFoodScreen() {
   if (!permission) {
     return (
       <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-        <AppText variant="title">Scan food</AppText>
+        <DetailHeader title="Scan food" fallback="/(tabs)/health" />
         <AppText variant="callout" tone="secondary">
           Camera access is needed to read a barcode.
         </AppText>
@@ -195,16 +204,11 @@ export default function ScanFoodScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.lg, paddingBottom: space.xxl }}>
-      {product ? (
-        <>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <AppText variant="title">Scan</AppText>
+      <DetailHeader
+        title="Scan food"
+        fallback="/(tabs)/health"
+        right={
+          product ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Scan another"
@@ -215,7 +219,11 @@ export default function ScanFoodScreen() {
                 Scan again
               </AppText>
             </Pressable>
-          </View>
+          ) : undefined
+        }
+      />
+      {product ? (
+        <>
 
           <Panel style={{ gap: space.md }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
@@ -273,6 +281,60 @@ export default function ScanFoodScreen() {
                   </View>
                 </View>
               ))}
+            </View>
+
+            <View style={{ gap: space.sm }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: space.md,
+                }}
+              >
+                <AppText variant="headline">Vitamins & minerals</AppText>
+                <AppText variant="footnote" tone="tertiary">
+                  {servingLabel}
+                </AppText>
+              </View>
+              {microRows.length > 0 ? (
+                <Panel padded={false}>
+                  {microRows.map((nutrient, index) => (
+                    <View
+                      key={nutrient.key}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: space.md,
+                        paddingHorizontal: space.lg,
+                        paddingVertical: space.md,
+                        borderBottomWidth: index === microRows.length - 1 ? 0 : 1,
+                        borderBottomColor: colors.separator,
+                      }}
+                    >
+                      <AppText variant="callout" tone="secondary">
+                        {nutrient.label}
+                      </AppText>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+                        <AppText
+                          variant="callout"
+                          style={{ fontVariant: ['tabular-nums'], fontWeight: '700' }}
+                        >
+                          {formatNutrientValue((product.micros?.[nutrient.key] ?? 0) * factor)}
+                        </AppText>
+                        <AppText variant="footnote" tone="tertiary">
+                          {nutrient.unit}
+                        </AppText>
+                      </View>
+                    </View>
+                  ))}
+                </Panel>
+              ) : (
+                <AppText variant="footnote" tone="tertiary">
+                  Not listed for this product.
+                </AppText>
+              )}
             </View>
 
             <View
@@ -499,32 +561,13 @@ export default function ScanFoodScreen() {
         </View>
       ) : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({
-            width: 56,
-            height: 56,
-            borderRadius: radius.pill,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Icon name="back" size={20} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Button
-            label={componentMode ? 'Add to meal' : 'Add to log'}
-            disabled={!product}
-            loading={addFood.isPending}
-            onPress={save}
-          />
-        </View>
+      <View style={{ paddingTop: space.md }}>
+        <Button
+          label={componentMode ? 'Add to meal' : 'Add to log'}
+          disabled={!product}
+          loading={addFood.isPending}
+          onPress={save}
+        />
       </View>
     </Screen>
   );

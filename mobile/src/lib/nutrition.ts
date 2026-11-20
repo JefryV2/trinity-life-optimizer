@@ -192,6 +192,10 @@ export const NUTRIENTS: NutrientSpec[] = [
   },
 ];
 
+export const NUTRIENT_UNITS = Object.fromEntries(
+  NUTRIENTS.map((nutrient) => [nutrient.key, nutrient.unit]),
+) as Record<NutrientKey, NutrientUnit>;
+
 const KNOWN_KEYS = new Set<string>(NUTRIENTS.map((nutrient) => nutrient.key));
 
 export const dailyNeeds = (profile?: NeedProfile | null) => {

@@ -3,31 +3,46 @@ import { Pressable, RefreshControl, View } from 'react-native';
 
 import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
-import { Card } from '@/components/ui/card';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { Icon } from '@/components/ui/icon';
+import { Panel } from '@/components/ui/panel';
 import { Progress } from '@/components/ui/progress';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorState, LoadingState } from '@/components/ui/states';
-import { Stat, StatRow } from '@/components/ui/stat';
 import { useCalendar, type CalendarDay } from '@/features/calendar/use-calendar';
 import { formatLongDate, isoDate, startOfMonth } from '@/lib/format';
-import { radius, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-const scoreColor = (score: number | null, colors: ReturnType<typeof useTheme>['colors']) => {
-  if (score === null) return colors.surfaceAlt;
-  if (score >= 70) return colors.success;
+const cellBackground = (
+  score: number | null,
+  active: boolean,
+  colors: ReturnType<typeof useTheme>['colors'],
+) => {
+  if (active) return colors.primary;
+  if (score === null || score <= 0) return 'transparent';
+  if (score >= 70) return 'rgba(198,242,78,0.16)';
+  if (score >= 50) return 'rgba(255,176,32,0.18)';
+  return 'rgba(255,107,90,0.15)';
+};
+
+const readingColor = (
+  score: number | null,
+  colors: ReturnType<typeof useTheme>['colors'],
+) => {
+  if (score === null) return colors.text;
+  if (score >= 70) return colors.primary;
   if (score >= 50) return colors.amber;
-  if (score > 0) return colors.textTertiary;
-  return colors.surfaceSunken;
+  return colors.danger;
 };
 
 const trinity = (day: CalendarDay | null) => {
   if (!day) return null;
   if (day.total !== null) return day.total;
-  const values = [day.health, day.wealth, day.relations].filter((value): value is number => value !== null);
+  const values = [day.health, day.wealth, day.relations].filter(
+    (value): value is number => value !== null,
+  );
   if (!values.length) return null;
   return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
 };
@@ -41,7 +56,10 @@ export default function CalendarScreen() {
   const days = useMemo(() => data ?? [], [data]);
   const selectedDay = days.find((day) => day.date === selected) ?? null;
   const offset = startOfMonth(month).getDay();
-  const cells = useMemo(() => [...Array.from({ length: offset }, () => null), ...days], [days, offset]);
+  const cells = useMemo(
+    () => [...Array.from({ length: offset }, () => null), ...days],
+    [days, offset],
+  );
   const weeks = useMemo(() => {
     const rows: (CalendarDay | null)[][] = [];
     for (let index = 0; index < cells.length; index += 7) {
@@ -62,7 +80,6 @@ export default function CalendarScreen() {
 
   return (
     <Screen
-      safeAreaTop={false}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -73,6 +90,8 @@ export default function CalendarScreen() {
         />
       }
     >
+      <DetailHeader title="Progress calendar" fallback="/(tabs)/health" />
+
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
         <Pressable
           accessibilityRole="button"
@@ -81,7 +100,7 @@ export default function CalendarScreen() {
           hitSlop={10}
           style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Icon name="back" size={18} color={colors.textSecondary} />
+          <Icon name="back" size={20} color={colors.textSecondary} />
         </Pressable>
         <AppText variant="headline" style={{ flex: 1, textAlign: 'center' }}>
           {monthLabel}
@@ -93,35 +112,37 @@ export default function CalendarScreen() {
           hitSlop={10}
           style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Icon name="chevron" size={18} color={colors.textSecondary} />
+          <Icon name="chevron" size={20} color={colors.textSecondary} />
         </Pressable>
       </View>
 
       {isPending ? <LoadingState rows={4} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
-      <Card style={{ gap: space.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      <Panel style={{ gap: space.md }}>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
           {WEEKDAYS.map((day, index) => (
             <AppText
               key={`${day}-${index}`}
               variant="mono"
               tone="tertiary"
-              style={{ width: '13%', textAlign: 'center' }}
+              style={{ flex: 1, textAlign: 'center' }}
             >
               {day}
             </AppText>
           ))}
         </View>
-        <View style={{ gap: space.sm }}>
+        <View style={{ gap: 6 }}>
           {weeks.map((week, weekIndex) => (
-            <View
-              key={`week-${weekIndex}`}
-              style={{ flexDirection: 'row', justifyContent: 'space-between' }}
-            >
+            <View key={`week-${weekIndex}`} style={{ flexDirection: 'row', gap: 6 }}>
               {week.map((day, dayIndex) => {
                 if (!day) {
-                  return <View key={`blank-${weekIndex}-${dayIndex}`} style={{ width: '13%', aspectRatio: 1 }} />;
+                  return (
+                    <View
+                      key={`blank-${weekIndex}-${dayIndex}`}
+                      style={{ flex: 1, aspectRatio: 1 }}
+                    />
+                  );
                 }
                 const score = trinity(day);
                 const active = day.date === selected;
@@ -135,92 +156,145 @@ export default function CalendarScreen() {
                     accessibilityState={{ selected: active }}
                     onPress={() => setSelected(day.date)}
                     style={({ pressed }) => ({
-                      width: '13%',
+                      flex: 1,
                       aspectRatio: 1,
-                      borderRadius: radius.pill,
+                      borderRadius: 14,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 3,
-                      backgroundColor: active ? colors.primary : 'transparent',
-                      borderWidth: !active && day.date === isoDate() ? 1 : 0,
-                      borderColor: colors.primary,
-                      opacity: pressed ? 0.6 : 1,
+                      backgroundColor: cellBackground(score, active, colors),
+                      opacity: pressed ? 0.65 : 1,
                     })}
                   >
                     <AppText
                       variant="footnote"
-                      style={{ color: active ? colors.onPrimary : undefined }}
-                      tone={active ? 'default' : score ? 'default' : 'tertiary'}
+                      style={{
+                        fontFamily: active ? 'Baloo2_700Bold' : undefined,
+                        color: active
+                          ? colors.onPrimary
+                          : score === null
+                            ? colors.textFaint
+                            : colors.text,
+                      }}
                     >
                       {Number(day.date.slice(-2))}
                     </AppText>
-                    <View
-                      style={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: 2,
-                        backgroundColor: active
-                          ? colors.onPrimary
-                          : scoreColor(score, colors),
-                      }}
-                    />
                   </Pressable>
                 );
               })}
             </View>
           ))}
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space.lg }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: space.xl,
+            borderTopWidth: 1,
+            borderTopColor: colors.separator,
+            paddingTop: space.md,
+          }}
+        >
           {[
-            { color: colors.success, label: '70+' },
+            { color: colors.primary, label: '70+' },
             { color: colors.amber, label: '50–74' },
-            { color: colors.textTertiary, label: 'Under 50' },
+            { color: colors.danger, label: 'UNDER 50' },
           ].map((item) => (
-            <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: item.color }} />
-              <AppText variant="caption" tone="tertiary">
+            <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }} />
+              <AppText variant="caption" tone="tertiary" style={{ letterSpacing: 0.4 }}>
                 {item.label}
               </AppText>
             </View>
           ))}
         </View>
-      </Card>
+      </Panel>
 
-      <SectionHeader title="Day detail" caption={formatLongDate(selected)} />
-      <Card style={{ gap: space.lg }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: space.md,
+        }}
+      >
+        <AppText variant="headline" style={{ fontSize: 24, lineHeight: 28 }}>
+          Day detail
+        </AppText>
+        <AppText variant="footnote" tone="tertiary">
+          {formatLongDate(selected)}
+        </AppText>
+      </View>
+
+      <Panel style={{ gap: space.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xl }}>
           <RingMeter
             value={trinity(selectedDay) ?? 0}
             max={100}
             size={96}
             stroke={7}
+            color={readingColor(trinity(selectedDay), colors)}
             center={trinity(selectedDay) === null ? '—' : String(trinity(selectedDay))}
-            label="Auxo"
+            centerSize={26}
+            label="AUXO"
           />
           <View style={{ flex: 1, gap: 4 }}>
-            <AppText variant="headline">
+            <AppText variant="headline" style={{ fontSize: 24, lineHeight: 28 }}>
               {trinity(selectedDay) === null ? 'No reading' : 'Day reading'}
             </AppText>
-            <AppText variant="footnote" tone="secondary">
-              {selectedDay?.completedGoals ?? 0} of {selectedDay?.totalGoals ?? 0} goals met
-            </AppText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 4,
+                  backgroundColor: colors.primary,
+                }}
+              />
+              <AppText variant="footnote" tone="secondary">
+                {selectedDay?.completedGoals ?? 0} of {selectedDay?.totalGoals ?? 0} goals met
+              </AppText>
+            </View>
           </View>
         </View>
-        <StatRow>
-          <Stat value={selectedDay?.health === null || !selectedDay ? '—' : String(selectedDay.health)} label="Health" />
-          <Stat value={selectedDay?.wealth === null || !selectedDay ? '—' : String(selectedDay.wealth)} label="Wealth" />
-          <Stat value={selectedDay?.relations === null || !selectedDay ? '—' : String(selectedDay.relations)} label="People" />
-        </StatRow>
+
+        <View style={{ flexDirection: 'row', gap: space.lg }}>
+          {[
+            { key: 'health' as const, label: 'Health', color: colors.primary },
+            { key: 'wealth' as const, label: 'Wealth', color: colors.amber },
+            { key: 'relations' as const, label: 'People', color: colors.bonds },
+          ].map((pillar) => {
+            const value = selectedDay?.[pillar.key] ?? null;
+            return (
+              <View key={pillar.key} style={{ flex: 1, gap: 6 }}>
+                <AppText
+                  variant="numeric"
+                  style={{
+                    color: value === null ? colors.textTertiary : pillar.color,
+                    fontSize: 24,
+                    lineHeight: 28,
+                  }}
+                >
+                  {value === null ? '—' : value}
+                </AppText>
+                <Progress value={value ?? 0} color={pillar.color} height={6} />
+                <AppText variant="footnote" tone="secondary">
+                  {pillar.label}
+                </AppText>
+              </View>
+            );
+          })}
+        </View>
+
         <View style={{ gap: space.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <AppText variant="callout">Goal completion</AppText>
-            <AppText variant="footnote" tone="secondary">
+            <AppText variant="callout" tone="primary" style={{ fontWeight: '700' }}>
               {selectedDay?.goals ?? 0}%
             </AppText>
           </View>
-          <Progress value={selectedDay?.goals ?? 0} />
+          <Progress value={selectedDay?.goals ?? 0} height={8} />
         </View>
-      </Card>
+      </Panel>
     </Screen>
   );
 }

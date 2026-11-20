@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -35,8 +34,7 @@ export default function HealthImportScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <BackLink />
-      <PageHeader title="Health import" date={formatStamp()} />
+      <PageHeader back="/(tabs)/more" title="Health import" date={formatStamp()} />
 
       {Platform.OS === 'android' ? (
         <>

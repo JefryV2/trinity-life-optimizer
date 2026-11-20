@@ -1,7 +1,6 @@
 import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
@@ -23,8 +22,7 @@ export default function RemindersScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <BackLink />
-      <PageHeader title="Reminders" date={formatStamp()} />
+      <PageHeader back="/(tabs)/more" title="Reminders" date={formatStamp()} />
 
       <SectionHeader title="Daily rhythm" />
       <Card padded={false} style={{ paddingHorizontal: space.lg }}>

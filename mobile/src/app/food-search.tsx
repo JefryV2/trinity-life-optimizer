@@ -4,6 +4,7 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { Icon } from '@/components/ui/icon';
 import { Screen } from '@/components/ui/screen';
 import { toast } from '@/components/ui/toast';
@@ -197,26 +198,29 @@ export default function FoodSearchScreen() {
       contentContainerStyle={{ paddingTop: space.xl, paddingBottom: space.xxl, flexGrow: 1 }}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <AppText variant="title">Add food</AppText>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Scan a barcode"
-          onPress={() => router.replace('/scan-food' as never)}
-          style={({ pressed }) => ({
-            width: 46,
-            height: 46,
-            borderRadius: radius.pill,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Icon name="barcode" size={21} color={colors.text} />
-        </Pressable>
-      </View>
+      <DetailHeader
+        title="Add food"
+        fallback="/(tabs)/health"
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Scan a barcode"
+            onPress={() => router.replace('/scan-food' as never)}
+            style={({ pressed }) => ({
+              width: 46,
+              height: 46,
+              borderRadius: radius.pill,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Icon name="barcode" size={21} color={colors.text} />
+          </Pressable>
+        }
+      />
 
       <View style={{ gap: space.xs }}>
         <AppText variant="caption" tone="tertiary" style={{ letterSpacing: 0.8 }}>
@@ -336,27 +340,8 @@ export default function FoodSearchScreen() {
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: 'auto', paddingTop: space.xl }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({
-            width: 56,
-            height: 56,
-            borderRadius: radius.pill,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Icon name="back" size={20} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Button label="Done" onPress={() => router.back()} />
-        </View>
+      <View style={{ marginTop: 'auto', paddingTop: space.xl }}>
+        <Button label="Done" onPress={() => router.back()} />
       </View>
     </Screen>
   );

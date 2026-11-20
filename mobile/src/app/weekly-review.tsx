@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -129,8 +128,7 @@ export default function WeeklyReview() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <BackLink />
-      <PageHeader
+      <PageHeader back="/(tabs)/more"
         title="This week"
         date={`${formatDate(weekStart)} – ${formatDate(today)}`}
       />

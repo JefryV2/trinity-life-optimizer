@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { getCapturedError, subscribeToErrors } from '@/lib/crash-guard';
+import { clearCapturedError, getCapturedError, subscribeToErrors } from '@/lib/crash-guard';
 
 /** Renders whatever the global error guard caught, instead of a silent exit. */
 export const CrashScreen = () => {
@@ -33,6 +33,14 @@ export const CrashScreen = () => {
           {message}
         </Text>
       </ScrollView>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss error"
+        onPress={clearCapturedError}
+        style={{ marginTop: 16, alignSelf: 'flex-start', paddingVertical: 10 }}
+      >
+        <Text style={{ color: '#C6F24E', fontSize: 14 }}>Dismiss</Text>
+      </Pressable>
     </View>
   );
 };

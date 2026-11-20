@@ -1,4 +1,4 @@
-import type { Micronutrients, NutrientKey } from '@/lib/nutrition';
+import { NUTRIENT_UNITS, type Micronutrients, type NutrientKey } from '@/lib/nutrition';
 
 /**
  * Food search with no API key.
@@ -77,8 +77,11 @@ const fromProduct = (product: Record<string, unknown> | null | undefined): FoodR
   const micros: Micronutrients = {};
   const read = (key: NutrientKey, ...offKeys: string[]) => {
     for (const offKey of offKeys) {
-      const value = toNumber(nutrients[`${offKey}_100g`]) || toNumber(nutrients[offKey]);
-      if (value > 0) {
+      const raw = toNumber(nutrients[`${offKey}_100g`]) || toNumber(nutrients[offKey]);
+      if (raw > 0) {
+        // Open Food Facts normalises every nutriment to grams. The app stores
+        // vitamins/minerals in their display unit, so convert before saving.
+        const value = raw * (NUTRIENT_UNITS[key] === 'µg' ? 1_000_000 : 1_000);
         micros[key] = Math.round(value * 100) / 100;
         return;
       }
@@ -93,7 +96,7 @@ const fromProduct = (product: Record<string, unknown> | null | undefined): FoodR
   read('vitaminB2', 'vitamin-b2', 'riboflavin');
   read('vitaminB6', 'vitamin-b6');
   read('vitaminB12', 'vitamin-b12');
-  read('folate', 'folates', 'vitamin-b9');
+  read('folate', 'folate', 'folates', 'vitamin-b9');
   read('calcium', 'calcium');
   read('iron', 'iron');
   read('magnesium', 'magnesium');

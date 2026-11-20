@@ -4,6 +4,7 @@ import { Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { CalendarSheet } from '@/components/ui/calendar-sheet';
 import { Icon } from '@/components/ui/icon';
 import { Panel } from '@/components/ui/panel';
@@ -266,12 +267,11 @@ export default function ProfileScreen() {
 
       {data ? (
         <>
-          <View style={{ gap: 2 }}>
-            <AppText variant="title">Profile</AppText>
-            <AppText variant="callout" tone="secondary">
-              Used to work out your daily target
-            </AppText>
-          </View>
+          <DetailHeader
+            title="Profile"
+            subtitle="Used to work out your daily target"
+            fallback="/(tabs)/more"
+          />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <Pressable
@@ -703,31 +703,12 @@ export default function ProfileScreen() {
             </AppText>
           ) : null}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: 'auto', paddingTop: space.xl }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              onPress={() => router.back()}
-              style={({ pressed }) => ({
-                width: 56,
-                height: 56,
-                borderRadius: radius.pill,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <Icon name="back" size={20} color={colors.text} />
-            </Pressable>
-            <View style={{ flex: 1 }}>
-              <Button
-                label="Save changes"
-                loading={saveProfile.isPending || saveHealthProfile.isPending || savePreferences.isPending}
-                onPress={() => void save()}
-              />
-            </View>
+          <View style={{ marginTop: 'auto', paddingTop: space.xl }}>
+            <Button
+              label="Save changes"
+              loading={saveProfile.isPending || saveHealthProfile.isPending || savePreferences.isPending}
+              onPress={() => void save()}
+            />
           </View>
 
           <CalendarSheet

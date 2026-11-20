@@ -3,8 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, Switch, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
 import { DateTimeField } from '@/components/ui/date-time-field';
@@ -317,7 +317,7 @@ export default function MealBuilderScreen() {
           marginTop: -space.md,
         }}
       />
-      <AppText variant="title">Build a meal</AppText>
+      <DetailHeader title="Build a meal" fallback="/(tabs)/health" />
 
       <TextInput
         accessibilityLabel="Meal name"
@@ -632,31 +632,12 @@ export default function MealBuilderScreen() {
         </AppText>
       ) : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: 'auto', paddingTop: space.xl }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({
-            width: 56,
-            height: 56,
-            borderRadius: radius.pill,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Icon name="back" size={20} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Button
-            label="Log meal"
-            loading={saving || addFood.isPending}
-            onPress={() => void save()}
-          />
-        </View>
+      <View style={{ marginTop: 'auto', paddingTop: space.xl }}>
+        <Button
+          label="Log meal"
+          loading={saving || addFood.isPending}
+          onPress={() => void save()}
+        />
       </View>
 
       <Sheet

@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { Panel } from '@/components/ui/panel';
 import { Screen } from '@/components/ui/screen';
 import { ErrorState, LoadingState } from '@/components/ui/states';
@@ -73,20 +73,7 @@ export default function WalkDetail() {
     <Screen
       contentContainerStyle={{ paddingTop: space.lg, paddingBottom: space.xxl, gap: space.lg }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          hitSlop={10}
-          style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Icon name="back" size={24} color={colors.text} />
-        </Pressable>
-        <AppText style={{ fontSize: 28, lineHeight: 34, fontFamily: fonts.black, letterSpacing: -1 }}>
-          Walk route
-        </AppText>
-      </View>
+      <DetailHeader title="Walk route" fallback="/(tabs)/health" />
 
       {isPending ? <LoadingState rows={3} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}

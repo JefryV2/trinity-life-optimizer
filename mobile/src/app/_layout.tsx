@@ -122,6 +122,8 @@ function RootNavigator() {
           headerBackTitleStyle: { fontFamily: 'Baloo2_600SemiBold' },
           headerShadowVisible: false,
           headerBackTitle: 'Back',
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
         }}
       >
         <Stack.Screen name="(tabs)" />
@@ -142,7 +144,7 @@ function RootNavigator() {
         />
         <Stack.Screen name="why" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="experiments" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="insights" options={{ headerShown: true, title: 'Insights' }} />
+        <Stack.Screen name="insights" options={{ headerShown: false }} />
         <Stack.Screen name="weekly-review" options={{ headerShown: false }} />
         <Stack.Screen name="data-privacy" options={{ headerShown: false }} />
         <Stack.Screen name="reminders" options={{ headerShown: false }} />
@@ -153,9 +155,9 @@ function RootNavigator() {
         <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="health-import" options={{ headerShown: false }} />
         <Stack.Screen name="legal" options={{ headerShown: false }} />
-        <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Progress calendar' }} />
+        <Stack.Screen name="calendar" options={{ headerShown: false }} />
         <Stack.Screen name="hydration" options={{ headerShown: false }} />
-        <Stack.Screen name="walk" options={{ headerShown: true, title: 'GPS walk' }} />
+        <Stack.Screen name="walk" options={{ headerShown: false }} />
         <Stack.Screen name="walk-detail" options={{ headerShown: false }} />
         <Stack.Screen name="call-import" options={{ headerShown: false }} />
         <Stack.Screen

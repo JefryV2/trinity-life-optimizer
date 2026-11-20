@@ -12,6 +12,7 @@ import {
 
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { Icon } from '@/components/ui/icon';
 import { Panel } from '@/components/ui/panel';
 import { Screen } from '@/components/ui/screen';
@@ -55,33 +56,6 @@ const durationLabel = (seconds: number) => {
 
 const timeLabel = (value: number) =>
   new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-
-const BackHeader = () => {
-  const { colors } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        onPress={() => router.back()}
-        hitSlop={10}
-        style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}
-      >
-        <Icon name="back" size={24} color={colors.text} />
-      </Pressable>
-      <View style={{ flex: 1, gap: 1 }}>
-        <AppText
-          style={{ fontSize: 28, lineHeight: 34, fontFamily: fonts.black, letterSpacing: -1 }}
-        >
-          Phone calls
-        </AppText>
-        <AppText variant="footnote" tone="tertiary">
-          Android call log · last 30 days
-        </AppText>
-      </View>
-    </View>
-  );
-};
 
 export default function CallImportScreen() {
   const { colors } = useTheme();
@@ -257,7 +231,11 @@ export default function CallImportScreen() {
   if (Platform.OS !== 'android') {
     return (
       <Screen contentContainerStyle={{ paddingTop: space.lg, gap: space.lg }}>
-        <BackHeader />
+        <DetailHeader
+        title="Phone calls"
+        subtitle="Android call log · last 30 days"
+        fallback="/(tabs)/relations"
+      />
         <AppText variant="callout" tone="secondary">
           Call log import is only available on Android.
         </AppText>
@@ -330,7 +308,11 @@ export default function CallImportScreen() {
         flexGrow: 1,
       }}
     >
-      <BackHeader />
+      <DetailHeader
+        title="Phone calls"
+        subtitle="Android call log · last 30 days"
+        fallback="/(tabs)/relations"
+      />
 
       {error ? (
         <AppText variant="footnote" tone="danger" selectable>

@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/screen';
 import { Sheet } from '@/components/ui/sheet';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
+import { FooterBackButton } from '@/components/ui/detail-header';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Chips } from '@/components/ui/chips';
 import { TextField } from '@/components/ui/text-field';
@@ -495,23 +496,7 @@ export const TransactionForm = ({ recordId }: { recordId?: string }) => {
           paddingTop: space.md,
         }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Cancel"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({
-            width: 54,
-            height: 54,
-            borderRadius: radius.pill,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Icon name="back" size={21} color={colors.textSecondary} />
-        </Pressable>
+        <FooterBackButton fallback="/(tabs)/wealth" label="Cancel" />
         <Pressable
           accessibilityRole="button"
           onPress={save}

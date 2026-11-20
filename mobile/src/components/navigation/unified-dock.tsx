@@ -251,6 +251,20 @@ export const UnifiedDock = ({
         alignItems: 'center',
       }}
     >
+      {Platform.OS === 'android' ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: -barBottom,
+            height: BAR_HEIGHT + barBottom + 12,
+            backgroundColor: colors.background,
+            zIndex: 5,
+          }}
+        />
+      ) : null}
       {popupOpen ? (
         <Pressable
           accessibilityRole="button"

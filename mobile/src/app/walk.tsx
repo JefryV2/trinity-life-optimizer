@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RingMeter } from '@/components/charts/ring-meter';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { useGpsWalk } from '@/features/health/use-gps-walk';
 import { RouteMap } from '@/features/health/components/route-map';
 import { formatNumber } from '@/lib/format';
@@ -71,6 +72,7 @@ export default function Walk() {
           alignSelf: 'center',
         }}
       >
+        <DetailHeader title="GPS walk" fallback="/(tabs)/health" />
         <View style={{ gap: space.sm }}>
           <View
             style={{

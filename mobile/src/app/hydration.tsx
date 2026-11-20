@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { AppText } from '@/components/ui/app-text';
+import { DetailHeader } from '@/components/ui/detail-header';
 import { Icon } from '@/components/ui/icon';
 import { Panel } from '@/components/ui/panel';
 import { Screen } from '@/components/ui/screen';
@@ -129,20 +129,7 @@ export default function HydrationScreen() {
       {isPending ? <LoadingState rows={3} /> : null}
       {isError ? <ErrorState message={error.message} onRetry={refetch} /> : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          hitSlop={10}
-          style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Icon name="back" size={24} color={colors.text} />
-        </Pressable>
-        <AppText style={{ fontSize: 30, lineHeight: 36, fontFamily: fonts.black, letterSpacing: -1 }}>
-          Hydration
-        </AppText>
-      </View>
+      <DetailHeader title="Hydration" fallback="/(tabs)/health" />
 
       <View style={{ alignItems: 'center', gap: space.sm }}>
         <HydrationRing value={water} target={target} />

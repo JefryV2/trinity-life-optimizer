@@ -11,6 +11,11 @@ let last: string | null = null;
 
 export const getCapturedError = () => last;
 
+export const clearCapturedError = () => {
+  last = null;
+  listeners.forEach((listener) => listener(''));
+};
+
 export const subscribeToErrors = (listener: Listener) => {
   listeners.push(listener);
   if (last) listener(last);

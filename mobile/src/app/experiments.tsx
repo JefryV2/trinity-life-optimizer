@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GrowBar } from '@/components/ui/grow-bar';
@@ -40,8 +39,7 @@ export default function Experiments() {
   if (loading) {
     return (
       <Screen>
-        <BackLink />
-        <PageHeader title="Experiments" date={formatStamp()} />
+        <PageHeader back="/(tabs)/more" title="Experiments" date={formatStamp()} />
         <LoadingState rows={4} />
       </Screen>
     );
@@ -50,8 +48,7 @@ export default function Experiments() {
   if (error) {
     return (
       <Screen>
-        <BackLink />
-        <PageHeader title="Experiments" date={formatStamp()} />
+        <PageHeader back="/(tabs)/more" title="Experiments" date={formatStamp()} />
         <ErrorState message={error.message} onRetry={() => void refresh()} />
       </Screen>
     );
@@ -71,8 +68,7 @@ export default function Experiments() {
 
   return (
     <Screen>
-      <BackLink />
-      <PageHeader
+      <PageHeader back="/(tabs)/more"
         title={experiment ? 'Experiment' : 'Experiments'}
         date={formatStamp()}
         subtitle={

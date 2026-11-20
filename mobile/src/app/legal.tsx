@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Linking, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
-import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chips } from '@/components/ui/chips';
@@ -29,8 +28,7 @@ export default function LegalScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <BackLink />
-      <PageHeader title="Legal & support" date={formatStamp()} />
+      <PageHeader back="/(tabs)/more" title="Legal & support" date={formatStamp()} />
       <Chips options={TABS} value={tab} onChange={(value) => setTab(value as Tab)} />
 
       {tab === 'privacy' ? (

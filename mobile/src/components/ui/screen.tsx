@@ -95,25 +95,27 @@ export const Screen = ({
   const router = useRouter();
   const edgeStart = useRef(0);
 
-  // Android has no native edge-swipe back. This is deliberately edge-only so
-  // it never competes with vertical scrolling or a section swipe.
+  // A left-to-right drag that starts at the left edge is the Android back
+  // gesture. Keep it edge-only so it never competes with vertical scrolling
+  // or the tab pager.
   const backGesture = useMemo(
     () =>
       Gesture.Pan()
         .enabled(!isTab && Platform.OS === 'android')
-        .activeOffsetX([-14, 14])
-        .failOffsetY([-14, 14])
+        .activeOffsetX([-12, 12])
+        .failOffsetY([-12, 12])
         .runOnJS(true)
         .onBegin((event) => {
           edgeStart.current = event.x;
         })
         .onEnd((event) => {
-          if (edgeStart.current > 36 || event.translationX > -64) return;
+          if (edgeStart.current > 40 || event.translationX < 64) return;
           if (router.canGoBack()) router.back();
           else router.replace('/(tabs)' as never);
         }),
     [isTab, router],
   );
+  const ScrollHost = (Platform.OS === 'ios' ? BlurTargetView : View) as typeof BlurTargetView;
   const targetRef = useRef<ComponentRef<typeof View>>(null);
   const blurTargetNode = useSyncExternalStore(
     subscribeBlurTarget,
@@ -151,7 +153,7 @@ export const Screen = ({
     <SwipeTabs>
       <GestureDetector gesture={backGesture}>
         <View style={{ flex: 1 }}>
-        <BlurTargetView ref={targetRef} style={{ flex: 1 }}>
+        <ScrollHost ref={targetRef} style={{ flex: 1 }}>
           <Animated.ScrollView
             {...rest}
             onScroll={scrollHandler}
@@ -174,7 +176,7 @@ export const Screen = ({
           >
             {children}
           </Animated.ScrollView>
-        </BlurTargetView>
+        </ScrollHost>
 
         {header ? (
           <Animated.View
@@ -192,7 +194,7 @@ export const Screen = ({
               headerBarStyle,
             ]}
           >
-            {isFocused && blurTargetAlive ? (
+            {Platform.OS === 'ios' && isFocused && blurTargetAlive ? (
               <BlurView
                 pointerEvents="none"
                 tint="dark"

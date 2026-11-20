@@ -1,6 +1,7 @@
 import { useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
+import { BackButton } from '@/components/ui/detail-header';
 import { space, useTheme } from '@/theme';
 
 /**
@@ -12,11 +13,14 @@ export const PageHeader = ({
   date,
   subtitle,
   rule = true,
+  back,
 }: {
   title: string;
   date?: string;
   subtitle?: string;
   rule?: boolean;
+  /** Pass a fallback route to put the shared back button inline with the title. */
+  back?: string;
 }) => {
   const { colors } = useTheme();
   const { fontScale } = useWindowDimensions();
@@ -25,6 +29,24 @@ export const PageHeader = ({
   const stackDate = Boolean(date) && fontScale > 1.15;
   return (
     <View style={{ gap: space.sm }}>
+      {back ? (
+        <View
+          style={{
+            minHeight: 44,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: space.md,
+          }}
+        >
+          <BackButton fallback={back} />
+          {date ? (
+            <AppText variant="mono" tone="tertiary" numberOfLines={1}>
+              {date}
+            </AppText>
+          ) : null}
+        </View>
+      ) : null}
       <View style={{ gap: stackDate ? 2 : 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.md }}>
           <AppText
@@ -35,7 +57,7 @@ export const PageHeader = ({
           >
             {title}
           </AppText>
-          {date && !stackDate ? (
+          {!back && date && !stackDate ? (
             <AppText
               variant="mono"
               tone="tertiary"
@@ -46,7 +68,7 @@ export const PageHeader = ({
             </AppText>
           ) : null}
         </View>
-        {date && stackDate ? (
+        {!back && date && stackDate ? (
           <AppText variant="mono" tone="tertiary" numberOfLines={1}>
             {date}
           </AppText>
