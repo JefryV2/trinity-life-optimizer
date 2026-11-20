@@ -9,7 +9,6 @@ import {
 import {
   Animated,
   BackHandler,
-  Platform,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -251,20 +250,6 @@ export const UnifiedDock = ({
         alignItems: 'center',
       }}
     >
-      {Platform.OS === 'android' ? (
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: -barBottom,
-            height: BAR_HEIGHT + barBottom + 12,
-            backgroundColor: colors.background,
-            zIndex: 5,
-          }}
-        />
-      ) : null}
       {popupOpen ? (
         <Pressable
           accessibilityRole="button"
@@ -398,19 +383,31 @@ export const UnifiedDock = ({
             borderRadius: 999,
             overflow: 'hidden',
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.10)',
-            backgroundColor: 'rgba(7, 7, 8, 0.96)',
+            borderColor: 'rgba(255, 255, 255, 0.16)',
+            backgroundColor: blurTargetAlive ? 'transparent' : 'rgba(7, 7, 8, 0.88)',
           }}
         >
-          {Platform.OS === 'ios' && blurTargetAlive ? (
+          {blurTargetAlive ? (
             <BlurView
-              tint="systemThickMaterialDark"
-              intensity={90}
+              tint="systemThinMaterialDark"
+              intensity={75}
+              blurReductionFactor={3}
               blurMethod="dimezisBlurViewSdk31Plus"
               blurTarget={blurTarget}
-              style={StyleSheet.absoluteFill}
+              style={[StyleSheet.absoluteFill, { borderRadius: 999 }]}
             />
           ) : null}
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: blurTargetAlive
+                  ? 'rgba(7, 7, 8, 0.16)'
+                  : 'transparent',
+              },
+            ]}
+          />
 
           <View
             style={{

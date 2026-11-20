@@ -115,7 +115,9 @@ export const Screen = ({
         }),
     [isTab, router],
   );
-  const ScrollHost = (Platform.OS === 'ios' ? BlurTargetView : View) as typeof BlurTargetView;
+  // One blur target per tab screen. The floating dock samples this view so
+  // content scrolls underneath the glass on both platforms.
+  const ScrollHost = BlurTargetView;
   const targetRef = useRef<ComponentRef<typeof View>>(null);
   const blurTargetNode = useSyncExternalStore(
     subscribeBlurTarget,
@@ -165,7 +167,9 @@ export const Screen = ({
               {
                 paddingHorizontal: space.xl,
                 paddingTop: topInset + (header ? headerHeight + space.md : space.lg),
-                paddingBottom: isTab ? space.section + 124 : space.section,
+                // Tab pages run all the way to the bottom and pass underneath
+                // the floating glass dock.
+                paddingBottom: isTab ? 0 : space.section,
                 gap: space.lg,
                 width: '100%',
                 maxWidth: 720,
