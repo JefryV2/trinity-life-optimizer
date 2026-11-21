@@ -14,7 +14,7 @@ Set these in **Nhost Dashboard → Settings → Environment variables**. Never p
 | `GEMINI_API_KEY` | required | Google AI Studio key |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Vision model |
 | `MEAL_VISION_DAILY_LIMIT` | `5` | Photo reads per user per UTC day |
-| `MEAL_VISION_MONTHLY_LIMIT` | `40` | Photo reads per user per UTC month |
+| `MEAL_VISION_MONTHLY_LIMIT` | `100` | Photo reads per user per UTC month |
 | `MEAL_VISION_GLOBAL_DAILY_LIMIT` | `300` | Project-wide daily ceiling |
 | `MEAL_VISION_MAX_IMAGE_BYTES` | `3500000` | Decoded image cap |
 | `MEAL_VISION_TIMEOUT_MS` | `6500` | Gemini timeout (Starter functions stop at 10s) |

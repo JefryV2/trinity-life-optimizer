@@ -10,7 +10,7 @@
  *   GEMINI_API_KEY                 required
  *   GEMINI_MODEL                   default gemini-2.5-flash
  *   MEAL_VISION_DAILY_LIMIT        default 5
- *   MEAL_VISION_MONTHLY_LIMIT      default 40
+ *   MEAL_VISION_MONTHLY_LIMIT      default 100
  *   MEAL_VISION_GLOBAL_DAILY_LIMIT default 300
  *   MEAL_VISION_MAX_IMAGE_BYTES    default 3500000
  *   MEAL_VISION_TIMEOUT_MS         default 6500
@@ -45,7 +45,7 @@ type Usage = {
 const FEATURE = 'meal_vision';
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 const DEFAULT_DAILY = 5;
-const DEFAULT_MONTHLY = 40;
+const DEFAULT_MONTHLY = 100;
 const DEFAULT_GLOBAL = 300;
 const DEFAULT_MAX_IMAGE = 3_500_000;
 const DEFAULT_TIMEOUT = 6_500;
