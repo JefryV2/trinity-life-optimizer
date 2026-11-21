@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/app-text';
+import { BlurScrim } from '@/components/ui/blur-scrim';
 import { Icon } from '@/components/ui/icon';
 import { radius, space, useTheme } from '@/theme';
 
@@ -167,8 +168,10 @@ export const Sheet = ({
             accessibilityRole="button"
             accessibilityLabel="Close"
             onPress={onClose}
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
-          />
+            style={StyleSheet.absoluteFill}
+          >
+            <BlurScrim />
+          </Pressable>
           <KeyboardAvoidingView
             behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}
             style={{
@@ -214,8 +217,10 @@ export const Sheet = ({
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={onClose}
-          style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
-        />
+          style={StyleSheet.absoluteFill}
+        >
+          <BlurScrim />
+        </Pressable>
         <KeyboardAvoidingView
           behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}
           style={{

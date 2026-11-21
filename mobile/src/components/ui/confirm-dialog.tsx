@@ -3,6 +3,7 @@ import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/app-text';
+import { BlurScrim } from '@/components/ui/blur-scrim';
 import { Button } from '@/components/ui/button';
 import { space, useTheme } from '@/theme';
 
@@ -42,7 +43,8 @@ export const ConfirmDialog = ({
       statusBarTranslucent
       onRequestClose={onCancel}
     >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.68)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <BlurScrim />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"

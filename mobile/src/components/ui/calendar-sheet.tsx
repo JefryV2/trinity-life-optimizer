@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
+import { BlurScrim } from '@/components/ui/blur-scrim';
 import { radius, space, useTheme } from '@/theme';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -56,7 +57,8 @@ export const CalendarSheet = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.62)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <BlurScrim />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close calendar"

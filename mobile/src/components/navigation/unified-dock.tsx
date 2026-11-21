@@ -96,7 +96,7 @@ export const UnifiedDock = ({
 }: DockProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width, height, fontScale } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const { data: profileData } = useProfile();
   const { health, wealth, setHealth, setWealth } = useSectionNav();
 
@@ -241,33 +241,32 @@ export const UnifiedDock = ({
   );
 
   return (
-    <View
-      pointerEvents="box-none"
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: barBottom,
-        alignItems: 'center',
-      }}
-    >
-      {popupOpen ? (
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      {popupOpen || quickLogOpen ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close menu"
-          onPress={() => setPopupOpen(false)}
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: BAR_HEIGHT,
-            height,
-            zIndex: 10,
+          onPress={() => {
+            if (quickLogOpen) onQuickLog();
+            if (popupOpen) setPopupOpen(false);
           }}
+          style={[StyleSheet.absoluteFill, { zIndex: 10 }]}
         >
           <BlurScrim />
         </Pressable>
       ) : null}
+
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: barBottom,
+          alignItems: 'center',
+          zIndex: 20,
+        }}
+      >
 
       {popupOpen ? (
         <Animated.View
@@ -494,6 +493,7 @@ export const UnifiedDock = ({
             {quickLog}
           </View>
         </View>
+      </View>
       </View>
     </View>
   );

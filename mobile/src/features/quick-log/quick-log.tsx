@@ -4,7 +4,6 @@ import { Animated, BackHandler, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/app-text';
-import { BlurScrim } from '@/components/ui/blur-scrim';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { openAdd } from '@/lib/navigation';
 import { radius, space, useTheme } from '@/theme';
@@ -99,36 +98,17 @@ export const QuickLog = ({ visible, onClose }: QuickLogProps) => {
   if (!visible) return null;
 
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Close quick log"
-        onPress={onClose}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: dockTop,
-        }}
-      >
-        <BlurScrim />
-      </Pressable>
-
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: barBottom,
-          zIndex: 2,
-        }}
-      >
-        <BlurScrim />
-      </View>
-
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+      }}
+    >
       <Animated.View
         pointerEvents="box-none"
         style={{
