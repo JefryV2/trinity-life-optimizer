@@ -13,7 +13,7 @@
  *   MEAL_VISION_MONTHLY_LIMIT      default 40
  *   MEAL_VISION_GLOBAL_DAILY_LIMIT default 300
  *   MEAL_VISION_MAX_IMAGE_BYTES    default 3500000
- *   MEAL_VISION_TIMEOUT_MS         default 8000
+ *   MEAL_VISION_TIMEOUT_MS         default 6500
  *
  * NHOST_* environment variables are injected automatically.
  */
@@ -48,7 +48,7 @@ const DEFAULT_DAILY = 5;
 const DEFAULT_MONTHLY = 40;
 const DEFAULT_GLOBAL = 300;
 const DEFAULT_MAX_IMAGE = 3_500_000;
-const DEFAULT_TIMEOUT = 8_000;
+const DEFAULT_TIMEOUT = 6_500;
 
 const intEnv = (name: string, fallback: number, min: number, max: number) => {
   const value = Number(process.env[name]);
