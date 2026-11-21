@@ -1,14 +1,12 @@
 import { readAsStringAsync } from 'expo-file-system/legacy';
 
+import { getNhost, getStoredSession } from '@/lib/nhost';
 import type { Micronutrients } from '@/lib/nutrition';
 
 /**
- * A plate is estimated by a vision service, then every item is shown as an
- * editable portion. The app never treats the estimate as a final log.
- *
- * Production should point EXPO_PUBLIC_MEAL_VISION_ENDPOINT at a server that
- * owns the provider key and accepts multipart field `image`. For local
- * development only, EXPO_PUBLIC_OPENAI_API_KEY can call OpenAI directly.
+ * A plate is estimated by the Auxo meal-vision function, then every item is
+ * shown as an editable portion. The app never holds the provider key and never
+ * treats the estimate as a final log.
  */
 
 export interface MealVisionItem {
@@ -28,11 +26,40 @@ export interface MealVisionItem {
   };
 }
 
-const endpoint = process.env.EXPO_PUBLIC_MEAL_VISION_ENDPOINT?.trim();
-const openAiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY?.trim();
-const model = process.env.EXPO_PUBLIC_MEAL_VISION_MODEL?.trim() || 'gpt-4o-mini';
+export interface MealVisionUsage {
+  remainingToday: number;
+  remainingMonth: number;
+  usedToday: number;
+  usedMonth: number;
+}
 
-export const mealVisionConfigured = Boolean(endpoint || openAiKey);
+export type MealVisionErrorCode =
+  | 'auth'
+  | 'limit'
+  | 'config'
+  | 'provider'
+  | 'network';
+
+export class MealVisionError extends Error {
+  readonly code: MealVisionErrorCode;
+  readonly usage?: MealVisionUsage;
+
+  constructor(message: string, code: MealVisionErrorCode, usage?: MealVisionUsage) {
+    super(message);
+    this.name = 'MealVisionError';
+    this.code = code;
+    this.usage = usage;
+  }
+}
+
+export interface MealVisionResult {
+  items: MealVisionItem[];
+  usage?: MealVisionUsage;
+}
+
+const endpoint = process.env.EXPO_PUBLIC_MEAL_VISION_ENDPOINT?.trim();
+
+export const mealVisionConfigured = Boolean(endpoint);
 
 const asNumber = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -88,8 +115,8 @@ const fromRaw = (raw: unknown, index: number): MealVisionItem | null => {
   let carbs = asNumber(base.carbs) ?? asNumber(base.carbs_g) ?? 0;
   let fat = asNumber(base.fat) ?? asNumber(base.fat_g) ?? 0;
 
-  // The endpoint may return the estimate for the detected portion instead of
-  // per 100 g. Normalise it so the portion stepper always scales correctly.
+  // The function returns the estimate for the detected portion. Normalise it
+  // so the portion stepper always scales correctly.
   if (!item.per100) {
     const factor = 100 / grams;
     calories *= factor;
@@ -135,114 +162,114 @@ const parseItems = (payload: unknown): MealVisionItem[] => {
     .filter((item): item is MealVisionItem => item !== null);
 };
 
+const normaliseUsage = (value: unknown): MealVisionUsage | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const source = value as Record<string, unknown>;
+  const number = (key: string) => {
+    const parsed = asNumber(source[key]);
+    return parsed === null ? 0 : Math.max(0, Math.round(parsed));
+  };
+  return {
+    remainingToday: number('remainingToday'),
+    remainingMonth: number('remainingMonth'),
+    usedToday: number('usedToday'),
+    usedMonth: number('usedMonth'),
+  };
+};
+
+const accessToken = (): string | null => {
+  try {
+    return getNhost().sessionStorage.get()?.accessToken ?? getStoredSession()?.accessToken ?? null;
+  } catch {
+    return getStoredSession()?.accessToken ?? null;
+  }
+};
+
 const timeout = (ms: number) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   return { signal: controller.signal, done: () => clearTimeout(timer) };
 };
 
-const analyseWithEndpoint = async (uri: string) => {
-  if (!endpoint) return null;
-  const request = timeout(45_000);
-  try {
-    const form = new FormData();
-    form.append('image', {
-      uri,
-      name: 'meal.jpg',
-      type: 'image/jpeg',
-    } as unknown as Blob);
-    form.append('locale', 'en');
+const errorForResponse = async (response: Response): Promise<MealVisionError> => {
+  const payload = (await response.json().catch(() => null)) as
+    | { message?: unknown; code?: unknown; usage?: unknown }
+    | null;
+  const usage = normaliseUsage(payload?.usage);
+  const message = typeof payload?.message === 'string' ? payload.message : '';
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      body: form,
-      headers: { Accept: 'application/json' },
-      signal: request.signal,
-    });
-    if (!response.ok) {
-      throw new Error(`Photo service returned ${response.status}.`);
-    }
-    return parseItems(await response.json());
-  } finally {
-    request.done();
+  if (response.status === 401) {
+    return new MealVisionError('Sign in again to read a meal photo.', 'auth', usage);
   }
+  if (response.status === 429) {
+    return new MealVisionError(
+      message || 'You have used this photo read allowance. Add ingredients manually.',
+      'limit',
+      usage,
+    );
+  }
+  if (response.status === 413) {
+    return new MealVisionError(
+      'That photo is too large. Try again or add ingredients manually.',
+      'provider',
+      usage,
+    );
+  }
+  return new MealVisionError(
+    message || 'I could not read that photo. Add what you see below.',
+    'provider',
+    usage,
+  );
 };
 
-const PROMPT = `You are estimating a meal from one photo. Return ONLY valid JSON, no markdown.
-Schema:
-{"items":[{"name":"grilled chicken breast","grams":150,"calories":248,"protein":46,"carbs":0,"fat":5,"fiber":0,"sugar":0,"sodium":320,"confidence":0.86}]}
-Rules:
-- List each visible edible component separately, including oils, sauces, sides and drinks.
-- grams is the estimated edible portion, not the plate weight.
-- calories and macros are for that estimated portion; use common food composition values.
-- confidence is 0 to 1. Be conservative when the image is ambiguous or there is no size reference.
-- Do not invent packaging, brands, or ingredients that are not visible.
-- Keep names short and generic (e.g. "white rice", "fried egg").
-- If the plate cannot be identified, return {"items":[]}.
-`;
-
-const analyseWithOpenAi = async (uri: string) => {
-  if (!openAiKey) return null;
-  const base64 = await readAsStringAsync(uri, { encoding: 'base64' });
-  const request = timeout(45_000);
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        max_tokens: 1200,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: PROMPT },
-              {
-                type: 'image_url',
-                image_url: { url: `data:image/jpeg;base64,${base64}`, detail: 'low' },
-              },
-            ],
-          },
-        ],
-      }),
-      signal: request.signal,
-    });
-
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      throw new Error(
-        `Photo recognition failed (${response.status}).${detail ? ` ${detail.slice(0, 120)}` : ''}`,
-      );
-    }
-
-    const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = payload.choices?.[0]?.message?.content;
-    if (!content) throw new Error('Photo recognition returned no result.');
-    const clean = content
-      .trim()
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/```\s*$/, '');
-    return parseItems(JSON.parse(clean));
-  } finally {
-    request.done();
-  }
-};
-
-export const analyseMealPhoto = async (uri: string): Promise<MealVisionItem[]> => {
-  if (!mealVisionConfigured) {
-    throw new Error(
-      'Photo recognition is not connected yet. Add what you see below, or connect a vision service.',
+export const analyseMealPhoto = async (uri: string): Promise<MealVisionResult> => {
+  if (!endpoint) {
+    throw new MealVisionError(
+      'Photo reading is not connected yet. Add what you see below.',
+      'config',
     );
   }
 
-  const result = (await analyseWithEndpoint(uri)) ?? (await analyseWithOpenAi(uri));
-  if (!result) throw new Error('Photo recognition returned no result.');
-  return result;
+  const token = accessToken();
+  if (!token) {
+    throw new MealVisionError('Sign in again to read a meal photo.', 'auth');
+  }
+
+  const base64 = await readAsStringAsync(uri, { encoding: 'base64' });
+  if (!base64) {
+    throw new MealVisionError('I could not read that photo. Add what you see below.', 'provider');
+  }
+
+  const request = timeout(30_000);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
+      signal: request.signal,
+    });
+
+    if (!response.ok) throw await errorForResponse(response);
+
+    const payload = (await response.json()) as { items?: unknown };
+    return {
+      items: parseItems(payload),
+      usage: normaliseUsage((payload as { usage?: unknown }).usage),
+    };
+  } catch (error) {
+    if (error instanceof MealVisionError) throw error;
+    if ((error as Error)?.name === 'AbortError') {
+      throw new MealVisionError(
+        'Reading took too long. Add what you see below, or try again.',
+        'network',
+      );
+    }
+    throw new MealVisionError('I could not read that photo. Add what you see below.', 'network');
+  } finally {
+    request.done();
+  }
 };

@@ -22,6 +22,7 @@ import { TextField } from '@/components/ui/text-field';
 import { toast } from '@/components/ui/toast';
 import {
   analyseMealPhoto,
+  MealVisionError,
   mealVisionConfigured,
   type MealVisionItem,
 } from '@/features/health/meal-vision';
@@ -80,6 +81,7 @@ export default function MealPhotoScreen() {
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photoReadsLeft, setPhotoReadsLeft] = useState<number | null>(null);
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [query, setQuery] = useState('');
@@ -93,9 +95,7 @@ export default function MealPhotoScreen() {
   });
 
   const showReview = Boolean(photo) || manualOnly;
-  const friendlyError = error?.includes('not connected')
-    ? 'I could not read this photo. Add what you see below.'
-    : error;
+  const friendlyError = error;
   const totals = totalsFor(items);
   const canSave = items.length > 0 && !saving && !analyzing;
 
@@ -110,8 +110,10 @@ export default function MealPhotoScreen() {
       setError(null);
       setAnalyzing(true);
       try {
-        const detected = await analyseMealPhoto(shot.uri);
+        const result = await analyseMealPhoto(shot.uri);
+        const detected = result.items;
         setItems(detected);
+        setPhotoReadsLeft(result.usage?.remainingToday ?? null);
         if (detected.length > 0) {
           setName(
             detected
@@ -126,7 +128,16 @@ export default function MealPhotoScreen() {
         }
       } catch (caught) {
         console.warn('Meal photo analysis failed', caught);
-        setError('I could not read that photo. Add what you see below.');
+        if (caught instanceof MealVisionError) {
+          setPhotoReadsLeft(caught.usage?.remainingToday ?? null);
+          setError(
+            caught.code === 'limit' || caught.code === 'auth' || caught.code === 'config'
+              ? caught.message
+              : 'I could not read that photo. Add what you see below.',
+          );
+        } else {
+          setError('I could not read that photo. Add what you see below.');
+        }
       } finally {
         setAnalyzing(false);
       }
@@ -402,6 +413,13 @@ export default function MealPhotoScreen() {
                   ? 'Estimating components and portion size.'
                   : 'Estimates, not measurements. Adjust anything that looks off.'}
               </AppText>
+              {!analyzing && photoReadsLeft !== null ? (
+                <AppText variant="caption" tone="tertiary">
+                  {photoReadsLeft === 0
+                    ? 'No photo reads left today.'
+                    : `${photoReadsLeft} photo ${photoReadsLeft === 1 ? 'read' : 'reads'} left today.`}
+                </AppText>
+              ) : null}
             </View>
           </View>
 
