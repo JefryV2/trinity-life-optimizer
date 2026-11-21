@@ -5,14 +5,14 @@ import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
+import { Panel } from '@/components/ui/panel';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
-import { isoDate, formatStamp } from '@/lib/format';
+import { formatStamp, isoDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
-import { space, useTheme } from '@/theme';
+import { fonts, radius, space, useTheme } from '@/theme';
 
 const TABLES = [
   'profiles',
@@ -46,6 +46,48 @@ const TABLES = [
   'relations_daily_scores',
   'relations_goals_progress',
 ] as const;
+
+const InfoPanel = ({
+  icon,
+  label,
+  title,
+  children,
+  footer,
+}: {
+  icon: IconName;
+  label: string;
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <Panel style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: radius.pill,
+          backgroundColor: colors.surfaceSunken,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={icon} size={21} color={colors.primary} />
+      </View>
+      <View style={{ flex: 1, gap: 3 }}>
+        <AppText variant="caption" tone="primary">
+          {label}
+        </AppText>
+        <AppText style={{ fontFamily: fonts.bold, fontSize: 20, lineHeight: 24 }}>{title}</AppText>
+        <AppText variant="footnote" tone="secondary" style={{ lineHeight: 19 }}>
+          {children}
+        </AppText>
+        {footer}
+      </View>
+    </Panel>
+  );
+};
 
 export default function DataPrivacyScreen() {
   const { colors } = useTheme();
@@ -111,42 +153,72 @@ export default function DataPrivacyScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: space.xl }}>
-      <PageHeader back="/(tabs)/more" title="Data & privacy" date={formatStamp()} />
+      <PageHeader back="/(tabs)/more" title="Data & privacy" date={formatStamp()} rule={false} />
 
-      <SectionHeader title="On this device" />
-      <Card style={{ gap: space.sm }}>
-        <AppText variant="callout">Your preferences and onboarding state.</AppText>
-        <AppText variant="footnote" tone="secondary">
-          Demo data, local hydration target, reminder settings and the active walk session stay
-          on this phone.
-        </AppText>
-      </Card>
+      <InfoPanel icon="device" label="ON THIS DEVICE" title="Your preferences and onboarding state.">
+        Demo data, local hydration target, reminder settings and the active walk session stay on
+        this phone.
+      </InfoPanel>
 
-      <SectionHeader title="In your account" />
-      <Card style={{ gap: space.sm }}>
-        <AppText variant="callout">Only the records you log.</AppText>
-        <AppText variant="footnote" tone="secondary">
-          {demo
-            ? 'You are in demo mode, so this export reads sample data from this device.'
-            : 'Health, money and relationship records sync to your Auxo account. No feed, no ads and no sale of your data.'}
-        </AppText>
-        {user?.email ? (
-          <View style={{ paddingTop: space.xs }}>
-            <AppText variant="caption" tone="tertiary">
-              ACCOUNT
-            </AppText>
-            <AppText variant="footnote" tone="secondary" selectable>
-              {user.email}
-            </AppText>
+      <InfoPanel
+        icon="user"
+        label="IN YOUR ACCOUNT"
+        title="Only the records you log."
+        footer={
+          user?.email ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+                marginTop: space.sm,
+                paddingHorizontal: space.md,
+                paddingVertical: space.sm,
+                borderRadius: radius.inner,
+                backgroundColor: colors.surfaceSunken,
+              }}
+            >
+              <AppText variant="caption" tone="tertiary" style={{ flex: 1 }}>
+                ACCOUNT
+              </AppText>
+              <AppText
+                variant="footnote"
+                style={{ fontFamily: fonts.bold, color: colors.text }}
+                selectable
+                numberOfLines={1}
+              >
+                {user.email}
+              </AppText>
+            </View>
+          ) : null
+        }
+      >
+        {demo
+          ? 'You are in demo mode, so this export reads sample data from this device.'
+          : 'Health, money and relationship records sync to your Auxo account. No feed, no ads and no sale of your data.'}
+      </InfoPanel>
+
+      <Panel style={{ gap: space.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: radius.pill,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="download" size={21} color={colors.onPrimary} />
           </View>
-        ) : null}
-      </Card>
-
-      <SectionHeader title="Take it with you" />
-      <Card style={{ gap: space.md }}>
-        <AppText variant="footnote" tone="secondary">
-          A JSON file with every record this account can see. Open it in any text editor or keep
-          it as a backup.
+          <AppText style={{ fontFamily: fonts.black, fontSize: 26, lineHeight: 30 }}>
+            Take it with you
+          </AppText>
+        </View>
+        <AppText variant="footnote" tone="secondary" style={{ lineHeight: 19 }}>
+          A JSON file with every record this account can see. Open it in any text editor or keep it
+          as a backup.
         </AppText>
         <Button
           label="Export all data"
@@ -159,12 +231,7 @@ export default function DataPrivacyScreen() {
             {message}
           </AppText>
         ) : null}
-      </Card>
-
-      <AppText variant="footnote" tone="tertiary" style={{ lineHeight: 19 }}>
-        Deleting the account removes the records and the sign-in. The export is the copy you
-        control before that happens.
-      </AppText>
+      </Panel>
     </Screen>
   );
 }

@@ -12,7 +12,7 @@ export const PageHeader = ({
   title,
   date,
   subtitle,
-  rule = true,
+  rule = false,
   back,
 }: {
   title: string;

@@ -83,6 +83,12 @@ const GLYPH = {
   dizzy: 'sync-outline',
   constipation: 'reorder-two-outline',
   backspace: 'backspace-outline',
+  minus: 'remove',
+  download: 'download-outline',
+  mail: 'mail-outline',
+  signIn: 'log-in-outline',
+  shield: 'shield-checkmark-outline',
+  device: 'phone-portrait-outline',
 } as const;
 
 export type IconName = keyof typeof GLYPH;

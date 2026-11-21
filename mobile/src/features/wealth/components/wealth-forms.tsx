@@ -10,6 +10,7 @@ import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { FooterBackButton } from '@/components/ui/detail-header';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { PillSegmented } from '@/components/ui/pill-segmented';
 import { Chips } from '@/components/ui/chips';
 import { TextField } from '@/components/ui/text-field';
 import { useSettings } from '@/features/settings/use-settings';
@@ -586,19 +587,27 @@ export const TransactionForm = ({ recordId }: { recordId?: string }) => {
 };
 
 export const BudgetForm = () => {
+  const { colors } = useTheme();
   const { addBudget } = useWealth();
   const { saving, error, setError, submit } = useFormSubmit();
-  const [category, setCategory] = useState('');
-  const [limit, setLimit] = useState('');
-  const [period, setPeriod] = useState('monthly');
+  const [category, setCategory] = useState('Food');
+  const [limit, setLimit] = useState('400');
+  const [period, setPeriod] = useState<'monthly' | 'weekly'>('monthly');
+
+  const value = Number.isFinite(parseNumber(limit)) ? Math.max(0, parseNumber(limit)) : 0;
+  const categories = ['Food', 'Transport', 'Shopping', 'Bills', 'Health', 'Fun', 'Other'];
+  const quick = [100, 250, 400, 500, 1000];
+
+  const nudge = (delta: number) => {
+    setLimit(String(Math.max(0, Math.round(value + delta))));
+  };
 
   const save = () => {
-    const value = parseNumber(limit);
     if (!category.trim()) {
       setError('Which category does this budget cover?');
       return;
     }
-    if (!Number.isFinite(value) || value <= 0) {
+    if (value <= 0) {
       setError('Set a limit greater than zero.');
       return;
     }
@@ -606,31 +615,171 @@ export const BudgetForm = () => {
   };
 
   return (
-    <FormFrame
-      title="New budget"
-      submitLabel="Create budget"
-      loading={saving}
-      error={error}
-      onSubmit={save}
-    >
-      <View style={{ gap: space.xl }}>
-        <TextField
-          label="Category"
-          value={category}
-          onChangeText={setCategory}
-          placeholder="Food, Transport, Shopping…"
-          maxLength={40}
-        />
-        <TextField
-          label="Limit"
-          value={limit}
-          onChangeText={setLimit}
-          placeholder="400"
-          keyboardType="decimal-pad"
-          maxLength={10}
-        />
-        <Chips
-          label="Period"
+    <Screen contentContainerStyle={{ paddingTop: space.lg, flexGrow: 1 }}>
+      <View
+        style={{
+          alignSelf: 'center',
+          width: 40,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: colors.border,
+          marginTop: -space.sm,
+          marginBottom: space.md,
+        }}
+      />
+
+      <View style={{ gap: 2 }}>
+        <AppText variant="caption" tone="primary" style={{ letterSpacing: 1.2 }}>
+          LOG
+        </AppText>
+        <AppText style={{ fontFamily: fonts.black, fontSize: 40, lineHeight: 44, letterSpacing: -1.4 }}>
+          New budget
+        </AppText>
+      </View>
+
+      <View style={{ gap: space.sm }}>
+        <AppText variant="caption" tone="tertiary">
+          CATEGORY
+        </AppText>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {categories.map((option) => {
+            const selected = category === option;
+            return (
+              <Pressable
+                key={option}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => setCategory(option)}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  paddingHorizontal: space.lg,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected ? colors.primary : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.72 : 1,
+                })}
+              >
+                <AppText
+                  variant="callout"
+                  style={{
+                    fontFamily: selected ? fonts.bold : fonts.medium,
+                    color: selected ? colors.onPrimary : colors.text,
+                  }}
+                >
+                  {option}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={{ gap: space.sm }}>
+        <AppText variant="caption" tone="tertiary">
+          LIMIT
+        </AppText>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: space.sm,
+            padding: space.lg,
+            borderRadius: radius.group,
+            backgroundColor: colors.surfaceAlt,
+          }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Decrease limit"
+            onPress={() => nudge(-50)}
+            style={({ pressed }) => ({
+              width: 52,
+              height: 52,
+              borderRadius: radius.pill,
+              backgroundColor: colors.surfaceSunken,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.65 : 1,
+            })}
+          >
+            <Icon name="minus" size={22} color={colors.textSecondary} />
+          </Pressable>
+          <View style={{ alignItems: 'center', flex: 1 }}>
+            <AppText
+              variant="numeric"
+              selectable
+              style={{ fontSize: 54, lineHeight: 56, letterSpacing: -3 }}
+            >
+              {value}
+            </AppText>
+            <AppText variant="footnote" tone="tertiary">
+              limit per {period === 'monthly' ? 'month' : 'week'}
+            </AppText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Increase limit"
+            onPress={() => nudge(50)}
+            style={({ pressed }) => ({
+              width: 52,
+              height: 52,
+              borderRadius: radius.pill,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Icon name="plus" size={23} color={colors.onPrimary} />
+          </Pressable>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          {quick.map((amount) => {
+            const selected = value === amount;
+            return (
+              <Pressable
+                key={amount}
+                accessibilityRole="button"
+                accessibilityLabel={`Set limit to ${amount}`}
+                accessibilityState={{ selected }}
+                onPress={() => setLimit(String(amount))}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  height: 44,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected ? colors.primary : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.72 : 1,
+                })}
+              >
+                <AppText
+                  variant="footnote"
+                  style={{
+                    fontFamily: fonts.bold,
+                    color: selected ? colors.onPrimary : colors.textSecondary,
+                  }}
+                >
+                  {amount.toLocaleString()}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={{ gap: space.sm }}>
+        <AppText variant="caption" tone="tertiary">
+          PERIOD
+        </AppText>
+        <PillSegmented
           options={[
             { value: 'monthly', label: 'Monthly' },
             { value: 'weekly', label: 'Weekly' },
@@ -639,7 +788,37 @@ export const BudgetForm = () => {
           onChange={setPeriod}
         />
       </View>
-    </FormFrame>
+
+      <AppText variant="footnote" tone="secondary" style={{ textAlign: 'center' }}>
+        {value} for <AppText style={{ fontFamily: fonts.bold }}>{category}</AppText>, resets every{' '}
+        {period === 'monthly' ? 'month' : 'week'}
+      </AppText>
+
+      {error ? (
+        <AppText variant="footnote" tone="danger" selectable>
+          {error}
+        </AppText>
+      ) : null}
+
+      <View
+        style={{
+          marginTop: 'auto',
+          paddingTop: space.xl,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.md,
+        }}
+      >
+        <FooterBackButton fallback="/(tabs)/wealth" />
+        <View style={{ flex: 1 }}>
+          <Button
+            label="Create budget"
+            loading={saving}
+            onPress={save}
+          />
+        </View>
+      </View>
+    </Screen>
   );
 };
 

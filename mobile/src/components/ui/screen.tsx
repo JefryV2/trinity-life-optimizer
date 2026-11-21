@@ -1,4 +1,5 @@
 import { BlurTargetView, BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useSyncExternalStore, type ComponentRef } from 'react';
 import {
@@ -34,6 +35,8 @@ interface ScreenProps extends ScrollViewProps {
   safeAreaTop?: boolean;
   /** A fixed, frosted header bar that the page scrolls underneath. */
   header?: React.ReactNode;
+  /** A fixed footer that floats above the page, clear of the safe area. */
+  footer?: React.ReactNode;
 }
 
 const HEADER_HEIGHT = 64;
@@ -43,6 +46,7 @@ export const Screen = ({
   contentContainerStyle,
   safeAreaTop = true,
   header,
+  footer,
   ...rest
 }: ScreenProps) => {
   const { colors } = useTheme();
@@ -168,8 +172,9 @@ export const Screen = ({
                 paddingHorizontal: space.xl,
                 paddingTop: topInset + (header ? headerHeight + space.md : space.lg),
                 // Tab pages run all the way to the bottom and pass underneath
-                // the floating glass dock.
-                paddingBottom: isTab ? 0 : space.section,
+                // the floating glass dock. A fixed footer gets just enough
+                // clearance to stay readable without becoming a second card.
+                paddingBottom: footer ? space.section + 92 : isTab ? 0 : space.section,
                 gap: space.lg,
                 width: '100%',
                 maxWidth: 720,
@@ -191,18 +196,17 @@ export const Screen = ({
                 top: 0,
                 left: 0,
                 right: 0,
-                borderBottomWidth: 1,
-                borderBottomColor: 'rgba(255,255,255,0.08)',
                 overflow: 'hidden',
               },
               headerBarStyle,
             ]}
           >
-            {Platform.OS === 'ios' && isFocused && blurTargetAlive ? (
+            {isFocused && blurTargetAlive ? (
               <BlurView
                 pointerEvents="none"
-                tint="dark"
-                intensity={45}
+                tint="systemThinMaterialDark"
+                intensity={58}
+                blurReductionFactor={3}
                 blurMethod="dimezisBlurViewSdk31Plus"
                 blurTarget={blurTarget}
                 style={StyleSheet.absoluteFill}
@@ -210,7 +214,13 @@ export const Screen = ({
             ) : null}
             <View
               pointerEvents="none"
-              style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(7,7,8,0.64)' }]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(7,7,8,0.42)' }]}
+            />
+            <LinearGradient
+              pointerEvents="none"
+              colors={['rgba(7,7,8,0)', colors.background]}
+              locations={[0.55, 1]}
+              style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 22 }}
             />
             <Animated.View
               style={[
@@ -230,6 +240,30 @@ export const Screen = ({
               {header}
             </Animated.View>
           </Animated.View>
+        ) : null}
+
+        {footer ? (
+          <View
+            pointerEvents="box-none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: Math.max(space.lg, insets.bottom + space.md),
+              zIndex: 20,
+            }}
+          >
+            <View
+              style={{
+                width: '100%',
+                maxWidth: 720,
+                alignSelf: 'center',
+                paddingHorizontal: space.xl,
+              }}
+            >
+              {footer}
+            </View>
+          </View>
         ) : null}
         </View>
       </GestureDetector>
