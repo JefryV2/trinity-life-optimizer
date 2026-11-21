@@ -160,6 +160,11 @@ export default function DataPrivacyScreen() {
         this phone.
       </InfoPanel>
 
+      <InfoPanel icon="camera" label="MEAL PHOTOS" title="Read only when you ask.">
+        A meal photo is sent to your connected vision service only when you take it. The original stays
+        on this phone and nothing is logged until you confirm the estimate.
+      </InfoPanel>
+
       <InfoPanel
         icon="user"
         label="IN YOUR ACCOUNT"

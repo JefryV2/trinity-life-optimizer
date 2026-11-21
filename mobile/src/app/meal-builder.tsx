@@ -319,6 +319,42 @@ export default function MealBuilderScreen() {
       />
       <DetailHeader title="Build a meal" fallback="/(tabs)/health" />
 
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Photograph a meal"
+        onPress={() => router.push('/meal-photo' as never)}
+        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      >
+        <Panel
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.md,
+            paddingVertical: space.md,
+          }}
+        >
+          <View
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: radius.pill,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="camera" size={21} color={colors.onPrimary} />
+          </View>
+          <View style={{ flex: 1, gap: 1 }}>
+            <AppText variant="callout">Photo meal</AppText>
+            <AppText variant="footnote" tone="tertiary">
+              Snap a plate, then correct the portions it sees.
+            </AppText>
+          </View>
+          <Icon name="chevron" size={18} color={colors.textTertiary} />
+        </Panel>
+      </Pressable>
+
       <TextInput
         accessibilityLabel="Meal name"
         value={name}

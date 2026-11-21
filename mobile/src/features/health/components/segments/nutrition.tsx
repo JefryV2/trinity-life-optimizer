@@ -206,6 +206,14 @@ export const NutritionSegment = () => {
             }}
           />
           <Button
+            label="Photograph a meal"
+            variant="secondary"
+            onPress={() => {
+              setLogMenuVisible(false);
+              router.push('/meal-photo' as never);
+            }}
+          />
+          <Button
             label="Build a meal from components"
             variant="secondary"
             onPress={() => {

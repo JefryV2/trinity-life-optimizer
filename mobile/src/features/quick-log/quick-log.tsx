@@ -4,6 +4,7 @@ import { Animated, BackHandler, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/app-text';
+import { BlurScrim } from '@/components/ui/blur-scrim';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { openAdd } from '@/lib/navigation';
 import { radius, space, useTheme } from '@/theme';
@@ -26,7 +27,7 @@ const ACTIONS: Array<{
   {
     key: 'sleep',
     label: 'Sleep',
-    icon: 'bed',
+    icon: 'moon',
     open: () => openAdd('sleep'),
     tone: 'people',
   },
@@ -97,12 +98,6 @@ export const QuickLog = ({ visible, onClose }: QuickLogProps) => {
 
   if (!visible) return null;
 
-  const toneColor = {
-    health: colors.primary,
-    wealth: colors.wealth,
-    people: colors.bonds,
-  } as const;
-
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <Pressable
@@ -115,9 +110,24 @@ export const QuickLog = ({ visible, onClose }: QuickLogProps) => {
           left: 0,
           right: 0,
           bottom: dockTop,
-          backgroundColor: 'rgba(0, 0, 0, 0.66)',
         }}
-      />
+      >
+        <BlurScrim />
+      </Pressable>
+
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: barBottom,
+          zIndex: 2,
+        }}
+      >
+        <BlurScrim />
+      </View>
 
       <Animated.View
         pointerEvents="box-none"
@@ -126,7 +136,7 @@ export const QuickLog = ({ visible, onClose }: QuickLogProps) => {
           right: 24,
           bottom: stackBottom,
           alignItems: 'flex-end',
-          gap: 8,
+          gap: 10,
           opacity: entrance,
           transform: [
             {
@@ -135,16 +145,7 @@ export const QuickLog = ({ visible, onClose }: QuickLogProps) => {
           ],
         }}
       >
-        <AppText
-          variant="mono"
-          tone="tertiary"
-          style={{ letterSpacing: 1.2, marginBottom: 2 }}
-        >
-          QUICK LOG
-        </AppText>
-
         {ACTIONS.map((action) => {
-          const accent = toneColor[action.tone];
           const emphasized = action.emphasized === true;
           return (
             <Pressable
@@ -156,17 +157,18 @@ export const QuickLog = ({ visible, onClose }: QuickLogProps) => {
                 action.open();
               }}
               style={({ pressed }) => ({
+                width: 174,
                 height: 50,
-                minWidth: 132,
                 flexDirection: 'row',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: space.md,
                 paddingLeft: space.xl,
-                paddingRight: 6,
+                paddingRight: 7,
                 borderRadius: radius.pill,
-                backgroundColor: emphasized ? colors.primary : colors.surfaceSunken,
+                backgroundColor: emphasized ? colors.primary : colors.surfaceAlt,
                 borderWidth: emphasized ? 0 : 1,
-                borderColor: 'rgba(255,255,255,0.10)',
+                borderColor: 'rgba(255,255,255,0.08)',
                 opacity: pressed ? 0.72 : 1,
                 transform: [{ scale: pressed ? 0.97 : 1 }],
               })}
@@ -176,24 +178,24 @@ export const QuickLog = ({ visible, onClose }: QuickLogProps) => {
                 style={{
                   color: emphasized ? colors.onPrimary : colors.text,
                   fontWeight: '700',
-                  fontSize: 15,
+                  fontSize: 18,
                 }}
               >
                 {action.label}
               </AppText>
               <View
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
-                  backgroundColor: emphasized ? colors.onPrimary : accent,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: emphasized ? colors.onPrimary : colors.primary,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
                 <Icon
                   name={action.icon}
-                  size={19}
+                  size={20}
                   color={emphasized ? colors.primary : colors.onPrimary}
                 />
               </View>

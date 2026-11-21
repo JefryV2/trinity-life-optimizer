@@ -91,7 +91,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Auxo uses the camera to scan food barcodes."
+          "cameraPermission": "Auxo uses the camera to scan food barcodes and photograph meals for nutrition estimates."
         }
       ],
       "expo-build-properties",

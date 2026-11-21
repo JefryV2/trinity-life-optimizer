@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/app-text';
+import { BlurScrim } from '@/components/ui/blur-scrim';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { useSectionNav } from '@/features/navigation/section-nav';
 import { useProfile } from '@/features/profile/use-profile';
@@ -261,10 +262,11 @@ export const UnifiedDock = ({
             right: 0,
             bottom: BAR_HEIGHT,
             height,
-            backgroundColor: 'rgba(0, 0, 0, 0.58)',
             zIndex: 10,
           }}
-        />
+        >
+          <BlurScrim />
+        </Pressable>
       ) : null}
 
       {popupOpen ? (

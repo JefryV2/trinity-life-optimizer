@@ -172,7 +172,8 @@ export default function Dashboard() {
     : [];
 
   const weakest = data?.score.pillars.find((pillar) => pillar.key === data.score.weakest);
-  const ringSize = Math.min(300, Math.round(width * 0.78));
+  const heroHeight = fontScale > 1.2 ? 232 : 198;
+  const ringSize = Math.min(fontScale > 1.2 ? 244 : 220, Math.round(width * 0.6));
   const stressColor =
     data?.stress.level === 'High'
       ? colors.danger
@@ -238,17 +239,16 @@ export default function Dashboard() {
 
           <View
             style={{
-              height: 282,
+              minHeight: heroHeight,
               marginTop: -space.sm,
-              overflow: 'hidden',
             }}
           >
             <View
               pointerEvents="none"
               style={{
                 position: 'absolute',
-                right: -Math.round(ringSize * 0.42),
-                top: -18,
+                right: -Math.round(ringSize * 0.38),
+                top: -8,
               }}
             >
               <TrinityRings
@@ -274,11 +274,21 @@ export default function Dashboard() {
               />
             </View>
 
-            <View style={{ width: 218, gap: space.xs, paddingTop: space.lg }}>
+            <View
+              style={{
+                width: Math.min(218, Math.round(width * 0.56)),
+                gap: space.xs,
+                paddingTop: space.sm,
+              }}
+            >
               <AppText
                 variant="display"
                 selectable
-                style={{ fontSize: 68, lineHeight: 72, letterSpacing: -3 }}
+                style={{
+                  fontSize: fontScale > 1.2 ? 58 : 64,
+                  lineHeight: fontScale > 1.2 ? 62 : 68,
+                  letterSpacing: -2.5,
+                }}
               >
                 {Math.round(data.trinity)}
               </AppText>
@@ -298,6 +308,21 @@ export default function Dashboard() {
                   </AppText>
                 </View>
               ) : null}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/why' as never)}
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  alignSelf: 'flex-start',
+                  minHeight: 32,
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <AppText variant="footnote" tone="primary" style={{ fontWeight: '600' }}>
+                  {`Why ${Math.round(data.trinity)}?  →`}
+                </AppText>
+              </Pressable>
             </View>
           </View>
 
@@ -341,22 +366,6 @@ export default function Dashboard() {
               </Pressable>
             ))}
           </View>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/why' as never)}
-            hitSlop={12}
-            style={({ pressed }) => ({
-              alignSelf: 'flex-start',
-              minHeight: 44,
-              justifyContent: 'center',
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <AppText variant="callout" tone="primary" style={{ fontWeight: '600' }}>
-              {`Why ${Math.round(data.trinity)}?  →`}
-            </AppText>
-          </Pressable>
 
           <View
             style={{

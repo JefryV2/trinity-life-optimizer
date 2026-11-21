@@ -251,7 +251,7 @@ export default function MoreScreen() {
   return (
     <Screen
       header={<PageHeader title="You" date={formatStamp()} rule={false} />}
-      contentContainerStyle={{ paddingBottom: space.section, flexGrow: 1 }}
+      contentContainerStyle={{ flexGrow: 1 }}
     >
       <Pressable
         accessibilityRole="button"

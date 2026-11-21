@@ -96,6 +96,15 @@ export const Screen = ({
   });
   const isTab = useIsTabRoute();
   const isFocused = useIsFocused();
+  // The dock is 64 high and floats just above the bottom inset. Its trailing
+  // clearance keeps the last row readable without stopping content from
+  // scrolling underneath the glass while the page moves.
+  const tabBottomClearance = 64 + Math.max(10, insets.bottom + 2) + space.lg;
+  const bottomClearance = footer
+    ? space.section + 92
+    : isTab
+      ? tabBottomClearance
+      : space.section + Math.max(insets.bottom, space.md);
   const router = useRouter();
   const edgeStart = useRef(0);
 
@@ -171,16 +180,15 @@ export const Screen = ({
               {
                 paddingHorizontal: space.xl,
                 paddingTop: topInset + (header ? headerHeight + space.md : space.lg),
-                // Tab pages run all the way to the bottom and pass underneath
-                // the floating glass dock. A fixed footer gets just enough
-                // clearance to stay readable without becoming a second card.
-                paddingBottom: footer ? space.section + 92 : isTab ? 0 : space.section,
                 gap: space.lg,
                 width: '100%',
                 maxWidth: 720,
                 alignSelf: 'center',
               },
               contentContainerStyle,
+              // Apply last so a page cannot accidentally hide its own last row
+              // under the dock or the Android navigation inset.
+              { paddingBottom: bottomClearance },
             ]}
           >
             {children}
@@ -212,21 +220,34 @@ export const Screen = ({
                 style={StyleSheet.absoluteFill}
               />
             ) : null}
-            <View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor:
-                    Platform.OS === 'ios' ? 'rgba(7,7,8,0.42)' : 'rgba(7,7,8,0.86)',
-                },
-              ]}
-            />
+            {Platform.OS === 'ios' ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: 'rgba(7,7,8,0.24)' },
+                ]}
+              />
+            ) : null}
+            {/* Let the header dissolve into the page instead of cutting a
+                visible edge across the first row of content. */}
             <LinearGradient
               pointerEvents="none"
-              colors={['rgba(7,7,8,0)', colors.background]}
-              locations={[0.55, 1]}
-              style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 22 }}
+              colors={
+                Platform.OS === 'ios'
+                  ? [
+                      'rgba(7,7,8,0.22)',
+                      'rgba(7,7,8,0.08)',
+                      'rgba(7,7,8,0)',
+                    ]
+                  : [
+                      'rgba(7,7,8,0.94)',
+                      'rgba(7,7,8,0.58)',
+                      'rgba(7,7,8,0)',
+                    ]
+              }
+              locations={[0, 0.62, 1]}
+              style={StyleSheet.absoluteFill}
             />
             <Animated.View
               style={[

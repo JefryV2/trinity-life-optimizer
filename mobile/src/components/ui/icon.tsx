@@ -89,6 +89,9 @@ const GLYPH = {
   signIn: 'log-in-outline',
   shield: 'shield-checkmark-outline',
   device: 'phone-portrait-outline',
+  camera: 'camera-outline',
+  image: 'image-outline',
+  sparkles: 'sparkles-outline',
 } as const;
 
 export type IconName = keyof typeof GLYPH;

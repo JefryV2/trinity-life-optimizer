@@ -152,6 +152,7 @@ function RootNavigator() {
         <Stack.Screen name="scan-food" options={{ headerShown: false }} />
         <Stack.Screen name="food-search" options={{ headerShown: false }} />
         <Stack.Screen name="meal-builder" options={{ headerShown: false }} />
+        <Stack.Screen name="meal-photo" options={{ headerShown: false }} />
         <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="health-import" options={{ headerShown: false }} />
         <Stack.Screen name="legal" options={{ headerShown: false }} />
