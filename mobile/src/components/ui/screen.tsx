@@ -201,7 +201,7 @@ export const Screen = ({
               headerBarStyle,
             ]}
           >
-            {isFocused && blurTargetAlive ? (
+            {Platform.OS === 'ios' && isFocused && blurTargetAlive ? (
               <BlurView
                 pointerEvents="none"
                 tint="systemThinMaterialDark"
@@ -214,7 +214,13 @@ export const Screen = ({
             ) : null}
             <View
               pointerEvents="none"
-              style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(7,7,8,0.42)' }]}
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor:
+                    Platform.OS === 'ios' ? 'rgba(7,7,8,0.42)' : 'rgba(7,7,8,0.86)',
+                },
+              ]}
             />
             <LinearGradient
               pointerEvents="none"
