@@ -155,9 +155,9 @@ const FlowCard = ({
 
 const CycleRing = ({ cycleLength, periodLength }: { cycleLength: number; periodLength: number }) => {
   const { colors } = useTheme();
-  const size = 242;
+  const size = 206;
   const center = size / 2;
-  const stroke = 14;
+  const stroke = 12;
   const radiusValue = center - stroke / 2 - 2;
   const circumference = 2 * Math.PI * radiusValue;
   const progress = Math.min(1, periodLength / Math.max(cycleLength, 1));
@@ -274,8 +274,8 @@ const ValueControl = ({
             style={{
               color: colors.text,
               fontFamily: fonts.black,
-              fontSize: 38,
-              lineHeight: 40,
+              fontSize: 34,
+              lineHeight: 36,
               letterSpacing: -1.8,
             }}
           >
@@ -369,8 +369,8 @@ export const CycleSettingsSheet = ({
             style={{
               color: colors.text,
               fontFamily: fonts.black,
-              fontSize: 48,
-              lineHeight: 49,
+              fontSize: 44,
+              lineHeight: 46,
               letterSpacing: -2,
             }}
           >
@@ -411,7 +411,7 @@ export const CycleSettingsSheet = ({
             minHeight: 62,
             borderRadius: 22,
             borderWidth: 1,
-            borderColor: sampleSize > 0 ? 'rgba(198,242,78,0.5)' : colors.border,
+            borderColor: colors.border,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: sampleSize > 0 ? (pressed ? 0.75 : 1) : 0.45,
