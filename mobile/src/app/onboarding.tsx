@@ -164,10 +164,11 @@ export default function Onboarding() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { session, markOnboarded, markOnboardingSeen } = useAuth();
+  const setupOnly = Boolean(session);
 
   const [step, setStep] = useState<Step>(session ? 2 : 1);
   const [phase, setPhase] = useState<Phase>('steps');
-  const [palette, setPalette] = useState<Palette>(SCREEN.health);
+  const [palette, setPalette] = useState<Palette>(setupOnly ? SCREEN.wealth : SCREEN.health);
   const [firstName, setFirstName] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<string | null>(null);
@@ -305,6 +306,14 @@ export default function Onboarding() {
   };
 
   const next = (event: GestureResponderEvent) => {
+    if (setupOnly && step === 2) {
+      if (!detailsValid) {
+        setError('Add your name, age and gender to continue.');
+        return;
+      }
+      void finish();
+      return;
+    }
     if (step < 3) {
       if (step === 2 && !detailsValid) {
         setError('Add your name, age and gender to continue.');
@@ -375,40 +384,44 @@ export default function Onboarding() {
                 >
                   Auxo.
                 </AppText>
-                <AppText
-                  style={{
-                    color: alpha(palette.ink, 0.8),
-                    fontFamily: fonts.semibold,
-                    fontSize: 13,
-                    letterSpacing: 0.4,
-                  }}
-                >
-                  {`Step ${step} of 3`}
-                </AppText>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-                {[1, 2, 3].map((index) => (
-                  <View
-                    key={index}
+                {setupOnly ? null : (
+                  <AppText
                     style={{
-                      flex: 1,
-                      height: 12,
-                      borderRadius: 6,
-                      backgroundColor: alpha(palette.ink, 0.17),
-                      overflow: 'hidden',
+                      color: alpha(palette.ink, 0.8),
+                      fontFamily: fonts.semibold,
+                      fontSize: 13,
+                      letterSpacing: 0.4,
                     }}
                   >
-                    <View
-                      style={{
-                        width: index <= step ? '100%' : '0%',
-                        height: '100%',
-                        borderRadius: 6,
-                        backgroundColor: palette.ink,
-                      }}
-                    />
-                  </View>
-                ))}
+                    {`Step ${step} of 3`}
+                  </AppText>
+                )}
               </View>
+              {setupOnly ? null : (
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+                  {[1, 2, 3].map((index) => (
+                    <View
+                      key={index}
+                      style={{
+                        flex: 1,
+                        height: 12,
+                        borderRadius: 6,
+                        backgroundColor: alpha(palette.ink, 0.17),
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: index <= step ? '100%' : '0%',
+                          height: '100%',
+                          borderRadius: 6,
+                          backgroundColor: palette.ink,
+                        }}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             <ScrollView
@@ -520,7 +533,7 @@ export default function Onboarding() {
                         letterSpacing: -2,
                       }}
                     >
-                      Your details
+                      {setupOnly ? 'Finish your profile' : 'Your details'}
                     </AppText>
                     <AppText
                       style={{
@@ -817,7 +830,7 @@ export default function Onboarding() {
                 zIndex: 2,
               }}
             >
-              {step > 1 ? (
+              {step > 1 && !setupOnly ? (
                 <BackPill ink={palette.ink} onPress={(event) => go((step - 1) as Step, event)} />
               ) : null}
               <Pressable
@@ -849,7 +862,7 @@ export default function Onboarding() {
                       letterSpacing: -0.2,
                     }}
                   >
-                    {step === 1 ? 'Continue' : step === 2 ? 'Continue' : 'Start using Auxo'}
+                    {setupOnly ? 'Finish' : step === 1 ? 'Continue' : step === 2 ? 'Continue' : 'Continue'}
                   </AppText>
                 )}
               </Pressable>

@@ -4,7 +4,6 @@ import { KeyboardAvoidingView, Pressable, ScrollView, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Wordmark } from '@/components/wordmark';
-import { BackLink } from '@/components/ui/back-link';
 import { AppText } from '@/components/ui/app-text';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -99,7 +98,6 @@ export default function SignInScreen() {
             alignSelf: 'center',
           }}
         >
-          <BackLink />
           <View style={{ gap: space.lg }}>
             <Wordmark height={30} />
             <PageHeader

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { TextField } from '@/components/ui/text-field';
 import { SocialSignIn } from '@/features/auth/social-sign-in';
+import { readOnboardingDraft } from '@/features/onboarding/onboarding-draft';
 import { useAuth } from '@/providers/auth-provider';
 import { radius, space, useTheme } from '@/theme';
 
@@ -25,6 +26,16 @@ export default function SignUpScreen() {
   const [socialError, setSocialError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void readOnboardingDraft().then((draft) => {
+      if (mounted && draft?.firstName) setFirstName(draft.firstName);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const submit = async () => {
     if (!firstName.trim()) {
