@@ -1,4 +1,5 @@
 import { readAsStringAsync } from 'expo-file-system/legacy';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 import { getNhost, getStoredSession } from '@/lib/nhost';
 import type { Micronutrients } from '@/lib/nutrition';
@@ -235,9 +236,29 @@ export const analyseMealPhoto = async (uri: string): Promise<MealVisionResult> =
     throw new MealVisionError('Sign in again to read a meal photo.', 'auth');
   }
 
-  const base64 = await readAsStringAsync(uri, { encoding: 'base64' });
+  // Phone cameras produce 12–48 MP files. A plate only needs a long edge of
+  // about 1280 px, and the server deliberately caps the upload size.
+  let prepared = uri;
+  try {
+    const resized = await manipulateAsync(
+      uri,
+      [{ resize: { width: 1280 } }],
+      { compress: 0.72, format: SaveFormat.JPEG },
+    );
+    prepared = resized.uri;
+  } catch {
+    // Keep the original; the size check below still gives a clear message.
+  }
+
+  const base64 = await readAsStringAsync(prepared, { encoding: 'base64' });
   if (!base64) {
     throw new MealVisionError('I could not read that photo. Add what you see below.', 'provider');
+  }
+  if (Math.ceil((base64.length * 3) / 4) > 3_200_000) {
+    throw new MealVisionError(
+      'That photo is too large. Try again or add ingredients manually.',
+      'provider',
+    );
   }
 
   const request = timeout(30_000);

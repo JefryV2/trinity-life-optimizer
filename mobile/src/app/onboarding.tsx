@@ -165,7 +165,7 @@ export default function Onboarding() {
   const { width, height } = useWindowDimensions();
   const { session, markOnboarded, markOnboardingSeen } = useAuth();
 
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>(session ? 2 : 1);
   const [phase, setPhase] = useState<Phase>('steps');
   const [palette, setPalette] = useState<Palette>(SCREEN.health);
   const [firstName, setFirstName] = useState('');
@@ -194,6 +194,12 @@ export default function Onboarding() {
       : step === 2
         ? [firstName.trim() ? 1 : 0.1, ageNumber > 0 ? 1 : 0.1, gender ? 1 : 0.1]
         : [1, 1, 1];
+
+  useEffect(() => {
+    // A signed-in account without a completed profile has already seen the
+    // intro; this route is their profile setup.
+    if (session && phase === 'steps' && step === 1) setStep(2);
+  }, [phase, session, step]);
 
   useEffect(() => {
     let mounted = true;

@@ -108,7 +108,7 @@ function RootNavigator() {
       return;
     }
 
-    if (!onboarded && !seenOnboarding) {
+    if (!onboarded) {
       if (!onOnboarding) router.replace('/onboarding');
       return;
     }
