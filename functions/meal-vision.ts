@@ -330,8 +330,27 @@ const callGemini = async (
 
   const clean = text
     .replace(/^```(?:json)?\s*/i, '')
-    .replace(/```\s*$/, '');
-  return JSON.parse(clean) as { items?: unknown[] };
+    .replace(/```\s*$/, '')
+    .trim();
+  const candidates = [clean];
+  const first = text.indexOf('{');
+  const last = text.lastIndexOf('}');
+  if (first >= 0 && last > first) candidates.push(text.slice(first, last + 1));
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as { items?: unknown[] };
+    } catch {
+      // Try the next extraction.
+    }
+  }
+
+  throw new GeminiFailure(
+    'provider',
+    'Gemini returned text that was not JSON.',
+    undefined,
+    text.slice(0, 500),
+  );
 };
 
 const gemini = async (imageBase64: string, mimeType: string) => {
