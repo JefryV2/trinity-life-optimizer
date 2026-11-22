@@ -5,6 +5,8 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,6 +32,8 @@ interface SheetProps {
   headerless?: boolean;
   /** Optional surface override for full-bleed sheets. */
   background?: string;
+  /** Extra styles for the scrollable body, e.g. to anchor short forms. */
+  contentStyle?: StyleProp<ViewStyle>;
 }
 
 /** Native page sheet on iOS, full-height slide on Android. */
@@ -46,6 +50,7 @@ export const Sheet = ({
   largeTitle = false,
   headerless = false,
   background,
+  contentStyle,
 }: SheetProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -130,11 +135,14 @@ export const Sheet = ({
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
         style={compact ? { flexGrow: 0, flexShrink: 1 } : { flex: 1 }}
-        contentContainerStyle={{
-          padding: space.xl,
-          gap: space.lg,
-          paddingBottom: space.section,
-        }}
+        contentContainerStyle={[
+          {
+            padding: space.xl,
+            gap: space.lg,
+            paddingBottom: space.section,
+          },
+          contentStyle,
+        ]}
       >
         {children}
       </ScrollView>

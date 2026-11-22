@@ -227,6 +227,7 @@ const HeartManualSheet = ({
       visible={visible}
       title="Log heart rate"
       onClose={onClose}
+      contentStyle={{ flexGrow: 1 }}
       footer={
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Pressable
@@ -253,7 +254,8 @@ const HeartManualSheet = ({
         </View>
       }
     >
-      <View style={{ gap: space.lg }}>
+      <View style={{ flexGrow: 1, justifyContent: 'space-between', gap: space.lg }}>
+        <View style={{ gap: space.lg }}>
         <View style={{ gap: 4 }}>
           <AppText variant="caption" tone="primary" style={{ letterSpacing: 1.2 }}>
             LOG
@@ -369,6 +371,8 @@ const HeartManualSheet = ({
         <AppText variant="footnote" tone="tertiary" style={{ textAlign: 'center' }}>
           Tap the ring with each beat, or use − and +
         </AppText>
+
+        </View>
 
         <View style={{ gap: space.sm }}>
           <AppText variant="caption" tone="secondary">
