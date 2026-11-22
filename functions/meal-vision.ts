@@ -195,15 +195,17 @@ const RESPONSE_SCHEMA = {
         type: 'OBJECT',
         properties: {
           name: { type: 'STRING' },
-          grams: { type: 'NUMBER' },
-          calories: { type: 'NUMBER' },
-          protein: { type: 'NUMBER' },
-          carbs: { type: 'NUMBER' },
-          fat: { type: 'NUMBER' },
-          fiber: { type: 'NUMBER' },
-          sugar: { type: 'NUMBER' },
-          sodium: { type: 'NUMBER' },
-          confidence: { type: 'NUMBER' },
+          // Numbers are emitted as strings. The app parses both, and this
+          // avoids occasional decimal-expansion glitches from small models.
+          grams: { type: 'STRING' },
+          calories: { type: 'STRING' },
+          protein: { type: 'STRING' },
+          carbs: { type: 'STRING' },
+          fat: { type: 'STRING' },
+          fiber: { type: 'STRING' },
+          sugar: { type: 'STRING' },
+          sodium: { type: 'STRING' },
+          confidence: { type: 'STRING' },
         },
         required: ['name', 'grams', 'calories', 'protein', 'carbs', 'fat'],
       },
@@ -477,7 +479,7 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
       message,
       // Temporary diagnostic: the provider message explains a 404 or 400
       // without exposing the key. Remove once the function is healthy.
-      detail: failure.detail ? failure.detail.slice(0, 300) : null,
+      detail: failure.detail ? failure.detail.slice(0, 2000) : null,
       usage,
     });
   }
