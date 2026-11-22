@@ -87,36 +87,54 @@ export const OnboardingRings = ({
 }) => {
   const { width, height } = useWindowDimensions();
   const reduced = useReducedMotion();
-  const left = useSharedValue(0);
-  const top = useSharedValue(0);
-  const size = useSharedValue(600);
-  const spin = useSharedValue(0);
 
   const target = useMemo(() => {
+    const base = Math.max(width, height);
+    let size: number;
+    let left: number;
+    let top: number;
+
     if (step === 1) {
-      const next = Math.max(width * 1.55, 560);
-      return { left: width / 2 - next / 2, top: -next * 0.32, size: next };
+      size = Math.max(width * 1.55, 560);
+      left = width / 2 - size / 2;
+      top = -size * 0.32;
+    } else if (step === 2) {
+      size = Math.max(width * 1.85, 660);
+      left = width - size * 0.42;
+      top = height - size * 0.51;
+    } else {
+      size = Math.max(width * 1.8, 640);
+      left = -size * 0.55;
+      top = -size * 0.4;
     }
-    if (step === 2) {
-      const next = Math.max(width * 1.85, 660);
-      return { left: width - next * 0.42, top: height - next * 0.51, size: next };
-    }
-    const next = Math.max(width * 1.8, 640);
-    return { left: -next * 0.55, top: -next * 0.4, size: next };
+
+    return {
+      base,
+      x: left + size / 2 - width / 2,
+      y: top + size / 2 - height / 2,
+      scale: size / base,
+    };
   }, [height, step, width]);
+
+  // Move the rings with transforms only. Animating left/top/width/height makes
+  // the SVG relayout on every frame, which is what makes the steps feel rough.
+  const x = useSharedValue(target.x);
+  const y = useSharedValue(target.y);
+  const scale = useSharedValue(target.scale);
+  const spin = useSharedValue(0);
 
   useEffect(() => {
     if (reduced) {
-      left.value = target.left;
-      top.value = target.top;
-      size.value = target.size;
+      x.value = target.x;
+      y.value = target.y;
+      scale.value = target.scale;
       return;
     }
-    const timing = { duration: 950, easing: Easing.bezier(0.55, 0, 0.2, 1) };
-    left.value = withTiming(target.left, timing);
-    top.value = withTiming(target.top, timing);
-    size.value = withTiming(target.size, timing);
-  }, [left, reduced, size, target, top]);
+    const timing = { duration: 820, easing: Easing.bezier(0.22, 1, 0.36, 1) };
+    x.value = withTiming(target.x, timing);
+    y.value = withTiming(target.y, timing);
+    scale.value = withTiming(target.scale, timing);
+  }, [reduced, scale, target, x, y]);
 
   useEffect(() => {
     if (reduced) return;
@@ -124,15 +142,29 @@ export const OnboardingRings = ({
   }, [reduced, spin]);
 
   const box = useAnimatedStyle(() => ({
-    left: left.value,
-    top: top.value,
-    width: size.value,
-    height: size.value,
+    transform: [
+      { translateX: x.value },
+      { translateY: y.value },
+      { scale: scale.value },
+    ],
   }));
   const rotation = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value}deg` }] }));
 
   return (
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', zIndex: 0 }, box]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          left: width / 2 - target.base / 2,
+          top: height / 2 - target.base / 2,
+          width: target.base,
+          height: target.base,
+          zIndex: 0,
+        },
+        box,
+      ]}
+    >
       <Animated.View style={[{ width: '100%', height: '100%' }, rotation]}>
         <Svg width="100%" height="100%" viewBox="0 0 140 140">
           <Ring mid={70} radius={60} progress={progress[0]} ink={ink} opacity={0.14} />
@@ -156,13 +188,13 @@ export const CompletionRings = ({
   colors: [string, string, string];
 }) => {
   const reduced = useReducedMotion();
-  const scale = useSharedValue(reduced ? 1 : 0.3);
+  const scale = useSharedValue(reduced ? 1 : 0.86);
   const opacity = useSharedValue(reduced ? 1 : 0);
 
   useEffect(() => {
     if (reduced) return;
-    scale.value = withTiming(1, { duration: 780, easing: Easing.out(Easing.back(1.4)) });
-    opacity.value = withTiming(1, { duration: 420 });
+    scale.value = withTiming(1, { duration: 560, easing: Easing.out(Easing.cubic) });
+    opacity.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) });
   }, [opacity, reduced, scale]);
 
   const style = useAnimatedStyle(() => ({

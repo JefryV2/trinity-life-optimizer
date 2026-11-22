@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,14 +9,16 @@ import {
   ScrollView,
   TextInput,
   View,
-  useWindowDimensions,
   type GestureResponderEvent,
+  type ScrollViewInstance,
   type TextInputProps,
 } from 'react-native';
 import Animated, {
   Easing,
+  interpolateColor,
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -160,9 +162,48 @@ const BackPill = ({
   </Pressable>
 );
 
+const ProgressTrack = ({ active, ink }: { active: boolean; ink: string }) => {
+  const value = useSharedValue(active ? 1 : 0);
+
+  useEffect(() => {
+    value.value = withTiming(active ? 1 : 0, {
+      duration: 380,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [active, value]);
+
+  const fill = useAnimatedStyle(() => ({
+    transform: [{ scaleX: value.value }],
+  }));
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: alpha(ink, 0.17),
+        overflow: 'hidden',
+      }}
+    >
+      <Animated.View
+        style={[
+          {
+            width: '100%',
+            height: '100%',
+            borderRadius: 6,
+            backgroundColor: ink,
+            transformOrigin: 'left',
+          },
+          fill,
+        ]}
+      />
+    </View>
+  );
+};
+
 export default function Onboarding() {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
   const { session, markOnboarded, markOnboardingSeen } = useAuth();
   const setupOnly = Boolean(session);
 
@@ -179,10 +220,13 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [wiping, setWiping] = useState(false);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
-  const wipeScale = useSharedValue(0);
-  const [wipeColor, setWipeColor] = useState(SCREEN.health.bg);
-  const [wipeOrigin, setWipeOrigin] = useState({ x: width / 2, y: height * 0.8 });
+  const reduced = useReducedMotion();
+  const doneOpacity = useSharedValue(0);
+  const bgFrom = useSharedValue(setupOnly ? SCREEN.wealth.bg : SCREEN.health.bg);
+  const bgTo = useSharedValue(setupOnly ? SCREEN.wealth.bg : SCREEN.health.bg);
+  const bgMix = useSharedValue(1);
 
   const ageNumber = numberOrNull(age) ?? 0;
   const detailsValid =
@@ -219,41 +263,55 @@ export default function Onboarding() {
     };
   }, []);
 
-  const commitColor = useCallback(
-    (next: Palette) => {
-      setPalette(next);
-      setWiping(false);
-      wipeScale.value = 0;
-    },
-    [wipeScale],
-  );
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [step]);
 
-  const changeColor = (next: Palette, event?: GestureResponderEvent) => {
+  useEffect(() => {
+    if (phase !== 'done') {
+      doneOpacity.value = 0;
+      return;
+    }
+    doneOpacity.value = withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) });
+  }, [doneOpacity, phase]);
+
+  const commitColor = useCallback((next: Palette) => {
+    setPalette(next);
+    setWiping(false);
+  }, []);
+
+  const changeColor = (next: Palette) => {
     if (next.bg === palette.bg) {
       setPalette(next);
       return;
     }
     if (wiping) return;
-    const point = event?.nativeEvent
-      ? { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY }
-      : { x: width / 2, y: height * 0.78 };
-    setWipeColor(next.bg);
-    setWipeOrigin(point);
+
+    if (reduced) {
+      setPalette(next);
+      bgFrom.value = next.bg;
+      bgTo.value = next.bg;
+      bgMix.value = 1;
+      return;
+    }
+
     setWiping(true);
-    wipeScale.value = 0;
-    wipeScale.value = withTiming(
+    bgFrom.value = palette.bg;
+    bgTo.value = next.bg;
+    bgMix.value = 0;
+    bgMix.value = withTiming(
       1,
-      { duration: 720, easing: Easing.bezier(0.55, 0, 0.2, 1) },
+      { duration: 520, easing: Easing.bezier(0.22, 1, 0.36, 1) },
       (finished) => {
         if (finished) runOnJS(commitColor)(next);
       },
     );
   };
 
-  const go = (next: Step, event?: GestureResponderEvent) => {
+  const go = (next: Step) => {
     setError(null);
     setStep(next);
-    changeColor(colorFor(next, focus), event);
+    changeColor(colorFor(next, focus));
   };
 
   const buildDraft = (): OnboardingDraft => ({
@@ -319,7 +377,7 @@ export default function Onboarding() {
         setError('Add your name, age and gender to continue.');
         return;
       }
-      go((step + 1) as Step, event);
+      go((step + 1) as Step);
       return;
     }
     void finish();
@@ -334,35 +392,18 @@ export default function Onboarding() {
     setStep(1);
     setPalette(SCREEN.health);
     setError(null);
-    wipeScale.value = 0;
+    bgFrom.value = SCREEN.health.bg;
+    bgTo.value = SCREEN.health.bg;
+    bgMix.value = 1;
   };
 
-  const wipeSize = Math.max(width, height) * 2.6;
-  const wipeStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: wipeOrigin.x - wipeSize / 2 },
-      { translateY: wipeOrigin.y - wipeSize / 2 },
-      { scale: wipeScale.value },
-    ],
+  const background = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(bgMix.value, [0, 1], [bgFrom.value, bgTo.value]),
   }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg, overflow: 'hidden' }}>
+    <Animated.View style={[{ flex: 1, overflow: 'hidden' }, background]}>
       <StatusBar style={phase === 'done' ? 'light' : 'dark'} />
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          {
-            position: 'absolute',
-            width: wipeSize,
-            height: wipeSize,
-            borderRadius: wipeSize / 2,
-            backgroundColor: wipeColor,
-            zIndex: 40,
-          },
-          wipeStyle,
-        ]}
-      />
 
       <View style={{ flex: 1, paddingTop: insets.top }}>
         <OnboardingRings step={step} progress={progress} ink={palette.ink} />
@@ -400,31 +441,14 @@ export default function Onboarding() {
               {setupOnly ? null : (
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
                   {[1, 2, 3].map((index) => (
-                    <View
-                      key={index}
-                      style={{
-                        flex: 1,
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: alpha(palette.ink, 0.17),
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: index <= step ? '100%' : '0%',
-                          height: '100%',
-                          borderRadius: 6,
-                          backgroundColor: palette.ink,
-                        }}
-                      />
-                    </View>
+                    <ProgressTrack key={index} active={index <= step} ink={palette.ink} />
                   ))}
                 </View>
               )}
             </View>
 
             <ScrollView
+              ref={scrollRef}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
@@ -436,7 +460,7 @@ export default function Onboarding() {
             >
               {step === 1 ? (
                 <View>
-                  <Reveal index={0}>
+                  <Reveal fromOpacity={1} index={0}>
                     <AppText
                       style={{
                         color: palette.ink,
@@ -459,7 +483,7 @@ export default function Onboarding() {
                       Three pillars, one reading.
                     </AppText>
                   </Reveal>
-                  <Reveal index={1} delay={60}>
+                  <Reveal fromOpacity={1} index={1} delay={60}>
                     <AppText
                       style={{
                         color: palette.ink,
@@ -474,7 +498,7 @@ export default function Onboarding() {
                     </AppText>
                   </Reveal>
                   {FOCUS.map((option, index) => (
-                    <Reveal key={option.value} index={index + 2} delay={80}>
+                    <Reveal fromOpacity={1} key={option.value} index={index + 2} delay={80}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14 }}>
                         <AppText
                           style={{
@@ -505,7 +529,7 @@ export default function Onboarding() {
                       </View>
                     </Reveal>
                   ))}
-                  <Reveal index={5} delay={160}>
+                  <Reveal fromOpacity={1} index={5} delay={160}>
                     <AppText
                       style={{
                         color: alpha(palette.ink, 0.65),
@@ -523,7 +547,7 @@ export default function Onboarding() {
 
               {step === 2 ? (
                 <View>
-                  <Reveal index={0}>
+                  <Reveal fromOpacity={1} index={0}>
                     <AppText
                       style={{
                         color: palette.ink,
@@ -547,7 +571,7 @@ export default function Onboarding() {
                     </AppText>
                   </Reveal>
                   <View style={{ height: 22 }} />
-                  <Reveal index={1} delay={60}>
+                  <Reveal fromOpacity={1} index={1} delay={60}>
                     <Field
                       label="First name"
                       value={firstName}
@@ -559,7 +583,7 @@ export default function Onboarding() {
                       accent={palette.ink}
                     />
                   </Reveal>
-                  <Reveal index={2} delay={100}>
+                  <Reveal fromOpacity={1} index={2} delay={100}>
                     <Field
                       label="Age"
                       value={age}
@@ -571,7 +595,7 @@ export default function Onboarding() {
                       accent={palette.ink}
                     />
                   </Reveal>
-                  <Reveal index={3} delay={140}>
+                  <Reveal fromOpacity={1} index={3} delay={140}>
                     <View style={{ marginBottom: 18 }}>
                       <AppText
                         style={{
@@ -621,7 +645,7 @@ export default function Onboarding() {
                       </View>
                     </View>
                   </Reveal>
-                  <Reveal index={4} delay={180}>
+                  <Reveal fromOpacity={1} index={4} delay={180}>
                     <View style={{ flexDirection: 'row', gap: 20 }}>
                       <View style={{ flex: 1 }}>
                         <Field
@@ -649,7 +673,7 @@ export default function Onboarding() {
                       </View>
                     </View>
                   </Reveal>
-                  <Reveal index={5} delay={220}>
+                  <Reveal fromOpacity={1} index={5} delay={220}>
                     <AppText
                       style={{
                         color: alpha(palette.ink, 0.65),
@@ -667,7 +691,7 @@ export default function Onboarding() {
 
               {step === 3 ? (
                 <View>
-                  <Reveal index={0}>
+                  <Reveal fromOpacity={1} index={0}>
                     <AppText
                       style={{
                         color: palette.ink,
@@ -694,7 +718,7 @@ export default function Onboarding() {
                   {FOCUS.map((option, index) => {
                     const selected = focus === option.value;
                     return (
-                      <Reveal key={option.value} index={index + 1} delay={70}>
+                      <Reveal fromOpacity={1} key={option.value} index={index + 1} delay={70}>
                         <Pressable
                           accessibilityRole="radio"
                           accessibilityState={{ selected }}
@@ -766,7 +790,7 @@ export default function Onboarding() {
                       </Reveal>
                     );
                   })}
-                  <Reveal index={4} delay={140}>
+                  <Reveal fromOpacity={1} index={4} delay={140}>
                     <AppText
                       style={{
                         color: alpha(palette.ink, 0.65),
@@ -831,7 +855,7 @@ export default function Onboarding() {
               }}
             >
               {step > 1 && !setupOnly ? (
-                <BackPill ink={palette.ink} onPress={(event) => go((step - 1) as Step, event)} />
+                <BackPill ink={palette.ink} onPress={(event) => go((step - 1) as Step)} />
               ) : null}
               <Pressable
                 accessibilityRole="button"
@@ -862,7 +886,7 @@ export default function Onboarding() {
                       letterSpacing: -0.2,
                     }}
                   >
-                    {setupOnly ? 'Finish' : step === 1 ? 'Continue' : step === 2 ? 'Continue' : 'Continue'}
+                    {setupOnly ? 'Finish' : 'Continue'}
                   </AppText>
                 )}
               </Pressable>
@@ -872,19 +896,22 @@ export default function Onboarding() {
       </View>
 
       {phase === 'done' ? (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            zIndex: 60,
-            backgroundColor: BLACK,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: 30,
-          }}
+        <Animated.View
+          style={[
+            {
+              opacity: doneOpacity,
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              zIndex: 60,
+              backgroundColor: BLACK,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 30,
+            },
+          ]}
         >
           <CompletionRings size={220} colors={[LIME, AMBER, BLUE]} />
           <AppText
@@ -969,8 +996,8 @@ export default function Onboarding() {
               Replay intro
             </AppText>
           </Pressable>
-        </View>
+        </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

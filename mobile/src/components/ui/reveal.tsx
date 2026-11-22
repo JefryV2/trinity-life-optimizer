@@ -19,13 +19,16 @@ export const Reveal = ({
   children,
   index = 0,
   delay = 0,
+  fromOpacity = 0,
 }: {
   children: React.ReactNode;
   index?: number;
   delay?: number;
+  /** Start visible when a whole page is being crossfaded by another layer. */
+  fromOpacity?: number;
 }) => {
   const reduced = useReducedMotion();
-  const opacity = useSharedValue(0);
+  const opacity = useSharedValue(fromOpacity);
   const lift = useSharedValue(6);
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export const Reveal = ({
       lift.value = withTiming(0, { duration: 220 });
     }, delay + index * 45);
     return () => clearTimeout(timer);
-  }, [delay, index, lift, opacity, reduced]);
+  }, [delay, fromOpacity, index, lift, opacity, reduced]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
