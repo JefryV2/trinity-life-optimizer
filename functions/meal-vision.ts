@@ -48,7 +48,7 @@ const DEFAULT_DAILY = 5;
 const DEFAULT_MONTHLY = 100;
 const DEFAULT_GLOBAL = 300;
 const DEFAULT_MAX_IMAGE = 3_500_000;
-const DEFAULT_TIMEOUT = 6_500;
+const DEFAULT_TIMEOUT = 20_000;
 
 const intEnv = (name: string, fallback: number, min: number, max: number) => {
   const value = Number(process.env[name]);
@@ -337,7 +337,7 @@ const callGemini = async (
 const gemini = async (imageBase64: string, mimeType: string) => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new GeminiFailure('missing_key', 'GEMINI_API_KEY is not configured.');
-  const timeout = intEnv('MEAL_VISION_TIMEOUT_MS', DEFAULT_TIMEOUT, 2_000, 9_000);
+  const timeout = intEnv('MEAL_VISION_TIMEOUT_MS', DEFAULT_TIMEOUT, 2_000, 25_000);
   let lastFailure: GeminiFailure | null = null;
 
   for (const model of geminiModels()) {
