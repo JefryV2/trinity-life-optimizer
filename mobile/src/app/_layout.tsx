@@ -63,7 +63,7 @@ const navigationTheme = (_dark: boolean) => {
 };
 
 function RootNavigator() {
-  const { session, loading, onboarded } = useAuth();
+  const { session, loading, onboarded, seenOnboarding } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const dark = true;
@@ -94,9 +94,15 @@ function RootNavigator() {
     const onOnboarding = root === 'onboarding';
 
     if (!session) {
-      // Onboarding is the front door now. Sign-up happens at the end, once the
-      // user has seen their three rings and has a reason to keep them.
-      if (!onAuthScreen && !onOnboarding) router.replace('/welcome' as never);
+      // The intro is shown once per install. After that, a returning signed-out
+      // user goes straight to the login screen, never through onboarding again.
+      if (!seenOnboarding) {
+        if (!onAuthScreen && !onOnboarding) router.replace('/welcome' as never);
+      } else if (root === 'welcome' || root === 'onboarding') {
+        router.replace('/sign-in');
+      } else if (!onAuthScreen) {
+        router.replace('/sign-in');
+      }
       return;
     }
 
@@ -109,7 +115,7 @@ function RootNavigator() {
       // A reset ticket may arrive while a session is still cached.
       if (root !== 'reset') router.replace('/(tabs)');
     }
-  }, [session, loading, onboarded, segments, router]);
+  }, [session, loading, onboarded, seenOnboarding, segments, router]);
 
   return (
     <ThemeProvider value={navigationTheme(dark)}>

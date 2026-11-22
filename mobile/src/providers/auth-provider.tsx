@@ -24,6 +24,8 @@ interface AuthValue {
   demo: boolean;
   /** Whether this account has finished onboarding (per-device cache). */
   onboarded: boolean;
+  /** Whether this install has seen the pre-auth onboarding at least once. */
+  seenOnboarding: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithProvider: (provider: OAuthProvider) => Promise<void>;
   signUp: (email: string, password: string, firstName: string) => Promise<boolean>;
@@ -38,6 +40,8 @@ interface AuthValue {
   resetDemo: () => Promise<void>;
   /** Flip the onboarding gate (used by onboarding and the More test hook). */
   markOnboarded: (value: boolean) => Promise<void>;
+  /** Remember that the intro has been seen on this install. */
+  markOnboardingSeen: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -48,11 +52,20 @@ const stopWalkTracking = async () => {
 };
 
 const onboardedKey = (userId: string) => `trinity.onboarded.${userId}`;
+const ONBOARDING_SEEN_KEY = 'auxo.onboarding.seen.v1';
 
 const readOnboarded = async (userId: string | undefined): Promise<boolean> => {
   if (!userId) return false;
   try {
     return (await AsyncStorage.getItem(onboardedKey(userId))) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const readOnboardingSeen = async (): Promise<boolean> => {
+  try {
+    return (await AsyncStorage.getItem(ONBOARDING_SEEN_KEY)) === '1';
   } catch {
     return false;
   }
@@ -99,6 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [demo, setDemo] = useState(false);
   const [onboarded, setOnboarded] = useState(false);
+  const [seenOnboarding, setSeenOnboarding] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -111,6 +125,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (demoEnabled) {
         setDemo(true);
         setOnboarded(true);
+        setSeenOnboarding(true);
         setSession(getDemoSession());
         setLoading(false);
         return;
@@ -120,19 +135,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!mounted) return;
       const stored = client.sessionStorage.get() ?? getStoredSession();
       const next = toSession(stored);
-      const flag = await readOnboarded(stored?.user?.id ?? next?.user?.id);
+      const seen = (await readOnboardingSeen()) || Boolean(next);
+      const localFlag = await readOnboarded(stored?.user?.id ?? next?.user?.id);
+      let flag = localFlag;
+      if (next && !flag) {
+        try {
+          flag = await profileCompletedOnboarding(next.user.id);
+        } catch {
+          // Offline or local-only session: keep the local result.
+        }
+      }
       if (!mounted) return;
 
       setSession(next);
       setOnboarded(flag);
+      setSeenOnboarding(seen);
       setLoading(false);
 
       unsubscribe = client.sessionStorage.onChange(async (changed) => {
         const mapped = toSession(changed);
-        const nextFlag = await readOnboarded(changed?.user?.id ?? mapped?.user?.id);
+        let nextFlag = await readOnboarded(changed?.user?.id ?? mapped?.user?.id);
+        if (mapped && !nextFlag) {
+          try {
+            nextFlag = await profileCompletedOnboarding(mapped.user.id);
+          } catch {
+            // Keep the local result when the profile check fails.
+          }
+        }
         if (!mounted) return;
         setSession(mapped);
         setOnboarded(nextFlag);
+        if (mapped) setSeenOnboarding(true);
       });
     };
 
@@ -143,6 +176,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       unsubscribe?.();
     };
   }, []);
+
+  const markOnboardingSeen = useCallback(async () => {
+    setSeenOnboarding(true);
+    try {
+      await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, '1');
+    } catch {
+      // Best-effort local flag.
+    }
+  }, []);
+
+  const resolveOnboarded = useCallback(
+    async (userId: string | undefined, applied: boolean): Promise<boolean> => {
+      if (applied) return true;
+      if (await readOnboarded(userId)) return true;
+      if (!userId) return false;
+      try {
+        return await profileCompletedOnboarding(userId);
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
 
   const markOnboarded = useCallback(
     async (value: boolean) => {
@@ -191,6 +247,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading,
       demo,
       onboarded,
+      seenOnboarding,
       signIn: async (email, password) => {
         const client = await initNhost();
         const response = await client.auth.signInEmailPassword({ email: email.trim(), password });
@@ -202,7 +259,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!next) throw new Error('Signed in, but no session was returned.');
         const userId = stored?.user?.id ?? next.user.id;
         const applied = await applyPendingDraft(userId, true);
-        setOnboarded(applied || (await readOnboarded(userId)));
+        await markOnboardingSeen();
+        setOnboarded(await resolveOnboarded(userId, applied));
         setSession(next);
       },
       signInWithProvider: async (provider) => {
@@ -214,7 +272,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!next) throw new Error('Sign-in succeeded but no session was returned.');
         const userId = stored?.user?.id ?? next.user.id;
         const applied = await applyPendingDraft(userId, true);
-        setOnboarded(applied || (await readOnboarded(userId)));
+        await markOnboardingSeen();
+        setOnboarded(await resolveOnboarded(userId, applied));
         setSession(next);
       },
       signUp: async (email, password, firstName) => {
@@ -234,7 +293,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (stored) {
           const userId = stored.user?.id;
           const applied = userId ? await applyPendingDraft(userId, false) : false;
-          setOnboarded(applied || (await readOnboarded(userId)));
+          await markOnboardingSeen();
+          setOnboarded(await resolveOnboarded(userId, applied));
           setSession(toSession(stored));
         }
         // When email confirmation is on, no session comes back yet.
@@ -303,7 +363,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const stored = client.sessionStorage.get();
           const next = toSession(stored);
           if (!next) throw new Error('Password changed. Sign in again.');
-          setOnboarded(await readOnboarded(stored?.user?.id ?? next.user.id));
+          const userId = stored?.user?.id ?? next.user.id;
+          setOnboarded(await resolveOnboarded(userId, false));
           setSession(next);
         } catch (caught) {
           client.sessionStorage.remove();
@@ -371,6 +432,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       enterDemo: async () => {
         await setDemoMode(true);
         setDemo(true);
+        await markOnboardingSeen();
         setOnboarded(true);
         setSession(getDemoSession());
       },
@@ -379,8 +441,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(getDemoSession());
       },
       markOnboarded,
+      markOnboardingSeen,
     }),
-    [session, loading, demo, onboarded, markOnboarded, applyPendingDraft],
+    [
+      session,
+      loading,
+      demo,
+      onboarded,
+      seenOnboarding,
+      markOnboarded,
+      markOnboardingSeen,
+      applyPendingDraft,
+      resolveOnboarded,
+    ],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

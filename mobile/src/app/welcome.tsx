@@ -19,7 +19,7 @@ import { space, useTheme } from '@/theme';
 export default function Welcome() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { session, loading, onboarded, enterDemo } = useAuth();
+  const { session, loading, onboarded, enterDemo, markOnboardingSeen } = useAuth();
   const [focused, setFocused] = useState(true);
 
   useFocusEffect(
@@ -71,11 +71,20 @@ export default function Welcome() {
 
         <Reveal delay={220}>
           <View style={{ gap: space.md }}>
-            <Button label="Get started" onPress={() => router.push('/onboarding')} />
+            <Button
+              label="Get started"
+              onPress={() => {
+                router.push('/sign-up');
+                void markOnboardingSeen();
+              }}
+            />
             <Button
               label="I already have an account"
               variant="secondary"
-              onPress={() => router.push('/sign-in')}
+              onPress={() => {
+                router.push('/sign-in');
+                void markOnboardingSeen();
+              }}
             />
             <Pressable
               accessibilityRole="button"
