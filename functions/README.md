@@ -12,7 +12,7 @@ Set these in **Nhost Dashboard → Settings → Environment variables**. Never p
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | required | Google AI Studio key |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Vision model |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Vision model |
 | `MEAL_VISION_DAILY_LIMIT` | `5` | Photo reads per user per UTC day |
 | `MEAL_VISION_MONTHLY_LIMIT` | `100` | Photo reads per user per UTC month |
 | `MEAL_VISION_GLOBAL_DAILY_LIMIT` | `300` | Project-wide daily ceiling |

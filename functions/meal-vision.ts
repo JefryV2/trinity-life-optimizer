@@ -8,7 +8,7 @@
  *
  * Nhost environment:
  *   GEMINI_API_KEY                 required
- *   GEMINI_MODEL                   default gemini-2.5-flash
+ *   GEMINI_MODEL                   default gemini-3.8-flash
  *   MEAL_VISION_DAILY_LIMIT        default 5
  *   MEAL_VISION_MONTHLY_LIMIT      default 100
  *   MEAL_VISION_GLOBAL_DAILY_LIMIT default 300
@@ -43,7 +43,7 @@ type Usage = {
 };
 
 const FEATURE = 'meal_vision';
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
 const DEFAULT_DAILY = 5;
 const DEFAULT_MONTHLY = 100;
 const DEFAULT_GLOBAL = 300;
@@ -235,7 +235,7 @@ const geminiModels = () => {
   const configured = process.env.GEMINI_MODEL?.trim();
   return Array.from(
     new Set(
-      [configured || DEFAULT_MODEL, 'gemini-2.5-flash-lite', 'gemini-2.0-flash'].filter(
+      [configured || DEFAULT_MODEL, 'gemini-3.8-flash'].filter(
         (value): value is string => Boolean(value),
       ),
     ),
