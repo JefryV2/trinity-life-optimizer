@@ -271,9 +271,12 @@ const callGemini = async (
           ],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 1200,
+            maxOutputTokens: 900,
             responseMimeType: 'application/json',
             responseSchema: RESPONSE_SCHEMA,
+            // Plate recognition is a perception task, not a reasoning task.
+            // Low thinking keeps the call inside the function timeout.
+            thinkingConfig: { thinkingLevel: 'LOW' },
           },
         }),
         signal: AbortSignal.timeout(timeout),
