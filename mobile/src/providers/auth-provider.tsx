@@ -9,6 +9,12 @@ import { getDemoSession, resetDemoDatabase } from '@/lib/demo/demo-client';
 import { isDemoMode, loadDemoMode, setDemoMode } from '@/lib/demo/demo-mode';
 import { getStoredSession, initNhost } from '@/lib/nhost';
 import { signInWithOAuth, type OAuthProvider } from '@/lib/oauth';
+import {
+  applyOnboardingDraft,
+  clearOnboardingDraft,
+  profileCompletedOnboarding,
+  readOnboardingDraft,
+} from '@/features/onboarding/onboarding-draft';
 
 interface AuthValue {
   session: Session | null;
@@ -153,6 +159,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     [session?.user?.id],
   );
 
+  /**
+   * Onboarding is completed before auth. Once Nhost returns a session, write
+   * those local answers to the account before the guard renders the tabs.
+   */
+  const applyPendingDraft = useCallback(async (userId: string, existingAccount: boolean) => {
+    const draft = await readOnboardingDraft();
+    if (!draft) return false;
+
+    // Do not overwrite a profile that was already completed on another device.
+    if (existingAccount && (await profileCompletedOnboarding(userId))) {
+      await clearOnboardingDraft();
+      return false;
+    }
+
+    try {
+      await applyOnboardingDraft(userId, draft);
+      await clearOnboardingDraft();
+      await AsyncStorage.setItem(onboardedKey(userId), '1');
+      return true;
+    } catch (caught) {
+      console.warn('Could not apply onboarding draft', caught);
+      return false;
+    }
+  }, []);
+
   const value = useMemo<AuthValue>(
     () => ({
       session,
@@ -169,8 +200,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const stored = client.sessionStorage.get();
         const next = toSession(stored);
         if (!next) throw new Error('Signed in, but no session was returned.');
-        const flag = await readOnboarded(stored?.user?.id ?? next.user.id);
-        setOnboarded(flag);
+        const userId = stored?.user?.id ?? next.user.id;
+        const applied = await applyPendingDraft(userId, true);
+        setOnboarded(applied || (await readOnboarded(userId)));
         setSession(next);
       },
       signInWithProvider: async (provider) => {
@@ -180,7 +212,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const stored = client.sessionStorage.get();
         const next = toSession(stored);
         if (!next) throw new Error('Sign-in succeeded but no session was returned.');
-        setOnboarded(await readOnboarded(stored?.user?.id ?? next.user.id));
+        const userId = stored?.user?.id ?? next.user.id;
+        const applied = await applyPendingDraft(userId, true);
+        setOnboarded(applied || (await readOnboarded(userId)));
         setSession(next);
       },
       signUp: async (email, password, firstName) => {
@@ -198,7 +232,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         const stored = client.sessionStorage.get();
         if (stored) {
-          setOnboarded(await readOnboarded(stored.user?.id));
+          const userId = stored.user?.id;
+          const applied = userId ? await applyPendingDraft(userId, false) : false;
+          setOnboarded(applied || (await readOnboarded(userId)));
           setSession(toSession(stored));
         }
         // When email confirmation is on, no session comes back yet.
@@ -344,7 +380,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
       markOnboarded,
     }),
-    [session, loading, demo, onboarded, markOnboarded],
+    [session, loading, demo, onboarded, markOnboarded, applyPendingDraft],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

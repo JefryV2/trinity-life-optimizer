@@ -94,7 +94,9 @@ function RootNavigator() {
     const onOnboarding = root === 'onboarding';
 
     if (!session) {
-      if (!onAuthScreen) router.replace('/welcome' as never);
+      // Onboarding is the front door now. Sign-up happens at the end, once the
+      // user has seen their three rings and has a reason to keep them.
+      if (!onAuthScreen && !onOnboarding) router.replace('/welcome' as never);
       return;
     }
 

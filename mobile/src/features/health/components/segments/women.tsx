@@ -20,11 +20,12 @@ import {
   phaseAt,
   shiftIso,
 } from '@/features/health/cycle';
+import { CycleLogSheet, CycleSettingsSheet } from '@/features/health/components/cycle-sheets';
 import { useHealth } from '@/features/health/use-health';
 import { useWomensDaily } from '@/features/health/womens-daily';
 import { useProfile } from '@/features/profile/use-profile';
 import { daysBetween, formatDate, formatLongDate, isoDate, startOfMonth } from '@/lib/format';
-import { openAdd, openEdit } from '@/lib/navigation';
+import { openEdit } from '@/lib/navigation';
 import { fonts, radius, space, useTheme } from '@/theme';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -441,7 +442,7 @@ export const WomenSegment = () => {
   const { colors } = useTheme();
   const { data, isPending, isError, error, refetch, deleteRecord } = useHealth();
   const { data: dailyData, saveLog } = useWomensDaily();
-  const { data: profileData, saveCycleSettings } = useProfile();
+  const { data: profileData } = useProfile();
 
   const [selectedDate, setSelectedDate] = useState(() => isoDate());
   const [month, setMonth] = useState(() => startOfMonth());
@@ -456,9 +457,7 @@ export const WomenSegment = () => {
   const [logError, setLogError] = useState<string | null>(null);
 
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [cycleLength, setCycleLength] = useState(28);
-  const [periodLength, setPeriodLength] = useState(5);
-  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [cycleLogVisible, setCycleLogVisible] = useState(false);
 
   const cycles = useMemo(() => data?.cycles ?? [], [data?.cycles]);
   const logs = useMemo(() => dailyData?.logs ?? [], [dailyData?.logs]);
@@ -614,24 +613,7 @@ export const WomenSegment = () => {
   };
 
   const openSettings = () => {
-    setCycleLength(effectiveCycleLength);
-    setPeriodLength(effectivePeriodLength);
-    setSettingsError(null);
     setSettingsVisible(true);
-  };
-
-  const saveSettings = async () => {
-    setSettingsError(null);
-    try {
-      await saveCycleSettings.mutateAsync({
-        cycleLengthDays: cycleLength,
-        periodLengthDays: periodLength,
-      });
-      setSettingsVisible(false);
-      toast.show('Cycle settings saved');
-    } catch (caught) {
-      setSettingsError(caught instanceof Error ? caught.message : 'Could not save cycle settings.');
-    }
   };
 
   if (isPending) return <LoadingState />;
@@ -1049,7 +1031,7 @@ export const WomenSegment = () => {
               Log the first day of your last period. Auxo will estimate your phase, fertile window
               and next cycle.
             </AppText>
-            <Button label="Log last period" onPress={() => openAdd('cycle')} />
+            <Button label="Log last period" onPress={() => setCycleLogVisible(true)} />
           </Panel>
         )}
 
@@ -1117,7 +1099,7 @@ export const WomenSegment = () => {
         </AppText>
 
         <View style={{ gap: space.sm }}>
-          <SectionTitle title="History" right="Add" onRight={() => openAdd('cycle')} />
+          <SectionTitle title="History" right="Add" onRight={() => setCycleLogVisible(true)} />
           {cycles.length === 0 ? (
             <Panel>
               <AppText variant="body" tone="secondary">
@@ -1240,52 +1222,21 @@ export const WomenSegment = () => {
         </View>
       </Sheet>
 
-      <Sheet
-        compact
+      <CycleSettingsSheet
         visible={settingsVisible}
-        title="Cycle settings"
-        subtitle="Used for predictions across the app"
         onClose={() => setSettingsVisible(false)}
-        footer={
-          <Button
-            label="Save settings"
-            loading={saveCycleSettings.isPending}
-            onPress={() => void saveSettings()}
-          />
-        }
-      >
-        <View style={{ gap: space.lg }}>
-          <Slider
-            label="Cycle length"
-            value={cycleLength}
-            onChange={setCycleLength}
-            min={21}
-            max={45}
-            formatValue={(value) => `${value} days`}
-          />
-          <Slider
-            label="Period length"
-            value={periodLength}
-            onChange={setPeriodLength}
-            min={2}
-            max={10}
-            formatValue={(value) => `${value} days`}
-          />
-          <AppText variant="footnote" tone="tertiary">
-            {stats.sampleSize > 0
-              ? `Your logged cycles average ${stats.averageLength} days, with a ${stats.averagePeriod}-day period.`
-              : 'Log two cycles and Auxo will start filling in your averages.'}
-          </AppText>
-          <AppText variant="footnote" tone="tertiary">
-            Predictions are estimates, not contraception or medical advice.
-          </AppText>
-          {settingsError ? (
-            <AppText variant="footnote" tone="danger">
-              {settingsError}
-            </AppText>
-          ) : null}
-        </View>
-      </Sheet>
+        cycleLength={effectiveCycleLength}
+        periodLength={effectivePeriodLength}
+        averageLength={stats.averageLength}
+        averagePeriod={stats.averagePeriod}
+        sampleSize={stats.sampleSize}
+      />
+
+      <CycleLogSheet
+        visible={cycleLogVisible}
+        onClose={() => setCycleLogVisible(false)}
+        onSaved={(date) => setSelectedDate(date)}
+      />
     </>
   );
 };

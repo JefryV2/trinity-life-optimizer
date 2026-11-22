@@ -28,6 +28,8 @@ interface SheetProps {
   largeTitle?: boolean;
   /** The caller renders its own title so the sheet can open like a full page. */
   headerless?: boolean;
+  /** Optional surface override for full-bleed sheets. */
+  background?: string;
 }
 
 /** Native page sheet on iOS, full-height slide on Android. */
@@ -43,10 +45,11 @@ export const Sheet = ({
   badgeTone = 'danger',
   largeTitle = false,
   headerless = false,
+  background,
 }: SheetProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const sheetBackground = colors.surfaceAlt;
+  const sheetBackground = background ?? colors.surfaceAlt;
 
   const body = (
     <>

@@ -71,7 +71,7 @@ export default function Welcome() {
 
         <Reveal delay={220}>
           <View style={{ gap: space.md }}>
-            <Button label="Create your account" onPress={() => router.push('/sign-up')} />
+            <Button label="Get started" onPress={() => router.push('/onboarding')} />
             <Button
               label="I already have an account"
               variant="secondary"
