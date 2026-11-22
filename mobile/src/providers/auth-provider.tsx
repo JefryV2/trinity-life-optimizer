@@ -289,11 +289,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (response.status >= 400) {
           throw new Error(errorMessage(response.body, 'Could not create the account.'));
         }
+        await markOnboardingSeen();
         const stored = client.sessionStorage.get();
         if (stored) {
           const userId = stored.user?.id;
           const applied = userId ? await applyPendingDraft(userId, false) : false;
-          await markOnboardingSeen();
           setOnboarded(await resolveOnboarded(userId, applied));
           setSession(toSession(stored));
         }
