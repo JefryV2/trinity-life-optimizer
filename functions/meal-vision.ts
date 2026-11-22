@@ -175,7 +175,7 @@ const limitMessage = (usage: Usage) => {
 
 const PROMPT = `You are estimating a meal from one photo. Return ONLY valid JSON, no markdown.
 Schema:
-{"items":[{"name":"grilled chicken breast","grams":150,"calories":248,"protein":46,"carbs":0,"fat":5,"fiber":0,"sugar":0,"sodium":320,"confidence":0.86}]}
+{"items":[{"name":"grilled chicken breast","grams":150,"calories":248,"protein":46,"carbs":0,"fat":5,"confidence":0.86}]}
 Rules:
 - List each visible edible component separately, including oils, sauces, sides and drinks.
 - grams is the estimated edible portion, not the plate weight.
@@ -202,9 +202,6 @@ const RESPONSE_SCHEMA = {
           protein: { type: 'STRING' },
           carbs: { type: 'STRING' },
           fat: { type: 'STRING' },
-          fiber: { type: 'STRING' },
-          sugar: { type: 'STRING' },
-          sodium: { type: 'STRING' },
           confidence: { type: 'STRING' },
         },
         required: ['name', 'grams', 'calories', 'protein', 'carbs', 'fat'],
@@ -273,7 +270,7 @@ const callGemini = async (
           ],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 900,
+            maxOutputTokens: 700,
             responseMimeType: 'application/json',
             responseSchema: RESPONSE_SCHEMA,
           },
