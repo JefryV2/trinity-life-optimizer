@@ -102,7 +102,7 @@ export default function MealPhotoScreen() {
   const takePhoto = async () => {
     if (!camera.current) return;
     try {
-      const shot = await camera.current.takePictureAsync({ quality: 0.7 });
+      const shot = await camera.current.takePictureAsync({ quality: 0.6, exif: false });
       if (!shot?.uri) return;
       setManualOnly(false);
       setPhoto(shot.uri);
@@ -130,11 +130,7 @@ export default function MealPhotoScreen() {
         console.warn('Meal photo analysis failed', caught);
         if (caught instanceof MealVisionError) {
           setPhotoReadsLeft(caught.usage?.remainingToday ?? null);
-          setError(
-            caught.code === 'limit' || caught.code === 'auth' || caught.code === 'config'
-              ? caught.message
-              : 'I could not read that photo. Add what you see below.',
-          );
+          setError(caught.message || 'I could not read that photo. Add what you see below.');
         } else {
           setError('I could not read that photo. Add what you see below.');
         }

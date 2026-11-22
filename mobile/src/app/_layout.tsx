@@ -98,7 +98,9 @@ function RootNavigator() {
       // user goes straight to the login screen, never through onboarding again.
       if (!seenOnboarding) {
         if (!onAuthScreen && !onOnboarding) router.replace('/welcome' as never);
-      } else if (root === 'welcome' || root === 'onboarding') {
+      } else if (root === 'onboarding') {
+        // Let a pre-auth onboarding finish and show its completion state.
+      } else if (root === 'welcome') {
         router.replace('/sign-in');
       } else if (!onAuthScreen) {
         router.replace('/sign-in');
@@ -106,7 +108,7 @@ function RootNavigator() {
       return;
     }
 
-    if (!onboarded) {
+    if (!onboarded && !seenOnboarding) {
       if (!onOnboarding) router.replace('/onboarding');
       return;
     }

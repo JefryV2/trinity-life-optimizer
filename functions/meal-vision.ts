@@ -212,44 +212,111 @@ const RESPONSE_SCHEMA = {
   required: ['items'],
 };
 
-const gemini = async (imageBase64: string, mimeType: string) => {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY is not configured.');
-  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
-  const timeout = intEnv('MEAL_VISION_TIMEOUT_MS', DEFAULT_TIMEOUT, 2_000, 9_000);
+class GeminiFailure extends Error {
+  readonly code: 'missing_key' | 'auth' | 'model' | 'quota' | 'timeout' | 'network' | 'provider';
+  readonly status?: number;
+  readonly detail?: string;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-goog-api-key': key,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: PROMPT },
-              { inlineData: { mimeType, data: imageBase64 } },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 1200,
-          responseMimeType: 'application/json',
-          responseSchema: RESPONSE_SCHEMA,
-        },
-      }),
-      signal: AbortSignal.timeout(timeout),
-    },
+  constructor(
+    code: GeminiFailure['code'],
+    message: string,
+    status?: number,
+    detail?: string,
+  ) {
+    super(message);
+    this.name = 'GeminiFailure';
+    this.code = code;
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+const geminiModels = () => {
+  const configured = process.env.GEMINI_MODEL?.trim();
+  return Array.from(
+    new Set(
+      [configured || DEFAULT_MODEL, 'gemini-2.5-flash-lite', 'gemini-2.0-flash'].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ),
   );
+};
+
+const callGemini = async (
+  model: string,
+  key: string,
+  imageBase64: string,
+  mimeType: string,
+  timeout: number,
+) => {
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-goog-api-key': key,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: PROMPT },
+                { inlineData: { mimeType, data: imageBase64 } },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 1200,
+            responseMimeType: 'application/json',
+            responseSchema: RESPONSE_SCHEMA,
+          },
+        }),
+        signal: AbortSignal.timeout(timeout),
+      },
+    );
+  } catch (error) {
+    const name = (error as { name?: string })?.name;
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      throw new GeminiFailure('timeout', 'Gemini timed out.');
+    }
+    throw new GeminiFailure('network', 'Could not reach Gemini.');
+  }
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    throw new Error(`Gemini returned ${response.status}${detail ? `: ${detail.slice(0, 160)}` : ''}`);
+    const body = await response.text().catch(() => '');
+    let googleStatus = '';
+    let googleMessage = '';
+    try {
+      const parsed = JSON.parse(body) as { error?: { status?: unknown; message?: unknown } };
+      googleStatus = typeof parsed.error?.status === 'string' ? parsed.error.status : '';
+      googleMessage = typeof parsed.error?.message === 'string' ? parsed.error.message : '';
+    } catch {
+      // Keep the status code; the body may be HTML.
+    }
+
+    const text = `${googleStatus} ${googleMessage}`.toLowerCase();
+    const code: GeminiFailure['code'] =
+      response.status === 429
+        ? 'quota'
+        : response.status === 404
+          ? 'model'
+          : response.status === 401 || response.status === 403
+            ? 'auth'
+            : response.status === 400 && /api key|permission|not valid|invalid/.test(text)
+              ? 'auth'
+              : 'provider';
+
+    throw new GeminiFailure(
+      code,
+      `Gemini returned ${response.status}${googleStatus ? ` ${googleStatus}` : ''}`,
+      response.status,
+      googleMessage,
+    );
   }
 
   const payload = (await response.json()) as {
@@ -259,12 +326,33 @@ const gemini = async (imageBase64: string, mimeType: string) => {
     ?.map((part) => part.text ?? '')
     .join('')
     .trim();
-  if (!text) throw new Error('Gemini returned no estimate.');
+  if (!text) throw new GeminiFailure('provider', 'Gemini returned no estimate.');
 
   const clean = text
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/```\s*$/, '');
   return JSON.parse(clean) as { items?: unknown[] };
+};
+
+const gemini = async (imageBase64: string, mimeType: string) => {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new GeminiFailure('missing_key', 'GEMINI_API_KEY is not configured.');
+  const timeout = intEnv('MEAL_VISION_TIMEOUT_MS', DEFAULT_TIMEOUT, 2_000, 9_000);
+  let lastFailure: GeminiFailure | null = null;
+
+  for (const model of geminiModels()) {
+    try {
+      return await callGemini(model, key, imageBase64, mimeType, timeout);
+    } catch (error) {
+      if (!(error instanceof GeminiFailure)) throw error;
+      lastFailure = error;
+      // A model that is not enabled for this key should not block the next
+      // candidate. Auth, quota, timeout and network failures do.
+      if (error.code !== 'model' && error.status !== 404) throw error;
+    }
+  }
+
+  throw lastFailure ?? new GeminiFailure('provider', 'No Gemini model was available.');
 };
 
 export default async function handler(req: RequestLike, res: ResponseLike) {
@@ -341,10 +429,33 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     const items = Array.isArray(parsed.items) ? parsed.items.slice(0, 20) : [];
     jsonRes(res, 200, { items, usage });
   } catch (error) {
-    console.error('meal-vision provider failed', req.invocationId, error);
+    const failure =
+      error instanceof GeminiFailure
+        ? error
+        : new GeminiFailure(
+            'provider',
+            error instanceof Error ? error.message : 'Unknown vision error.',
+          );
+    console.error('meal-vision provider failed', req.invocationId, {
+      code: failure.code,
+      status: failure.status,
+      message: failure.message,
+      detail: failure.detail,
+    });
+    const message =
+      failure.code === 'missing_key'
+        ? 'Photo reading is not configured yet. Add what you see below.'
+        : failure.code === 'timeout'
+          ? 'Reading took too long. Add what you see below, or try again.'
+          : failure.code === 'quota'
+            ? 'Photo reading is busy right now. Add what you see below, or try again later.'
+            : failure.code === 'auth'
+              ? 'Photo reading is unavailable right now. Add what you see below.'
+              : 'I could not read that photo. Add what you see below.';
     jsonRes(res, 503, {
       error: 'vision_unavailable',
-      message: 'I could not read that photo. Add what you see below.',
+      code: failure.code,
+      message,
       usage,
     });
   }

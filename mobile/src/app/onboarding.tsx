@@ -25,7 +25,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/app-text';
 import { Icon } from '@/components/ui/icon';
 import { Reveal } from '@/components/ui/reveal';
-import { OnboardingAuth } from '@/features/onboarding/onboarding-auth';
 import {
   applyOnboardingDraft,
   readOnboardingDraft,
@@ -43,7 +42,7 @@ const BLUE = '#6F9BFF';
 const BLACK = '#0A0A0A';
 
 type Palette = { bg: string; ink: string };
-type Phase = 'steps' | 'done' | 'auth';
+type Phase = 'steps' | 'done';
 type Step = 1 | 2 | 3;
 
 const SCREEN: Record<OnboardingFocus, Palette> = {
@@ -164,9 +163,9 @@ const BackPill = ({
 export default function Onboarding() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const { session, markOnboarded } = useAuth();
+  const { session, markOnboarded, markOnboardingSeen } = useAuth();
 
-  const [step, setStep] = useState<Step>(session ? 2 : 1);
+  const [step, setStep] = useState<Step>(1);
   const [phase, setPhase] = useState<Phase>('steps');
   const [palette, setPalette] = useState<Palette>(SCREEN.health);
   const [firstName, setFirstName] = useState('');
@@ -179,7 +178,6 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [wiping, setWiping] = useState(false);
-  const [authOrigin, setAuthOrigin] = useState({ x: width / 2, y: height / 2 });
 
   const wipeScale = useSharedValue(0);
   const [wipeColor, setWipeColor] = useState(SCREEN.health.bg);
@@ -196,12 +194,6 @@ export default function Onboarding() {
       : step === 2
         ? [firstName.trim() ? 1 : 0.1, ageNumber > 0 ? 1 : 0.1, gender ? 1 : 0.1]
         : [1, 1, 1];
-
-  useEffect(() => {
-    // Signed-in users have already seen the intro; this route is now their
-    // one-time profile setup.
-    if (session && phase === 'steps' && step === 1) setStep(2);
-  }, [phase, session, step]);
 
   useEffect(() => {
     let mounted = true;
@@ -297,6 +289,7 @@ export default function Onboarding() {
     setError(null);
     try {
       await saveOnboardingDraft(draft);
+      await markOnboardingSeen();
       setSaving(false);
       setPhase('done');
     } catch {
@@ -329,11 +322,6 @@ export default function Onboarding() {
     wipeScale.value = 0;
   };
 
-  const openAuth = () => {
-    setAuthOrigin({ x: width / 2, y: height / 2 });
-    setPhase('auth');
-  };
-
   const wipeSize = Math.max(width, height) * 2.6;
   const wipeStyle = useAnimatedStyle(() => ({
     transform: [
@@ -342,19 +330,6 @@ export default function Onboarding() {
       { scale: wipeScale.value },
     ],
   }));
-
-  if (phase === 'auth') {
-    return (
-      <View style={{ flex: 1, backgroundColor: BLACK }}>
-        <StatusBar style="light" />
-        <OnboardingAuth
-          firstName={firstName.trim()}
-          origin={authOrigin}
-          onLogin={() => router.replace('/sign-in')}
-        />
-      </View>
-    );
-  }
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg, overflow: 'hidden' }}>
@@ -868,7 +843,7 @@ export default function Onboarding() {
                       letterSpacing: -0.2,
                     }}
                   >
-                    {step === 1 ? 'Get started' : step === 2 ? 'Continue' : 'Start using Auxo'}
+                    {step === 1 ? 'Continue' : step === 2 ? 'Continue' : 'Start using Auxo'}
                   </AppText>
                 )}
               </Pressable>
@@ -920,7 +895,7 @@ export default function Onboarding() {
           </AppText>
           <Pressable
             accessibilityRole="button"
-            onPress={openAuth}
+            onPress={() => router.replace('/sign-up')}
             style={({ pressed }) => ({
               width: '100%',
               maxWidth: 300,
@@ -935,24 +910,44 @@ export default function Onboarding() {
             })}
           >
             <AppText style={{ color: '#17220A', fontFamily: fonts.black, fontSize: 18 }}>
-              Continue
+              Create account
+            </AppText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.replace('/sign-in')}
+            style={({ pressed }) => ({
+              width: '100%',
+              maxWidth: 300,
+              height: 56,
+              borderRadius: 28,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.18)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: 10,
+              opacity: pressed ? 0.72 : 1,
+            })}
+          >
+            <AppText style={{ color: '#F4F4F2', fontFamily: fonts.bold, fontSize: 15 }}>
+              I already have an account
             </AppText>
           </Pressable>
           <Pressable
             accessibilityRole="button"
             onPress={replay}
             hitSlop={10}
-            style={{ minHeight: 44, justifyContent: 'center', marginTop: 8 }}
+            style={{ minHeight: 40, justifyContent: 'center', marginTop: 4 }}
           >
             <AppText
               style={{
-                color: '#A3A3A0',
+                color: '#7E7E82',
                 fontFamily: fonts.medium,
-                fontSize: 15,
+                fontSize: 13,
                 textDecorationLine: 'underline',
               }}
             >
-              Replay
+              Replay intro
             </AppText>
           </Pressable>
         </View>

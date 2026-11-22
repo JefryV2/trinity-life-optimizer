@@ -73,7 +73,7 @@ export default function Welcome() {
           <View style={{ gap: space.md }}>
             <Button
               label="Get started"
-              onPress={() => router.push('/sign-up')}
+              onPress={() => router.push('/onboarding')}
             />
             <Button
               label="I already have an account"
