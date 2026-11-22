@@ -456,6 +456,9 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
       error: 'vision_unavailable',
       code: failure.code,
       message,
+      // Temporary diagnostic: the provider message explains a 404 or 400
+      // without exposing the key. Remove once the function is healthy.
+      detail: failure.detail ? failure.detail.slice(0, 300) : null,
       usage,
     });
   }
