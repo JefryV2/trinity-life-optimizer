@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, G } from 'react-native-svg';
@@ -120,6 +121,7 @@ export const OnboardingRings = ({
   const x = useSharedValue(target.x);
   const y = useSharedValue(target.y);
   const scale = useSharedValue(target.scale);
+  const spin = useSharedValue(0);
 
   useEffect(() => {
     if (reduced) {
@@ -134,6 +136,11 @@ export const OnboardingRings = ({
     scale.value = withTiming(target.scale, timing);
   }, [reduced, scale, target, x, y]);
 
+  useEffect(() => {
+    if (reduced) return;
+    spin.value = withRepeat(withTiming(360, { duration: 60_000, easing: Easing.linear }), -1);
+  }, [reduced, spin]);
+
   const box = useAnimatedStyle(() => ({
     transform: [
       { translateX: x.value },
@@ -141,6 +148,7 @@ export const OnboardingRings = ({
       { scale: scale.value },
     ],
   }));
+  const rotation = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value}deg` }] }));
 
   return (
     <Animated.View
@@ -157,11 +165,13 @@ export const OnboardingRings = ({
         box,
       ]}
     >
-      <Svg width="100%" height="100%" viewBox="0 0 140 140">
-        <Ring mid={70} radius={60} progress={progress[0]} ink={ink} opacity={0.14} />
-        <Ring mid={70} radius={46} progress={progress[1]} ink={ink} opacity={0.2} />
-        <Ring mid={70} radius={32} progress={progress[2]} ink={ink} opacity={0.28} />
-      </Svg>
+      <Animated.View style={[{ width: '100%', height: '100%' }, rotation]}>
+        <Svg width="100%" height="100%" viewBox="0 0 140 140">
+          <Ring mid={70} radius={60} progress={progress[0]} ink={ink} opacity={0.14} />
+          <Ring mid={70} radius={46} progress={progress[1]} ink={ink} opacity={0.2} />
+          <Ring mid={70} radius={32} progress={progress[2]} ink={ink} opacity={0.28} />
+        </Svg>
+      </Animated.View>
     </Animated.View>
   );
 };

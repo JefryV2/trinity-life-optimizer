@@ -972,26 +972,6 @@ export default function Onboarding() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.replace('/sign-in')}
-            style={({ pressed }) => ({
-              width: '100%',
-              maxWidth: 300,
-              height: 56,
-              borderRadius: 28,
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.18)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginTop: 10,
-              opacity: pressed ? 0.72 : 1,
-            })}
-          >
-            <AppText style={{ color: '#F4F4F2', fontFamily: fonts.bold, fontSize: 15 }}>
-              I already have an account
-            </AppText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
             onPress={replay}
             hitSlop={10}
             style={{ minHeight: 40, justifyContent: 'center', marginTop: 4 }}
