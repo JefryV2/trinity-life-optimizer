@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, G } from 'react-native-svg';
@@ -35,7 +34,7 @@ const Ring = ({
   useEffect(() => {
     value.value = reduced
       ? progress
-      : withTiming(progress, { duration: 800, easing: Easing.out(Easing.cubic) });
+      : withTiming(progress, { duration: 420, easing: Easing.out(Easing.cubic) });
   }, [progress, reduced, value]);
 
   const animatedProps = useAnimatedProps(() => ({
@@ -121,7 +120,6 @@ export const OnboardingRings = ({
   const x = useSharedValue(target.x);
   const y = useSharedValue(target.y);
   const scale = useSharedValue(target.scale);
-  const spin = useSharedValue(0);
 
   useEffect(() => {
     if (reduced) {
@@ -130,16 +128,11 @@ export const OnboardingRings = ({
       scale.value = target.scale;
       return;
     }
-    const timing = { duration: 820, easing: Easing.bezier(0.22, 1, 0.36, 1) };
+    const timing = { duration: 420, easing: Easing.out(Easing.cubic) };
     x.value = withTiming(target.x, timing);
     y.value = withTiming(target.y, timing);
     scale.value = withTiming(target.scale, timing);
   }, [reduced, scale, target, x, y]);
-
-  useEffect(() => {
-    if (reduced) return;
-    spin.value = withRepeat(withTiming(360, { duration: 60_000, easing: Easing.linear }), -1);
-  }, [reduced, spin]);
 
   const box = useAnimatedStyle(() => ({
     transform: [
@@ -148,7 +141,6 @@ export const OnboardingRings = ({
       { scale: scale.value },
     ],
   }));
-  const rotation = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value}deg` }] }));
 
   return (
     <Animated.View
@@ -165,13 +157,11 @@ export const OnboardingRings = ({
         box,
       ]}
     >
-      <Animated.View style={[{ width: '100%', height: '100%' }, rotation]}>
-        <Svg width="100%" height="100%" viewBox="0 0 140 140">
-          <Ring mid={70} radius={60} progress={progress[0]} ink={ink} opacity={0.14} />
-          <Ring mid={70} radius={46} progress={progress[1]} ink={ink} opacity={0.2} />
-          <Ring mid={70} radius={32} progress={progress[2]} ink={ink} opacity={0.28} />
-        </Svg>
-      </Animated.View>
+      <Svg width="100%" height="100%" viewBox="0 0 140 140">
+        <Ring mid={70} radius={60} progress={progress[0]} ink={ink} opacity={0.14} />
+        <Ring mid={70} radius={46} progress={progress[1]} ink={ink} opacity={0.2} />
+        <Ring mid={70} radius={32} progress={progress[2]} ink={ink} opacity={0.28} />
+      </Svg>
     </Animated.View>
   );
 };
@@ -193,8 +183,8 @@ export const CompletionRings = ({
 
   useEffect(() => {
     if (reduced) return;
-    scale.value = withTiming(1, { duration: 560, easing: Easing.out(Easing.cubic) });
-    opacity.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) });
+    scale.value = withTiming(1, { duration: 380, easing: Easing.out(Easing.cubic) });
+    opacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
   }, [opacity, reduced, scale]);
 
   const style = useAnimatedStyle(() => ({

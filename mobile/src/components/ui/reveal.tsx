@@ -29,7 +29,7 @@ export const Reveal = ({
 }) => {
   const reduced = useReducedMotion();
   const opacity = useSharedValue(fromOpacity);
-  const lift = useSharedValue(6);
+  const lift = useSharedValue(fromOpacity >= 1 ? 0 : 6);
 
   useEffect(() => {
     if (reduced) {
@@ -37,10 +37,13 @@ export const Reveal = ({
       lift.value = 0;
       return;
     }
+    // Page-level crossfades already carry the transition. A second staggered
+    // settle makes the step feel slow, so only do it for standalone reveals.
+    if (fromOpacity >= 1) return;
     const timer = setTimeout(() => {
-      opacity.value = withTiming(1, { duration: 220 });
-      lift.value = withTiming(0, { duration: 220 });
-    }, delay + index * 45);
+      opacity.value = withTiming(1, { duration: 180 });
+      lift.value = withTiming(0, { duration: 180 });
+    }, delay + index * 35);
     return () => clearTimeout(timer);
   }, [delay, fromOpacity, index, lift, opacity, reduced]);
 

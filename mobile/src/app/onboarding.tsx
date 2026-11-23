@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import Animated, {
   Easing,
-  interpolateColor,
   runOnJS,
   useAnimatedStyle,
   useReducedMotion,
@@ -224,9 +223,8 @@ export default function Onboarding() {
 
   const reduced = useReducedMotion();
   const doneOpacity = useSharedValue(0);
-  const bgFrom = useSharedValue(setupOnly ? SCREEN.wealth.bg : SCREEN.health.bg);
-  const bgTo = useSharedValue(setupOnly ? SCREEN.wealth.bg : SCREEN.health.bg);
-  const bgMix = useSharedValue(1);
+  const [bgNext, setBgNext] = useState(setupOnly ? SCREEN.wealth.bg : SCREEN.health.bg);
+  const bgMix = useSharedValue(0);
 
   const ageNumber = numberOrNull(age) ?? 0;
   const detailsValid =
@@ -272,7 +270,7 @@ export default function Onboarding() {
       doneOpacity.value = 0;
       return;
     }
-    doneOpacity.value = withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) });
+    doneOpacity.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.cubic) });
   }, [doneOpacity, phase]);
 
   const commitColor = useCallback((next: Palette) => {
@@ -289,23 +287,25 @@ export default function Onboarding() {
 
     if (reduced) {
       setPalette(next);
-      bgFrom.value = next.bg;
-      bgTo.value = next.bg;
+      setBgNext(next.bg);
       bgMix.value = 1;
       return;
     }
 
     setWiping(true);
-    bgFrom.value = palette.bg;
-    bgTo.value = next.bg;
+    // Hide the old overlay first, then let the new colour fade in on the next
+    // frame. This avoids a one-frame flash when the overlay colour changes.
     bgMix.value = 0;
-    bgMix.value = withTiming(
-      1,
-      { duration: 520, easing: Easing.bezier(0.22, 1, 0.36, 1) },
-      (finished) => {
-        if (finished) runOnJS(commitColor)(next);
-      },
-    );
+    requestAnimationFrame(() => {
+      setBgNext(next.bg);
+      bgMix.value = withTiming(
+        1,
+        { duration: 240, easing: Easing.out(Easing.cubic) },
+        (finished) => {
+          if (finished) runOnJS(commitColor)(next);
+        },
+      );
+    });
   };
 
   const go = (next: Step) => {
@@ -392,18 +392,29 @@ export default function Onboarding() {
     setStep(1);
     setPalette(SCREEN.health);
     setError(null);
-    bgFrom.value = SCREEN.health.bg;
-    bgTo.value = SCREEN.health.bg;
-    bgMix.value = 1;
+    setBgNext(SCREEN.health.bg);
+    bgMix.value = 0;
   };
 
-  const background = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(bgMix.value, [0, 1], [bgFrom.value, bgTo.value]),
-  }));
+  const bgFade = useAnimatedStyle(() => ({ opacity: bgMix.value }));
 
   return (
-    <Animated.View style={[{ flex: 1, overflow: 'hidden' }, background]}>
+    <View style={{ flex: 1, backgroundColor: palette.bg, overflow: 'hidden' }}>
       <StatusBar style={phase === 'done' ? 'light' : 'dark'} />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            backgroundColor: bgNext,
+          },
+          bgFade,
+        ]}
+      />
 
       <View style={{ flex: 1, paddingTop: insets.top }}>
         <OnboardingRings step={step} progress={progress} ink={palette.ink} />
@@ -998,6 +1009,6 @@ export default function Onboarding() {
           </Pressable>
         </Animated.View>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
